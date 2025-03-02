@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  api:
+    container_name: tat-api
+    build:
+      context: .
+      target: development
+    volumes:
+      - .:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    environment:
+      - NODE_ENV=development
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USERNAME=postgres
+      - DATABASE_PASSWORD=postgres
+      - DATABASE_NAME=tat_api_db
+    command: yarn start:dev
+    networks:
+      - tat-network
+
+  postgres:
+    container_name: tat-postgres
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=tat_api_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - tat-network
+
+volumes:
+  postgres_data:
+
+networks:
+  tat-network:
+    driver: bridge 

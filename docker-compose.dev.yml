@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      target: development
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: yarn start:dev
+
+  postgres:
+    environment:
+      - POSTGRES_DB=tat_api_dev_db 

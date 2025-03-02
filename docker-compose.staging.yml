@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      target: staging
+    environment:
+      - NODE_ENV=staging
+    command: yarn start:prod
+
+  postgres:
+    environment:
+      - POSTGRES_DB=tat_api_staging_db
+      - POSTGRES_PASSWORD=staging_password 
