@@ -7,6 +7,7 @@ import { setupSwagger } from './config/swagger.config';
 import knex from 'knex';
 import { join } from 'path';
 import * as fs from 'fs';
+import { HttpExceptionFilter } from './middleware/http-exception.filter';
 
 async function bootstrap() {
   // Run Knex migrations before starting the app
@@ -39,6 +40,9 @@ async function bootstrap() {
   // Get the logger instance
   const logger = app.get(WINSTON_MODULE_NEST_PROVIDER);
   app.useLogger(logger);
+
+  // Apply global exception filter
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   // Get config service
   const configService = app.get(ConfigService);

@@ -242,6 +242,36 @@ Example endpoints:
 - POST `/api/v1/auth/login`
 - GET `/api/v1/auth/profile`
 
+## Logging System
+
+The application features a comprehensive logging system based on Winston:
+
+### Log Types
+
+- **Application Logs**: General application logs (application-YYYY-MM-DD.log)
+- **Error Logs**: Error-specific logs (error-YYYY-MM-DD.log)
+- **HTTP Request Logs**: All HTTP requests and responses (http-YYYY-MM-DD.log)
+- **Exception Logs**: Unhandled exceptions (exceptions-YYYY-MM-DD.log)
+- **Rejection Logs**: Unhandled promise rejections (rejections-YYYY-MM-DD.log)
+
+### Log Rotation
+
+Logs are automatically rotated:
+- HTTP request logs are kept for 14 days
+- All other logs are kept for 30 days
+- Each log file has a 20MB size limit
+
+### Log Location
+
+All logs are stored in the `logs` directory at the root of the project.
+
+### Sensitive Data Protection
+
+The logging system automatically redacts sensitive information such as:
+- Passwords
+- Authentication tokens
+- Secret keys
+
 ## Module Generation
 
 The project provides a powerful module generation tool to quickly scaffold new NestJS modules.
