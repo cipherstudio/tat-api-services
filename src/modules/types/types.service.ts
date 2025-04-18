@@ -110,10 +110,11 @@ export class TypesService implements OnModuleInit {
         });
 
         // Extract decorators for class declarations
-        if (ts.isClassDeclaration(node) && node.decorators) {
-          node.decorators.forEach((decorator) => {
+        if (ts.isClassDeclaration(node)) {
+          const nodeDecorators = ts.getDecorators?.(node) || [];
+          for (const decorator of nodeDecorators) {
             decorators.push(decorator.getText(sourceFile));
-          });
+          }
         }
 
         // Extract extends clauses
@@ -156,8 +157,9 @@ export class TypesService implements OnModuleInit {
   private extractValidationDecorators(node: ts.Node): Record<string, any> {
     const validations: Record<string, any> = {};
 
-    if (ts.isPropertyDeclaration(node) && node.decorators) {
-      node.decorators.forEach((decorator) => {
+    if (ts.isPropertyDeclaration(node)) {
+      const propDecorators = ts.getDecorators?.(node) || [];
+      for (const decorator of propDecorators) {
         const decoratorText = decorator.getText();
         const match = decoratorText.match(/@(\w+)\((.*)\)/);
 
@@ -169,7 +171,7 @@ export class TypesService implements OnModuleInit {
             validations[name] = args;
           }
         }
-      });
+      }
     }
 
     return validations;
@@ -201,7 +203,7 @@ export class TypesService implements OnModuleInit {
     category: 'dto' | 'entity' | 'interface',
   ): Record<string, TypeDefinition> {
     return Object.entries(this.typeDefinitions)
-      .filter(([_, def]) => def.category === category)
+      .filter(([, def]) => def.category === category)
       .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
   }
 }

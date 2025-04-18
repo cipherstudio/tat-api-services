@@ -30,8 +30,8 @@ export class User {
   fullName: string;
 
   @Column({
-    type: 'enum',
-    enum: UserRole,
+    type: 'varchar',
+    length: 20,
     default: UserRole.USER,
   })
   role: UserRole;

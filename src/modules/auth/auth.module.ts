@@ -13,6 +13,8 @@ import { Session } from './entities/session.entity';
 import { AuditLog } from './entities/audit-log.entity';
 import { LocalStrategy } from './strategies/local.strategy';
 import { AuthController } from './auth.controller';
+import { AuditLogRepository } from './repositories/audit-log.repository';
+import { DatabaseModule } from '../../database/database.module';
 
 @Module({
   imports: [
@@ -29,6 +31,7 @@ import { AuthController } from './auth.controller';
       inject: [ConfigService],
     }),
     UsersModule,
+    DatabaseModule,
   ],
   controllers: [AuthController],
   providers: [
@@ -37,7 +40,8 @@ import { AuthController } from './auth.controller';
     AuditLogService,
     LocalStrategy,
     JwtStrategy,
+    AuditLogRepository,
   ],
-  exports: [AuthService, SessionService, AuditLogService],
+  exports: [AuthService, SessionService, AuditLogService, AuditLogRepository],
 })
 export class AuthModule {}

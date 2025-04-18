@@ -7,6 +7,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UserQueryOptions } from './interfaces/user-options.interface';
 import { PaginatedResult } from '../../common/interfaces/pagination.interface';
 import { RedisCacheService } from '../cache/redis-cache.service';
+import { UserRepository } from './repositories/user.repository';
 
 @Injectable()
 export class UsersService {
@@ -16,6 +17,7 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly customUserRepository: UserRepository,
     private readonly cacheService: RedisCacheService,
   ) {}
 
@@ -24,7 +26,9 @@ export class UsersService {
       ...createUserDto,
       role: createUserDto.role || UserRole.USER,
     });
-    const savedUser = await this.userRepository.save(user);
+
+    // Use our custom repository for saving
+    const savedUser = await this.customUserRepository.save(user);
 
     // Cache the new user
     await this.cacheService.set(
@@ -62,80 +66,23 @@ export class UsersService {
       includeInactive = false,
       role,
       email,
-      fullName,
-      isActive,
-      searchTerm,
-      createdAfter,
-      createdBefore,
-      includes,
+      isActive = includeInactive ? undefined : true,
     } = queryOptions || {};
 
-    const query = this.userRepository.createQueryBuilder('user');
-
-    if (email) {
-      query.andWhere('user.email LIKE :email', {
-        email: `%${email}%`,
-      });
-    }
-
-    if (fullName) {
-      query.andWhere('user.fullName LIKE :fullName', {
-        fullName: `%${fullName}%`,
-      });
-    }
-
-    if (role) {
-      query.andWhere('user.role = :role', { role });
-    }
-
-    if (isActive !== undefined) {
-      query.andWhere('user.isActive = :isActive', {
-        isActive,
-      });
-    }
-
-    if (createdAfter) {
-      query.andWhere('user.createdAt >= :createdAfter', {
-        createdAfter,
-      });
-    }
-
-    if (createdBefore) {
-      query.andWhere('user.createdAt <= :createdBefore', {
-        createdBefore,
-      });
-    }
-
-    if (searchTerm) {
-      query.andWhere(
-        '(user.email LIKE :search OR user.fullName LIKE :search)',
-        { search: `%${searchTerm}%` },
-      );
-    }
-
-    if (!includeInactive) {
-      query.andWhere('user.isActive = :defaultActive', { defaultActive: true });
-    }
-
-    if (includes?.length) {
-      includes.forEach((include) => {
-        query.leftJoinAndSelect(`user.${include}`, include);
-      });
-    }
-
-    query.orderBy(`user.${orderBy}`, orderDir);
-    query.skip((page - 1) * limit).take(limit);
-
-    const [data, total] = await query.getManyAndCount();
-    const result = {
-      data,
-      meta: {
-        total,
-        page,
-        lastPage: Math.ceil(total / limit),
-        limit,
-      },
+    // Use our Oracle-optimized repository for pagination
+    const filters: Partial<User> = {
+      email,
+      role: role as UserRole,
+      isActive,
     };
+
+    const result = await this.customUserRepository.findWithPagination(
+      page,
+      limit,
+      orderBy,
+      orderDir as 'ASC' | 'DESC',
+      filters,
+    );
 
     // Cache the result
     await this.cacheService.set(cacheKey, result, this.CACHE_TTL);
@@ -187,8 +134,21 @@ export class UsersService {
       ...updateUserDto,
       role: updateUserDto.role as UserRole,
     };
-    await this.userRepository.update(id, updateData);
-    const updatedUser = await this.findById(id);
+
+    // Get the existing user
+    const existingUser = await this.findById(id);
+    if (!existingUser) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    // Merge update data
+    const updatedUser = {
+      ...existingUser,
+      ...updateData,
+    };
+
+    // Use the custom repository
+    await this.customUserRepository.save(updatedUser);
 
     // Update cache
     const cacheKey = this.cacheService.generateKey(this.CACHE_PREFIX, id);

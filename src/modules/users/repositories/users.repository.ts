@@ -6,11 +6,15 @@ import {
   PaginatedResult,
   PaginateOptions,
 } from '../../../common/repositories/base.repository';
+import { OracleService } from '../../../database/oracle.service';
 
 @Injectable()
 export class UsersRepository extends BaseRepository<User> {
-  constructor(private dataSource: DataSource) {
-    super(User, dataSource.createEntityManager());
+  constructor(
+    private dataSource: DataSource,
+    protected oracleService: OracleService,
+  ) {
+    super(User, dataSource);
   }
 
   async findByEmail(email: string): Promise<User | null> {
@@ -30,31 +34,15 @@ export class UsersRepository extends BaseRepository<User> {
     query: string,
     options: PaginateOptions = {},
   ): Promise<PaginatedResult<User>> {
-    const queryBuilder = this.createQueryBuilder('user');
-
-    queryBuilder
-      .where('user.email LIKE :query OR user.fullName LIKE :query', {
-        query: `%${query}%`,
-      })
-      .orderBy('user.createdAt', 'DESC');
-
-    const page = options.page || 1;
-    const limit = options.limit || 10;
-    const skip = (page - 1) * limit;
-
-    queryBuilder.skip(skip).take(limit);
-
-    const [data, total] = await queryBuilder.getManyAndCount();
-    const lastPage = Math.ceil(total / limit);
-
-    return {
-      data,
-      meta: {
-        total,
-        page,
-        lastPage,
-        limit,
+    // Use the paginate method with a custom search
+    return this.paginate(
+      {
+        ...options,
+        searchField: 'email',
+        searchValue: query,
+        orderBy: { createdAt: 'DESC' },
       },
-    };
+      {},
+    );
   }
 }

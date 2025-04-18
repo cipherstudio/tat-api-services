@@ -12,6 +12,7 @@ import {
   Param,
   ParseIntPipe,
   Version,
+  Query,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { SessionService } from './services/session.service';
@@ -195,9 +196,15 @@ export class AuthController {
   @Version('1')
   @UseGuards(JwtAuthGuard)
   @Get('security-events')
-  async getSecurityEvents(@Req() req: RequestWithUser) {
+  @ApiOperation({ summary: 'Get security events with pagination' })
+  @ApiResponse({ status: 200, description: 'Returns security events.' })
+  async getSecurityEvents(
+    @Req() req: RequestWithUser,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+  ) {
     const user = req.user;
-    return this.auditLogService.getSecurityEvents(user.id);
+    return this.auditLogService.getSecurityEvents(user.id, page, limit);
   }
 
   @Version('1')

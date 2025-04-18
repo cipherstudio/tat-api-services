@@ -16,6 +16,8 @@ export enum AuditLogType {
   ACCOUNT_LOCK = 'account_lock',
   ACCOUNT_UNLOCK = 'account_unlock',
   SESSION_REVOKE = 'session_revoke',
+  TWO_FACTOR_ENABLE = 'two_factor_enable',
+  TWO_FACTOR_DISABLE = 'two_factor_disable',
 }
 
 @Entity('audit_logs')
@@ -31,12 +33,12 @@ export class AuditLog {
   user: User;
 
   @Column({
-    type: 'enum',
-    enum: AuditLogType,
+    type: 'varchar',
+    length: 50,
   })
   type: AuditLogType;
 
-  @Column({ type: 'json', nullable: true })
+  @Column({ type: 'clob', nullable: true })
   metadata: Record<string, any>;
 
   @Column({ name: 'ip_address' })
@@ -48,7 +50,7 @@ export class AuditLog {
   @Column()
   success: boolean;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'clob', nullable: true })
   failureReason: string;
 
   @CreateDateColumn({ name: 'created_at' })
