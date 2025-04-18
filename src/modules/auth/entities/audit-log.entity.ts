@@ -1,58 +1,53 @@
-import {
-  Entity,
-  Column,
-  PrimaryGeneratedColumn,
-  CreateDateColumn,
-  ManyToOne,
-  JoinColumn,
-} from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
-export enum AuditLogType {
-  LOGIN = 'login',
-  LOGOUT = 'logout',
-  PASSWORD_RESET = 'password_reset',
-  PASSWORD_CHANGE = 'password_change',
-  ACCOUNT_LOCK = 'account_lock',
-  ACCOUNT_UNLOCK = 'account_unlock',
-  SESSION_REVOKE = 'session_revoke',
-  TWO_FACTOR_ENABLE = 'two_factor_enable',
-  TWO_FACTOR_DISABLE = 'two_factor_disable',
+export enum AuditLogStatus {
+  SUCCESS = 'success',
+  FAILURE = 'failure',
 }
 
-@Entity('audit_logs')
-export class AuditLog {
-  @PrimaryGeneratedColumn()
+export enum AuditLogCategory {
+  AUTH = 'auth',
+  USER = 'user',
+  ADMIN = 'admin',
+  SECURITY = 'security',
+  GENERAL = 'general',
+}
+
+export interface AuditLog {
   id: number;
-
-  @Column({ name: 'user_id' })
-  userId: number;
-
-  @ManyToOne(() => User, (user) => user.auditLogs)
-  @JoinColumn({ name: 'user_id' })
-  user: User;
-
-  @Column({
-    type: 'varchar',
-    length: 50,
-  })
-  type: AuditLogType;
-
-  @Column({ type: 'clob', nullable: true })
-  metadata: Record<string, any>;
-
-  @Column({ name: 'ip_address' })
-  ipAddress: string;
-
-  @Column({ name: 'user_agent' })
-  userAgent: string;
-
-  @Column()
-  success: boolean;
-
-  @Column({ type: 'clob', nullable: true })
-  failureReason: string;
-
-  @CreateDateColumn({ name: 'created_at' })
+  userId?: number;
+  user?: User;
+  action: string;
+  details?: any;
+  ipAddress?: string;
+  userAgent?: string;
+  status: AuditLogStatus;
+  category: AuditLogCategory;
   createdAt: Date;
 }
+
+// Snake case to camel case mapping for database results
+export const auditLogColumnMap = {
+  id: 'id',
+  user_id: 'userId',
+  action: 'action',
+  details: 'details',
+  ip_address: 'ipAddress',
+  user_agent: 'userAgent',
+  status: 'status',
+  category: 'category',
+  created_at: 'createdAt',
+};
+
+// Camel case to snake case mapping for database inserts
+export const auditLogReverseColumnMap = {
+  id: 'id',
+  userId: 'user_id',
+  action: 'action',
+  details: 'details',
+  ipAddress: 'ip_address',
+  userAgent: 'user_agent',
+  status: 'status',
+  category: 'category',
+  createdAt: 'created_at',
+};

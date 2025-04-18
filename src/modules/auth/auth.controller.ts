@@ -20,7 +20,7 @@ import { AuditLogService } from './services/audit-log.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LoginDto } from './dto/login.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { AuditLogType } from './entities/audit-log.entity';
+import { AuditLogStatus, AuditLogCategory } from './entities/audit-log.entity';
 import { Request } from 'express';
 import { User } from '../users/entities/user.entity';
 import { LocalAuthGuard } from './guards/local-auth.guard';
@@ -70,9 +70,19 @@ export class AuthController {
     const session = await this.sessionService.createSession(
       user.id,
       tokens.refresh_token,
-      req,
+      req.headers['user-agent'] as string,
+      req.ip,
     );
-    await this.auditLogService.log(user.id, AuditLogType.LOGIN, req, true);
+
+    await this.auditLogService.createLog({
+      userId: user.id,
+      action: 'LOGIN',
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'] as string,
+      status: AuditLogStatus.SUCCESS,
+      category: AuditLogCategory.AUTH,
+    });
+
     return { ...tokens, sessionId: session.id };
   }
 
@@ -83,8 +93,7 @@ export class AuthController {
     @Body('refreshToken') refreshToken: string,
     @Req() req: Request,
   ) {
-    const session =
-      await this.sessionService.findSessionByRefreshToken(refreshToken);
+    const session = await this.sessionService.getSessionByToken(refreshToken);
     if (!session) {
       throw new UnauthorizedException('Invalid refresh token');
     }
@@ -93,7 +102,8 @@ export class AuthController {
     const newSession = await this.sessionService.createSession(
       session.userId,
       tokens.refreshToken,
-      req,
+      req.headers['user-agent'] as string,
+      req.ip,
     );
     return {
       accessToken: tokens.accessToken,
@@ -106,12 +116,16 @@ export class AuthController {
   @Post('forgot-password')
   async forgotPassword(@Body('email') email: string, @Req() req: Request) {
     const user = await this.authService.sendPasswordResetEmail(email);
-    await this.auditLogService.log(
-      user.id,
-      AuditLogType.PASSWORD_RESET,
-      req,
-      true,
-    );
+
+    await this.auditLogService.createLog({
+      userId: user.id,
+      action: 'PASSWORD_RESET_REQUEST',
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'] as string,
+      status: AuditLogStatus.SUCCESS,
+      category: AuditLogCategory.SECURITY,
+    });
+
     return { message: 'Password reset email sent' };
   }
 
@@ -123,12 +137,16 @@ export class AuthController {
   ) {
     await this.authService.resetPassword(resetPasswordDto);
     const user = await this.usersService.findByEmail(resetPasswordDto.email);
-    await this.auditLogService.log(
-      user.id,
-      AuditLogType.PASSWORD_RESET,
-      req,
-      true,
-    );
+
+    await this.auditLogService.createLog({
+      userId: user.id,
+      action: 'PASSWORD_RESET',
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'] as string,
+      status: AuditLogStatus.SUCCESS,
+      category: AuditLogCategory.SECURITY,
+    });
+
     return { message: 'Password reset successful' };
   }
 
@@ -141,12 +159,16 @@ export class AuthController {
   ) {
     const user = req.user;
     await this.authService.changePassword(user.id, changePasswordDto);
-    await this.auditLogService.log(
-      user.id,
-      AuditLogType.PASSWORD_CHANGE,
-      req,
-      true,
-    );
+
+    await this.auditLogService.createLog({
+      userId: user.id,
+      action: 'PASSWORD_CHANGE',
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'] as string,
+      status: AuditLogStatus.SUCCESS,
+      category: AuditLogCategory.SECURITY,
+    });
+
     return { message: 'Password changed successfully' };
   }
 
@@ -167,13 +189,17 @@ export class AuthController {
   ) {
     const user = req.user;
     await this.sessionService.deactivateSession(sessionId);
-    await this.auditLogService.log(
-      user.id,
-      AuditLogType.SESSION_REVOKE,
-      req,
-      true,
-      { sessionId },
-    );
+
+    await this.auditLogService.createLog({
+      userId: user.id,
+      action: 'SESSION_REVOKE',
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'] as string,
+      details: { sessionId },
+      status: AuditLogStatus.SUCCESS,
+      category: AuditLogCategory.SECURITY,
+    });
+
     return { message: 'Session revoked successfully' };
   }
 
@@ -183,13 +209,17 @@ export class AuthController {
   async revokeAllSessions(@Req() req: RequestWithUser) {
     const user = req.user;
     await this.sessionService.deactivateAllUserSessions(user.id);
-    await this.auditLogService.log(
-      user.id,
-      AuditLogType.SESSION_REVOKE,
-      req,
-      true,
-      { allSessions: true },
-    );
+
+    await this.auditLogService.createLog({
+      userId: user.id,
+      action: 'ALL_SESSIONS_REVOKE',
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'] as string,
+      details: { allSessions: true },
+      status: AuditLogStatus.SUCCESS,
+      category: AuditLogCategory.SECURITY,
+    });
+
     return { message: 'All sessions revoked successfully' };
   }
 

@@ -1,64 +1,52 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { AuditLog, AuditLogType } from '../entities/audit-log.entity';
-import { Request } from 'express';
-import { PaginatedResult } from '../../../common/interfaces/pagination.interface';
+import { AuditLogStatus, AuditLogCategory } from '../entities/audit-log.entity';
 import { AuditLogRepository } from '../repositories/audit-log.repository';
+
+interface CreateLogParams {
+  userId?: number;
+  action: string;
+  details?: any;
+  ipAddress?: string;
+  userAgent?: string;
+  status?: AuditLogStatus;
+  category?: AuditLogCategory;
+}
 
 @Injectable()
 export class AuditLogService {
-  constructor(
-    @InjectRepository(AuditLog)
-    private readonly auditLogRepository: Repository<AuditLog>,
-    private readonly customAuditLogRepository: AuditLogRepository,
-  ) {}
+  constructor(private readonly auditLogRepository: AuditLogRepository) {}
 
-  async log(
-    userId: number,
-    type: AuditLogType,
-    req: Request,
-    success = true,
-    metadata?: Record<string, any>,
-    failureReason?: string,
-  ): Promise<AuditLog> {
-    const log = this.auditLogRepository.create({
+  async createLog({
+    userId,
+    action,
+    details,
+    ipAddress,
+    userAgent,
+    status = AuditLogStatus.SUCCESS,
+    category = AuditLogCategory.GENERAL,
+  }: CreateLogParams) {
+    const log = {
       userId,
-      type,
-      metadata,
-      success,
-      failureReason,
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'] || 'Unknown',
-    });
+      action,
+      details: details ? JSON.stringify(details) : null,
+      ipAddress,
+      userAgent,
+      status,
+      category,
+    };
 
-    // Use our custom repository for saving to handle CLOB and sequences
-    return this.customAuditLogRepository.save(log);
+    return this.auditLogRepository.create(log);
   }
 
-  async getUserLogs(
-    userId: number,
-    page = 1,
-    limit = 10,
-  ): Promise<PaginatedResult<AuditLog>> {
-    // Use our Oracle-optimized custom repository
-    return this.customAuditLogRepository.getUserLogs(userId, page, limit);
+  async getUserLogs(userId: number, page = 1, limit = 10) {
+    return this.auditLogRepository.getUserLogs(userId, page, limit);
   }
 
-  async getRecentFailedLogins(userId: number, minutes = 30): Promise<number> {
-    // Use our Oracle-optimized custom repository
-    return this.customAuditLogRepository.countRecentFailedLogins(
-      userId,
-      minutes,
-    );
+  async countRecentFailedLogins(userId: number, minutes = 30): Promise<number> {
+    return this.auditLogRepository.countRecentFailedLogins(userId, minutes);
   }
 
-  async getSecurityEvents(
-    userId: number,
-    page = 1,
-    limit = 10,
-  ): Promise<PaginatedResult<AuditLog>> {
-    // Use our Oracle-optimized custom repository
-    return this.customAuditLogRepository.getSecurityEvents(userId, page, limit);
+  async getSecurityEvents(userId: number, page = 1, limit = 10) {
+    return this.auditLogRepository.getSecurityEvents(userId, page, limit);
   }
 }

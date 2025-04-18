@@ -1,16 +1,15 @@
 import { Module } from '@nestjs/common';
 import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
-import * as DailyRotateFile from 'winston-daily-rotate-file';
+import 'winston-daily-rotate-file';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import * as path from 'path';
 
 @Module({
   imports: [
     WinstonModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
+      useFactory: () => ({
         transports: [
           // Console transport for development
           new winston.transports.Console({
@@ -23,7 +22,7 @@ import * as path from 'path';
             ),
           }),
           // File transport with weekly rotation
-          new DailyRotateFile({
+          new winston.transports.DailyRotateFile({
             dirname: 'logs',
             filename: 'application-%DATE%.log',
             datePattern: 'YYYY-MM-DD',

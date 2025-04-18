@@ -1,124 +1,70 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
-import { User } from '../entities/user.entity';
-import { OracleService } from '../../../database/oracle.service';
-import { PaginatedResult } from '../../../common/interfaces/pagination.interface';
+import { User, UserRole } from '../entities/user.entity';
+import { KnexBaseRepository } from '../../../common/repositories/knex-base.repository';
+import { KnexService } from '../../../database/knex-service/knex.service';
 
 @Injectable()
-export class UserRepository extends Repository<User> {
-  private readonly SEQ_NAME = 'USER_ID_SEQ';
-
-  constructor(
-    private dataSource: DataSource,
-    private oracleService: OracleService,
-  ) {
-    super(User, dataSource.createEntityManager());
-
-    // Initialize sequence
-    this.initSequence();
+export class UserRepository extends KnexBaseRepository<User> {
+  constructor(knexService: KnexService) {
+    super(knexService, 'users');
   }
 
-  private async initSequence(): Promise<void> {
-    await this.oracleService.createSequenceIfNotExists(this.SEQ_NAME);
+  async findByEmail(email: string): Promise<User | undefined> {
+    return this.knexService.findOne('users', { email });
   }
 
-  /**
-   * Override the save method to handle Oracle-specific behavior
-   */
-  async save<T extends User>(entity: T): Promise<T>;
-  async save<T extends User>(entities: T[]): Promise<T[]>;
-  async save<T extends User>(entityOrEntities: T | T[]): Promise<T | T[]> {
-    // Handle single entity
-    if (!Array.isArray(entityOrEntities)) {
-      const entity = entityOrEntities;
-
-      // If it's a new entity, get ID from the sequence
-      if (!entity.id) {
-        entity.id = await this.oracleService.getNextSequenceValue(
-          this.SEQ_NAME,
-        );
-      }
-
-      // Handle JSON/CLOB fields if needed
-      // For example, if we had a metadata field, we would do:
-      // if (entity.metadata) {
-      //   entity.metadata = OracleHelper.toJsonClob(entity.metadata);
-      // }
-
-      return super.save(entity);
+  // Example of a custom method using Knex directly
+  async findActiveAdmins(): Promise<User[]> {
+    return this.knexService
+      .knex('users')
+      .where({
+        role: UserRole.ADMIN,
+        is_active: true,
+      })
+      .select('*');
     }
 
-    // Handle array of entities
-    const entities = entityOrEntities;
-    for (const entity of entities) {
-      if (!entity.id) {
-        entity.id = await this.oracleService.getNextSequenceValue(
-          this.SEQ_NAME,
-        );
-      }
-
-      // Handle JSON/CLOB fields for each entity if needed
-    }
-
-    return super.save(entities);
-  }
-
-  /**
-   * Find users with Oracle-optimized pagination
-   */
+  // Override the base method to add custom filtering
   async findWithPagination(
     page: number = 1,
     limit: number = 10,
-    orderBy: string = 'createdAt',
-    orderDir: 'ASC' | 'DESC' = 'DESC',
-    filters: Partial<User> = {},
-  ): Promise<PaginatedResult<User>> {
-    const queryParams: any[] = [];
-    let whereClause = '1=1';
-    let paramIndex = 0;
+    conditions: Record<string, any> = {},
+    orderBy: string = 'created_at',
+    direction: 'asc' | 'desc' = 'desc',
+  ): Promise<{
+    data: User[];
+    meta: { total: number; page: number; limit: number };
+  }> {
+    const query = this.knexService.knex('users');
 
-    // Build WHERE clause based on filters
-    if (filters.email) {
-      whereClause += ` AND UPPER(email) LIKE UPPER(:${paramIndex})`;
-      queryParams.push(`%${filters.email}%`);
-      paramIndex++;
+    // Apply standard conditions
+    Object.keys(conditions).forEach((key) => {
+      if (conditions[key] !== undefined) {
+        query.where(key, conditions[key]);
+      }
+    });
+
+    // Apply special filter if it exists
+    if (conditions.search) {
+      query.where((builder) => {
+        builder
+          .where('email', 'like', `%${conditions.search}%`)
+          .orWhere('full_name', 'like', `%${conditions.search}%`);
+      });
     }
 
-    if (filters.role) {
-      whereClause += ` AND role = :${paramIndex}`;
-      queryParams.push(filters.role);
-      paramIndex++;
-    }
+    const offset = (page - 1) * limit;
 
-    if (filters.isActive !== undefined) {
-      whereClause += ` AND is_active = :${paramIndex}`;
-      queryParams.push(filters.isActive ? 1 : 0);
-      paramIndex++;
-    }
-
-    // Build the query
-    const baseQuery = `
-      SELECT id, email, full_name, role, is_active, created_at, updated_at
-      FROM users
-      WHERE ${whereClause}
-      ORDER BY ${orderBy} ${orderDir}
-    `;
-
-    // Execute the query with Oracle pagination
-    const [result, total] =
-      await this.oracleService.executePaginatedQuery<User>(
-        baseQuery,
-        page,
-        limit,
-        queryParams,
-      );
+    const [count, data] = await Promise.all([
+      this.knexService.knex('users').count('* as count').first(),
+      query.orderBy(orderBy, direction).limit(limit).offset(offset),
+    ]);
 
     return {
-      data: result,
+      data,
       meta: {
-        total,
+        total: Number(count?.count || 0),
         page,
-        lastPage: Math.ceil(total / limit),
         limit,
       },
     };

@@ -1,68 +1,55 @@
-import {
-  Entity,
-  Column,
-  PrimaryGeneratedColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
-  OneToMany,
-} from 'typeorm';
-import { Session } from '../../auth/entities/session.entity';
-import { AuditLog } from '../../auth/entities/audit-log.entity';
-
 export enum UserRole {
   USER = 'user',
   ADMIN = 'admin',
   MODERATOR = 'moderator',
 }
 
-@Entity('users')
-export class User {
-  @PrimaryGeneratedColumn()
+export interface User {
   id: number;
-
-  @Column({ unique: true })
   email: string;
-
-  @Column()
   password: string;
-
-  @Column()
   fullName: string;
-
-  @Column({
-    type: 'varchar',
-    length: 20,
-    default: UserRole.USER,
-  })
   role: UserRole;
-
-  @Column({ default: true })
   isActive: boolean;
-
-  @Column({ name: 'refresh_token', nullable: true })
-  refreshToken: string;
-
-  @Column({ name: 'login_attempts', default: 0 })
+  refreshToken?: string;
   loginAttempts: number;
-
-  @Column({ name: 'lock_until', nullable: true })
-  lockUntil: Date;
-
-  @Column({ name: 'password_reset_token', nullable: true })
-  passwordResetToken: string;
-
-  @Column({ name: 'password_reset_expires', nullable: true })
-  passwordResetExpires: Date;
-
-  @OneToMany(() => Session, (session) => session.user)
-  sessions: Session[];
-
-  @OneToMany(() => AuditLog, (auditLog) => auditLog.user)
-  auditLogs: AuditLog[];
-
-  @CreateDateColumn({ name: 'created_at' })
+  lockUntil?: Date;
+  passwordResetToken?: string;
+  passwordResetExpires?: Date;
   createdAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
+
+// Snake case to camel case mapping for database results
+export const userColumnMap = {
+  id: 'id',
+  email: 'email',
+  password: 'password',
+  full_name: 'fullName',
+  role: 'role',
+  is_active: 'isActive',
+  refresh_token: 'refreshToken',
+  login_attempts: 'loginAttempts',
+  lock_until: 'lockUntil',
+  password_reset_token: 'passwordResetToken',
+  password_reset_expires: 'passwordResetExpires',
+  created_at: 'createdAt',
+  updated_at: 'updatedAt',
+};
+
+// Camel case to snake case mapping for database inserts
+export const userReverseColumnMap = {
+  id: 'id',
+  email: 'email',
+  password: 'password',
+  fullName: 'full_name',
+  role: 'role',
+  isActive: 'is_active',
+  refreshToken: 'refresh_token',
+  loginAttempts: 'login_attempts',
+  lockUntil: 'lock_until',
+  passwordResetToken: 'password_reset_token',
+  passwordResetExpires: 'password_reset_expires',
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
+};

@@ -47,7 +47,8 @@ export class UsersController {
   @ApiOperation({ summary: 'Get all users with pagination' })
   @ApiResponse({ status: 200, description: 'Returns list of users.' })
   findAll(@Query(new ValidationPipe({ transform: true })) query: QueryUserDto) {
-    return this.usersService.findAll(query);
+    const { page = 1, limit = 10, searchTerm } = query;
+    return this.usersService.findAll(page, limit, searchTerm);
   }
 
   @Version('1')

@@ -4,14 +4,35 @@ import { AppModule } from './app.module';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { ConfigService } from '@nestjs/config';
 import { setupSwagger } from './config/swagger.config';
-import {
-  initOracleConfig,
-  closeOracleConnections,
-} from './database/init-oracle';
+import knex from 'knex';
+import { join } from 'path';
+import * as fs from 'fs';
 
 async function bootstrap() {
-  // Initialize Oracle database
-  await initOracleConfig();
+  // Run Knex migrations before starting the app
+  const environment = process.env.NODE_ENV || 'development';
+
+  // Find knexfile.js from the current working directory
+  const knexfilePath = join(process.cwd(), 'knexfile.js');
+
+  if (!fs.existsSync(knexfilePath)) {
+    console.error(`Knexfile not found at ${knexfilePath}`);
+    process.exit(1);
+  }
+
+  // Import knexfile as ES module
+  const knexModule = await import(knexfilePath);
+  const knexConfig = knexModule.default;
+  const knexInstance = knex(knexConfig[environment]);
+
+  try {
+    console.log('Running Knex migrations...');
+    await knexInstance.migrate.latest();
+    console.log('Migrations completed successfully');
+  } catch (error) {
+    console.error('Error running migrations:', error);
+    // Don't exit - we can still start the app even if migrations fail
+  }
 
   const app = await NestFactory.create(AppModule);
 
@@ -56,8 +77,8 @@ async function bootstrap() {
     process.on(signal, async () => {
       logger.log(`Received ${signal} signal, shutting down gracefully`);
 
-      // Close Oracle connection pools
-      await closeOracleConnections();
+      // Close Knex connection pools
+      await knexInstance.destroy();
 
       await app.close();
       process.exit(0);

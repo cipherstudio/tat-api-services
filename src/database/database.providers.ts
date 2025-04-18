@@ -1,6 +1,6 @@
 import { Provider } from '@nestjs/common';
-import { OracleService } from './oracle.service';
+import { KnexService } from './knex-service/knex.service';
 
-export const DATABASE_PROVIDERS: Provider[] = [OracleService];
+export const DATABASE_PROVIDERS: Provider[] = [KnexService];
 
-export { OracleService };
+export { KnexService };

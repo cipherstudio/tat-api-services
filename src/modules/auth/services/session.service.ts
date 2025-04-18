@@ -1,68 +1,59 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { Session } from '../entities/session.entity';
-import { Request } from 'express';
+import { SessionRepository } from '../repositories/session.repository';
 
 @Injectable()
 export class SessionService {
-  constructor(
-    @InjectRepository(Session)
-    private readonly sessionRepository: Repository<Session>,
-  ) {}
+  constructor(private readonly sessionRepository: SessionRepository) {}
 
   async createSession(
     userId: number,
-    refreshToken: string,
-    req: Request,
+    token: string,
+    deviceInfo?: string,
+    ipAddress?: string,
+    expiresIn: number = 24 * 60 * 60 * 1000, // Default 24 hours
   ): Promise<Session> {
-    const session = this.sessionRepository.create({
-      userId,
-      refreshToken,
-      userAgent: req.headers['user-agent'] || 'Unknown',
-      ipAddress: req.ip,
-    });
+    const expiresAt = new Date(Date.now() + expiresIn);
 
-    return this.sessionRepository.save(session);
+    const session = {
+      userId,
+      token,
+      deviceInfo,
+      ipAddress,
+      isActive: true,
+      expiresAt,
+    };
+
+    return this.sessionRepository.create(session);
   }
 
-  async findSessionByRefreshToken(refreshToken: string): Promise<Session> {
-    return this.sessionRepository.findOne({
-      where: { refreshToken, isActive: true },
-    });
+  async getSessionByToken(token: string): Promise<Session | undefined> {
+    return this.sessionRepository.findByToken(token);
   }
 
   async deactivateSession(sessionId: number): Promise<void> {
     await this.sessionRepository.update(sessionId, { isActive: false });
   }
 
-  async deactivateAllUserSessions(userId: number): Promise<void> {
-    await this.sessionRepository.update(
-      { userId, isActive: true },
-      { isActive: false },
-    );
-  }
-
   async getUserActiveSessions(userId: number): Promise<Session[]> {
-    return this.sessionRepository.find({
-      where: { userId, isActive: true },
-      order: { lastActivity: 'DESC' },
-    });
+    return this.sessionRepository.findActiveSessionsByUserId(userId);
   }
 
-  async updateSessionActivity(sessionId: number): Promise<void> {
+  async deactivateAllUserSessions(userId: number): Promise<void> {
+    await this.sessionRepository.deactivateAllUserSessions(userId);
+  }
+
+  async markSessionActive(sessionId: number, newToken: string): Promise<void> {
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
     await this.sessionRepository.update(sessionId, {
-      lastActivity: new Date(),
+      token: newToken,
+      isActive: true,
+      expiresAt,
     });
   }
 
-  async cleanupInactiveSessions(daysOld: number = 30): Promise<void> {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - daysOld);
-
-    await this.sessionRepository.delete({
-      lastActivity: cutoffDate,
-      isActive: false,
-    });
+  async cleanupExpiredSessions(): Promise<number> {
+    return this.sessionRepository.cleanupExpiredSessions();
   }
 }

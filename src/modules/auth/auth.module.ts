@@ -1,46 +1,45 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuthService } from './auth.service';
+import { AuthController } from './auth.controller';
+import { UsersModule } from '../users/users.module';
+import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { PassportModule } from '@nestjs/passport';
-
-import { AuthService } from './auth.service';
+import { JwtStrategy } from './strategies/jwt.strategy';
+import { LocalStrategy } from './strategies/local.strategy';
 import { SessionService } from './services/session.service';
 import { AuditLogService } from './services/audit-log.service';
-import { JwtStrategy } from './strategies/jwt.strategy';
-import { UsersModule } from '../users/users.module';
-import { Session } from './entities/session.entity';
-import { AuditLog } from './entities/audit-log.entity';
-import { LocalStrategy } from './strategies/local.strategy';
-import { AuthController } from './auth.controller';
+import { RedisCacheService } from '../cache/redis-cache.service';
 import { AuditLogRepository } from './repositories/audit-log.repository';
-import { DatabaseModule } from '../../database/database.module';
+import { SessionRepository } from './repositories/session.repository';
+import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Session, AuditLog]),
+    UsersModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.get('JWT_SECRET'),
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
         signOptions: {
-          expiresIn: configService.get('JWT_EXPIRES_IN'),
+          expiresIn: configService.get<string>('JWT_EXPIRATION') || '1h',
         },
       }),
-      inject: [ConfigService],
     }),
-    UsersModule,
-    DatabaseModule,
   ],
   controllers: [AuthController],
   providers: [
     AuthService,
-    SessionService,
-    AuditLogService,
     LocalStrategy,
     JwtStrategy,
+    JwtRefreshStrategy,
+    SessionService,
+    AuditLogService,
+    RedisCacheService,
     AuditLogRepository,
+    SessionRepository,
   ],
   exports: [AuthService, SessionService, AuditLogService, AuditLogRepository],
 })

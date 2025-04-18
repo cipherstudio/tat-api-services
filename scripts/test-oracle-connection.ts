@@ -19,8 +19,8 @@ async function testOracleConnection() {
     console.log('Username:', configService.get('DB_USERNAME'));
     console.log('Database:', configService.get('DB_DATABASE'));
 
-    // Oracle connection string format
-    const connectString = `${configService.get('DB_HOST')}:${configService.get('DB_PORT')}/${configService.get('DB_DATABASE')}`;
+    // Oracle connection string format - using the same format as in init-oracle.ts
+    const connectString = `(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=${configService.get('DB_HOST')})(PORT=${configService.get('DB_PORT') || '1521'}))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=${configService.get('DB_DATABASE')})))`;
     console.log('Connection string:', connectString);
 
     // Attempt to establish connection

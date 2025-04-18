@@ -8,8 +8,17 @@ export async function initOracleConfig(): Promise<void> {
   const logger = new Logger('OracleInitializer');
 
   try {
-    // Set Oracle client directory if using Instant Client
-    // oracledb.initOracleClient({ libDir: process.env.ORACLE_CLIENT_PATH });
+    // Set Oracle client directory if environment variable is set
+    if (process.env.ORACLE_CLIENT_PATH) {
+      logger.log(
+        `Initializing Oracle client with path: ${process.env.ORACLE_CLIENT_PATH}`,
+      );
+      oracledb.initOracleClient({ libDir: process.env.ORACLE_CLIENT_PATH });
+    } else {
+      logger.log(
+        'ORACLE_CLIENT_PATH not set, skipping explicit client initialization',
+      );
+    }
 
     // Configure connection pool
     await oracledb.createPool({
@@ -20,6 +29,7 @@ export async function initOracleConfig(): Promise<void> {
       poolMax: 10,
       poolMin: 1,
       poolTimeout: 60,
+      poolAlias: 'default',
     });
 
     // Configure Oracle to fetch CLOB as String

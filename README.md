@@ -16,6 +16,40 @@ A modern NestJS API service with authentication, session management, and compreh
 - 🧪 Unit Testing Support
 - 🎯 Code Generation Tools
 
+## Database
+
+This project uses Knex.js as the query builder for database operations with Oracle database.
+
+### Migrations
+
+Knex migrations are used to manage database schema changes:
+
+```bash
+# Run migrations
+npm run knex:migrate
+
+# Create a new migration
+npm run knex:migrate:make -- migration_name
+
+# Rollback the last batch of migrations
+npm run knex:migrate:rollback
+
+# List all migrations and their status
+npm run knex:migrate:list
+```
+
+### Seeds
+
+Seed data can be managed with the following commands:
+
+```bash
+# Run all seed files
+npm run knex:seed:run
+
+# Create a new seed file
+npm run knex:seed:make -- seed_name
+```
+
 ## Prerequisites
 
 - Node.js >= 16.0.0

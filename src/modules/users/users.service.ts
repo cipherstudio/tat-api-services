@@ -1,190 +1,132 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
+import { UserRepository } from './repositories/user.repository';
 import { User, UserRole } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { UserQueryOptions } from './interfaces/user-options.interface';
-import { PaginatedResult } from '../../common/interfaces/pagination.interface';
 import { RedisCacheService } from '../cache/redis-cache.service';
-import { UserRepository } from './repositories/user.repository';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
-  private readonly CACHE_PREFIX = 'user';
-  private readonly CACHE_TTL = 3600; // 1 hour in seconds
-
   constructor(
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
-    private readonly customUserRepository: UserRepository,
+    private readonly userRepository: UserRepository,
     private readonly cacheService: RedisCacheService,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
-    const user = this.userRepository.create({
+    const user = {
       ...createUserDto,
-      role: createUserDto.role || UserRole.USER,
-    });
-
-    // Use our custom repository for saving
-    const savedUser = await this.customUserRepository.save(user);
-
-    // Cache the new user
-    await this.cacheService.set(
-      this.cacheService.generateKey(this.CACHE_PREFIX, savedUser.id),
-      savedUser,
-      this.CACHE_TTL,
-    );
-
-    // Invalidate the users list cache
-    await this.cacheService.del(
-      this.cacheService.generateListKey(this.CACHE_PREFIX),
-    );
-
-    return savedUser;
-  }
-
-  async findAll(
-    queryOptions?: UserQueryOptions,
-  ): Promise<PaginatedResult<User>> {
-    // Generate cache key based on query parameters
-    const cacheKey = this.cacheService.generateListKey(this.CACHE_PREFIX);
-
-    // Try to get from cache first
-    const cachedResult =
-      await this.cacheService.get<PaginatedResult<User>>(cacheKey);
-    if (cachedResult) {
-      return cachedResult;
-    }
-
-    const {
-      page = 1,
-      limit = 10,
-      orderBy = 'createdAt',
-      orderDir = 'DESC',
-      includeInactive = false,
-      role,
-      email,
-      isActive = includeInactive ? undefined : true,
-    } = queryOptions || {};
-
-    // Use our Oracle-optimized repository for pagination
-    const filters: Partial<User> = {
-      email,
-      role: role as UserRole,
-      isActive,
+      loginAttempts: 0,
+      isActive: true,
     };
 
-    const result = await this.customUserRepository.findWithPagination(
-      page,
-      limit,
-      orderBy,
-      orderDir as 'ASC' | 'DESC',
-      filters,
-    );
+    // Hash password if it's not already hashed
+    if (createUserDto.password && !createUserDto.password.startsWith('$2b$')) {
+      user.password = await bcrypt.hash(createUserDto.password, 10);
+    }
 
-    // Cache the result
-    await this.cacheService.set(cacheKey, result, this.CACHE_TTL);
-
-    return result;
+    return this.userRepository.create(user);
   }
 
   async findById(id: number): Promise<User> {
     // Try to get from cache first
-    const cacheKey = this.cacheService.generateKey(this.CACHE_PREFIX, id);
-    const cachedUser = await this.cacheService.get<User>(cacheKey);
-    if (cachedUser) {
-      return cachedUser;
+    const cacheKey = `user:${id}`;
+    const cached = await this.cacheService.get<User>(cacheKey);
+    if (cached) {
+      return cached;
     }
 
-    const user = await this.userRepository.findOne({ where: { id } });
+    // Fetch from database
+    const user = await this.userRepository.findById(id);
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    // Cache the user
-    await this.cacheService.set(cacheKey, user, this.CACHE_TTL);
-
+    // Cache the result
+    await this.cacheService.set(cacheKey, user, 3600); // Cache for 1 hour
     return user;
   }
 
-  async findByEmail(email: string): Promise<User> {
-    // Try to get from cache first
-    const cacheKey = this.cacheService.generateKey(
-      this.CACHE_PREFIX,
-      `email:${email}`,
-    );
-    const cachedUser = await this.cacheService.get<User>(cacheKey);
-    if (cachedUser) {
-      return cachedUser;
+  async findByEmail(email: string): Promise<User | undefined> {
+    return this.userRepository.findByEmail(email);
+  }
+
+  async findByResetToken(token: string): Promise<User | undefined> {
+    return this.userRepository.findOne({ password_reset_token: token });
+  }
+
+  async findAll(
+    page: number = 1,
+    limit: number = 10,
+    search?: string,
+  ): Promise<{ data: User[]; meta: any }> {
+    const conditions: Record<string, any> = {};
+
+    if (search) {
+      conditions.search = search;
     }
 
-    const user = await this.userRepository.findOne({ where: { email } });
-    if (user) {
-      // Cache the user
-      await this.cacheService.set(cacheKey, user, this.CACHE_TTL);
-    }
-
-    return user;
+    return this.userRepository.findWithPagination(page, limit, conditions);
   }
 
   async update(id: number, updateUserDto: UpdateUserDto): Promise<User> {
-    const updateData: Partial<User> = {
-      ...updateUserDto,
-      role: updateUserDto.role as UserRole,
-    };
-
-    // Get the existing user
-    const existingUser = await this.findById(id);
-    if (!existingUser) {
+    const user = await this.findById(id);
+    if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    // Merge update data
-    const updatedUser = {
-      ...existingUser,
-      ...updateData,
-    };
-
-    // Use the custom repository
-    await this.customUserRepository.save(updatedUser);
-
-    // Update cache
-    const cacheKey = this.cacheService.generateKey(this.CACHE_PREFIX, id);
-    await this.cacheService.set(cacheKey, updatedUser, this.CACHE_TTL);
-
-    // Invalidate email cache if email was updated
-    if (updateUserDto.email) {
-      await this.cacheService.del(
-        this.cacheService.generateKey(
-          this.CACHE_PREFIX,
-          `email:${updateUserDto.email}`,
-        ),
-      );
+    // Hash password if it's being updated and not already hashed
+    if (updateUserDto.password && !updateUserDto.password.startsWith('$2b$')) {
+      updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
     }
 
-    // Invalidate the users list cache
-    await this.cacheService.del(
-      this.cacheService.generateListKey(this.CACHE_PREFIX),
-    );
+    const updatedUser = { ...user, ...updateUserDto };
+    await this.userRepository.update(id, updatedUser);
 
-    return updatedUser;
+    // Invalidate cache
+    await this.cacheService.del(`user:${id}`);
+
+    return this.findById(id);
+  }
+
+  async incrementLoginAttempts(id: number): Promise<void> {
+    const user = await this.findById(id);
+    if (!user) {
+      return;
+    }
+
+    const loginAttempts = user.loginAttempts + 1;
+    await this.userRepository.update(id, { loginAttempts });
+
+    // Invalidate cache
+    await this.cacheService.del(`user:${id}`);
+  }
+
+  async resetLoginAttempts(id: number): Promise<void> {
+    await this.userRepository.update(id, { loginAttempts: 0 });
+
+    // Invalidate cache
+    await this.cacheService.del(`user:${id}`);
+  }
+
+  async lockAccount(id: number, lockUntil: Date): Promise<void> {
+    await this.userRepository.update(id, { lockUntil });
+
+    // Invalidate cache
+    await this.cacheService.del(`user:${id}`);
   }
 
   async remove(id: number): Promise<void> {
     const result = await this.userRepository.delete(id);
-    if (result.affected === 0) {
+    if (result === 0) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    // Remove from cache
-    await this.cacheService.del(
-      this.cacheService.generateKey(this.CACHE_PREFIX, id),
-    );
-    // Invalidate the users list cache
-    await this.cacheService.del(
-      this.cacheService.generateListKey(this.CACHE_PREFIX),
-    );
+    // Invalidate cache
+    await this.cacheService.del(`user:${id}`);
   }
 }

@@ -1,45 +1,40 @@
-import {
-  Entity,
-  Column,
-  PrimaryGeneratedColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
-} from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
-@Entity('sessions')
-export class Session {
-  @PrimaryGeneratedColumn()
+export interface Session {
   id: number;
-
-  @Column()
   userId: number;
-
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'user_id' })
-  user: User;
-
-  @Column({ name: 'refresh_token', nullable: true })
-  refreshToken: string;
-
-  @Column()
-  userAgent: string;
-
-  @Column()
-  ipAddress: string;
-
-  @Column({ default: true })
+  user?: User;
+  token: string;
+  deviceInfo?: string;
+  ipAddress?: string;
   isActive: boolean;
-
-  @Column({ name: 'last_activity' })
-  @UpdateDateColumn()
-  lastActivity: Date;
-
-  @CreateDateColumn({ name: 'created_at' })
+  expiresAt: Date;
   createdAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
+
+// Snake case to camel case mapping for database results
+export const sessionColumnMap = {
+  id: 'id',
+  user_id: 'userId',
+  token: 'token',
+  device_info: 'deviceInfo',
+  ip_address: 'ipAddress',
+  is_active: 'isActive',
+  expires_at: 'expiresAt',
+  created_at: 'createdAt',
+  updated_at: 'updatedAt',
+};
+
+// Camel case to snake case mapping for database inserts
+export const sessionReverseColumnMap = {
+  id: 'id',
+  userId: 'user_id',
+  token: 'token',
+  deviceInfo: 'device_info',
+  ipAddress: 'ip_address',
+  isActive: 'is_active',
+  expiresAt: 'expires_at',
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
+};
