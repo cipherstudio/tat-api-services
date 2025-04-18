@@ -163,13 +163,13 @@ docker-prod-build: ## Build production Docker image
 ## Docker Run Commands
 
 docker-dev-run: ## Run development Docker container
-	docker run -d -p 3000:3000 --name tat-api-dev tat-api:dev
+	docker run -d -p 8080:3000 --name tat-api-dev tat-api:dev
 
 docker-staging-run: ## Run staging Docker container
-	docker run -d -p 3000:3000 --name tat-api-staging tat-api:staging
+	docker run -d -p 8080:3000 --name tat-api-staging tat-api:staging
 
 docker-prod-run: ## Run production Docker container
-	docker run -d -p 3000:3000 --name tat-api-prod tat-api:prod
+	docker run -d -p 8080:3000 --name tat-api-prod tat-api:prod
 
 ## Docker Compose Commands
 
@@ -208,15 +208,15 @@ docker-clean: ## Clean Docker resources
 ## Docker Test Commands
 
 docker-test: ## Run tests in Docker container
-	docker-compose exec api npm run test
+	docker-compose exec tat-api npm run test
 
 docker-test-e2e: ## Run e2e tests in Docker container
-	docker-compose exec api npm run test:e2e
+	docker-compose exec tat-api npm run test:e2e
 
 ## Docker Migration Commands
 
 docker-migration-run: ## Run database migrations in Docker container
-	docker-compose exec api npm run knex:migrate
+	docker-compose exec tat-api npm run knex:migrate
 
 docker-migration-list: ## List migrations in Docker container
-	docker-compose exec api npm run knex:migrate:list 
+	docker-compose exec tat-api npm run knex:migrate:list 

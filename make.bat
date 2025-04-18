@@ -213,15 +213,15 @@ docker build --target production -t tat-api:prod .
 exit /b 0
 
 :docker_dev_run
-docker run -d -p 3000:3000 --name tat-api-dev tat-api:dev
+docker run -d -p 8080:3000 --name tat-api-dev tat-api:dev
 exit /b 0
 
 :docker_staging_run
-docker run -d -p 3000:3000 --name tat-api-staging tat-api:staging
+docker run -d -p 8080:3000 --name tat-api-staging tat-api:staging
 exit /b 0
 
 :docker_prod_run
-docker run -d -p 3000:3000 --name tat-api-prod tat-api:prod
+docker run -d -p 8080:3000 --name tat-api-prod tat-api:prod
 exit /b 0
 
 :docker_compose_dev
@@ -269,17 +269,17 @@ docker system prune -f
 exit /b 0
 
 :docker_test
-docker-compose exec api npm run test
+docker-compose exec tat-api npm run test
 exit /b 0
 
 :docker_test_e2e
-docker-compose exec api npm run test:e2e
+docker-compose exec tat-api npm run test:e2e
 exit /b 0
 
 :docker_migration_run
-docker-compose exec api npm run knex:migrate
+docker-compose exec tat-api npm run knex:migrate
 exit /b 0
 
 :docker_migration_list
-docker-compose exec api npm run knex:migrate:list
+docker-compose exec tat-api npm run knex:migrate:list
 exit /b 0 

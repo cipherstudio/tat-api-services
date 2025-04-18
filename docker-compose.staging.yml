@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  api:
+  tat-api:
     build:
       target: staging
     environment:
@@ -11,7 +11,9 @@ services:
       - LOG_HTTP_MAX_FILES=14d
       - LOG_MAX_SIZE=20m
     volumes:
-      - app_logs:/app/logs
+      - ./logs:/app/logs
+    ports:
+      - "8080:3000"
     command: npm run start:prod
     restart: unless-stopped
 
