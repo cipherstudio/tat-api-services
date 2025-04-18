@@ -1,21 +1,34 @@
 import * as winston from 'winston';
 import 'winston-daily-rotate-file';
 import { join } from 'path';
+import { config } from 'dotenv';
+
+// Load environment variables
+config();
 
 // Log directory
 const LOG_DIR = join(process.cwd(), 'logs');
+
+// Environment variables with defaults
+const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
+const LOG_MAX_FILES = process.env.LOG_MAX_FILES || '30d';
+const LOG_HTTP_MAX_FILES = process.env.LOG_HTTP_MAX_FILES || '14d';
+const LOG_MAX_SIZE = process.env.LOG_MAX_SIZE || '20m';
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const APP_NAME = process.env.APP_NAME || 'TAT API Services';
 
 // Configure transports
 const createTransports = () => {
   const transports: winston.transport[] = [
     // Console transport
     new winston.transports.Console({
+      level: NODE_ENV === 'production' ? 'info' : 'debug',
       format: winston.format.combine(
         winston.format.timestamp(),
         winston.format.colorize(),
         winston.format.printf(
           ({ timestamp, level, message, context, trace }) => {
-            return `${timestamp} [${level}] [${context || 'Application'}] ${message}${
+            return `${timestamp} [${level}] [${context || APP_NAME}] ${message}${
               trace ? `\n${trace}` : ''
             }`;
           },
@@ -25,11 +38,12 @@ const createTransports = () => {
 
     // Combined logs file
     new winston.transports.DailyRotateFile({
+      level: LOG_LEVEL,
       dirname: LOG_DIR,
       filename: 'application-%DATE%.log',
       datePattern: 'YYYY-MM-DD',
-      maxFiles: '30d', // Keep logs for 30 days
-      maxSize: '20m', // 20 MB per file
+      maxFiles: LOG_MAX_FILES,
+      maxSize: LOG_MAX_SIZE,
       format: winston.format.combine(
         winston.format.timestamp(),
         winston.format.json(),
@@ -42,8 +56,8 @@ const createTransports = () => {
       dirname: LOG_DIR,
       filename: 'error-%DATE%.log',
       datePattern: 'YYYY-MM-DD',
-      maxFiles: '30d', // Keep error logs for 30 days
-      maxSize: '20m', // 20 MB per file
+      maxFiles: LOG_MAX_FILES,
+      maxSize: LOG_MAX_SIZE,
       format: winston.format.combine(
         winston.format.timestamp(),
         winston.format.json(),
@@ -52,11 +66,12 @@ const createTransports = () => {
 
     // HTTP request logs file
     new winston.transports.DailyRotateFile({
+      level: LOG_LEVEL,
       dirname: LOG_DIR,
       filename: 'http-%DATE%.log',
       datePattern: 'YYYY-MM-DD',
-      maxFiles: '14d', // Keep HTTP logs for 14 days
-      maxSize: '20m', // 20 MB per file
+      maxFiles: LOG_HTTP_MAX_FILES,
+      maxSize: LOG_MAX_SIZE,
       format: winston.format.combine(
         winston.format.timestamp(),
         winston.format.json(),
@@ -71,15 +86,15 @@ const createTransports = () => {
 export const loggerConfig = {
   transports: createTransports(),
   // Default meta data for log messages
-  defaultMeta: { service: 'tat-api-services' },
+  defaultMeta: { service: APP_NAME, environment: NODE_ENV },
   // Exception handling
   exceptionHandlers: [
     new winston.transports.DailyRotateFile({
       dirname: LOG_DIR,
       filename: 'exceptions-%DATE%.log',
       datePattern: 'YYYY-MM-DD',
-      maxFiles: '30d',
-      maxSize: '20m',
+      maxFiles: LOG_MAX_FILES,
+      maxSize: LOG_MAX_SIZE,
       format: winston.format.combine(
         winston.format.timestamp(),
         winston.format.json(),
@@ -100,8 +115,8 @@ export const loggerConfig = {
       dirname: LOG_DIR,
       filename: 'rejections-%DATE%.log',
       datePattern: 'YYYY-MM-DD',
-      maxFiles: '30d',
-      maxSize: '20m',
+      maxFiles: LOG_MAX_FILES,
+      maxSize: LOG_MAX_SIZE,
       format: winston.format.combine(
         winston.format.timestamp(),
         winston.format.json(),

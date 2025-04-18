@@ -272,6 +272,50 @@ The logging system automatically redacts sensitive information such as:
 - Authentication tokens
 - Secret keys
 
+## Environment Configuration
+
+The application supports multiple environment configurations through dedicated .env files:
+
+- `.env` - Default environment variables
+- `.env.development` - Development environment variables
+- `.env.staging` - Staging environment variables
+- `.env.production` - Production environment variables
+
+### Key Environment Variables
+
+#### Application
+- `PORT` - The port number the application will run on (default: 3000)
+- `NODE_ENV` - The environment (development, staging, production)
+- `CORS_ORIGIN` - CORS origins allowed (use * for development)
+- `APP_NAME` - The name of the application
+- `APP_URL` - The base URL of the application
+
+#### Database
+- `DB_HOST` - Database host
+- `DB_PORT` - Database port
+- `DB_USERNAME` - Database username
+- `DB_PASSWORD` - Database password
+- `DB_DATABASE` - Database name
+- `DB_LOGGING` - Enable/disable SQL query logging
+
+#### JWT
+- `JWT_SECRET` - Secret key for JWT signing
+- `JWT_EXPIRATION` - JWT token expiration time
+- `JWT_REFRESH_EXPIRATION` - JWT refresh token expiration time
+
+#### Mail
+- `MAIL_HOST` - SMTP server host
+- `MAIL_PORT` - SMTP server port
+- `MAIL_USER` - SMTP username
+- `MAIL_PASSWORD` - SMTP password
+- `MAIL_FROM` - Default from email address
+
+#### Logging
+- `LOG_LEVEL` - Minimum log level (debug, info, warn, error)
+- `LOG_MAX_FILES` - Log retention period (e.g., 30d)
+- `LOG_HTTP_MAX_FILES` - HTTP log retention period (e.g., 14d)
+- `LOG_MAX_SIZE` - Maximum log file size (e.g., 20m)
+
 ## Module Generation
 
 The project provides a powerful module generation tool to quickly scaffold new NestJS modules.
