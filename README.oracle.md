@@ -1,6 +1,6 @@
 # Oracle Database Configuration
 
-This project has been configured to use Oracle Database instead of MySQL.
+This project has been configured to use Oracle Database with Knex.js ORM.
 
 ## Prerequisites
 
@@ -55,20 +55,28 @@ export LD_LIBRARY_PATH=/opt/oracle/instantclient_19_8
 
 Download the Instant Client from Oracle's website and add its directory to the PATH environment variable.
 
-## TypeORM Oracle Configuration
+## Knex.js Oracle Configuration
 
-The database connection has been configured in `src/modules/config/database.module.ts` with Oracle specific settings:
+The database connection has been configured in `knexfile.js` with Oracle specific settings:
 
-```typescript
+```javascript
 {
-  type: 'oracle',
-  host: configService.get('DB_HOST'),
-  port: configService.get('DB_PORT'),
-  username: configService.get('DB_USERNAME'),
-  password: configService.get('DB_PASSWORD'),
-  database: configService.get('DB_DATABASE'),
-  connectString: `${configService.get('DB_HOST')}:${configService.get('DB_PORT')}/${configService.get('DB_DATABASE')}`,
-  // other config options...
+  client: 'oracledb',
+  connection: {
+    host: process.env.DB_HOST,
+    user: process.env.DB_USERNAME,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_DATABASE,
+    port: parseInt(process.env.DB_PORT || '1521', 10),
+    connectString: `(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=${process.env.DB_HOST})(PORT=${process.env.DB_PORT || '1521'}))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=${process.env.DB_DATABASE})))`,
+  },
+  migrations: {
+    directory: './knex/migrations',
+    tableName: 'knex_migrations',
+  },
+  seeds: {
+    directory: './knex/seeds',
+  },
 }
 ```
 
@@ -79,7 +87,7 @@ When working with Oracle, you may need to adjust your migration scripts to use O
 To run migrations:
 
 ```bash
-npm run migration:run
+npm run knex:migrate:latest
 ```
 
 ## Known Oracle Differences

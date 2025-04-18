@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { KnexService } from './knex-service/knex.service';
 import { OracleHelper } from './oracle-helper';
 
 /**
@@ -9,7 +9,7 @@ import { OracleHelper } from './oracle-helper';
 export class OracleService {
   private readonly logger = new Logger(OracleService.name);
 
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(private readonly knexService: KnexService) {}
 
   /**
    * Execute Oracle PL/SQL block for creating sequences
@@ -18,7 +18,7 @@ export class OracleService {
   async createSequenceIfNotExists(sequenceName: string): Promise<void> {
     try {
       const sql = OracleHelper.createSequenceSql(sequenceName);
-      await this.dataSource.query(sql);
+      await this.knexService.knex.raw(sql);
       this.logger.log(`Sequence ${sequenceName} created or already exists`);
     } catch (error) {
       this.logger.error(
@@ -36,7 +36,7 @@ export class OracleService {
    */
   async getNextSequenceValue(sequenceName: string): Promise<number> {
     try {
-      const result = await this.dataSource.query(
+      const result = await this.knexService.knex.raw(
         `SELECT ${sequenceName}.NEXTVAL AS id FROM DUAL`,
       );
       return result[0]?.id;
@@ -71,11 +71,11 @@ export class OracleService {
       );
 
       // Execute paginated query
-      const results = await this.dataSource.query(paginatedQuery, params);
+      const results = await this.knexService.knex.raw(paginatedQuery, params);
 
       // Get total count
       const countQuery = `SELECT COUNT(*) as total FROM (${baseQuery})`;
-      const countResult = await this.dataSource.query(countQuery, params);
+      const countResult = await this.knexService.knex.raw(countQuery, params);
 
       return [results, countResult[0]?.total || 0];
     } catch (error) {
