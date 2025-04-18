@@ -53,14 +53,14 @@ npm run knex:seed:make -- seed_name
 ## Prerequisites
 
 - Node.js >= 16.0.0
-- Yarn package manager
+- npm package manager
 - PostgreSQL database
 
 ## Installation
 
 ```bash
 # Install dependencies
-yarn install
+npm install --legacy-peer-deps
 ```
 
 ## Configuration
@@ -213,16 +213,16 @@ Each environment (dev/staging/prod) includes:
 
 ```bash
 # Development
-yarn start:dev
+npm run start:dev
 
 # Production
-yarn build
-yarn start:prod
+npm run build
+npm run start:prod
 ```
 
 ## API Documentation
 
-The API documentation is available at `/api/docs` when the application is running. It includes:
+The API documentation is available at `/documentation` when the application is running. It includes:
 
 - Authentication endpoints
 - User management endpoints
@@ -244,47 +244,91 @@ Example endpoints:
 
 ## Module Generation
 
-The project provides two ways to generate new modules:
+The project provides a powerful module generation tool to quickly scaffold new NestJS modules.
 
-### Using Make Commands (Recommended)
+### Using the Generate Script
 
 ```bash
 # Basic module generation
-make generate name=product
+npm run generate -- module -n <module-name>
 
 # With pagination support
-make generate-with-pagination name=product
+npm run generate -- module -n <module-name> -p
 
-# With authentication
-make generate-with-auth name=product
+# With authentication guards
+npm run generate -- module -n <module-name> -a
 
-# With all features (auth and pagination)
-make generate-full name=product
+# With both pagination and authentication
+npm run generate -- module -n <module-name> -p -a
 
-# Additional flags can be passed using the flags parameter
-make generate name=product flags="--version 2"
+# Custom directory (default is src/modules)
+npm run generate -- module -n <module-name> -d src/custom-dir
 ```
 
-The Make commands provide a simpler interface and handle cross-platform compatibility automatically. They're the recommended way to generate new modules.
+### Command Options
 
-### Using TypeScript Script Directly
+| Option | Alias | Description | Default |
+|--------|-------|-------------|---------|
+| `--name` | `-n` | Module name (required) | - |
+| `--pagination` | `-p` | Include pagination support | `false` |
+| `--auth` | `-a` | Include authentication guards | `false` |
+| `--dir` | `-d` | Base directory | `src/modules` |
 
+### Generated Files
+
+The generator creates a complete module structure with:
+
+- Entity definition with basic fields (id, name, isActive, timestamps)
+- DTOs (Create, Update, Query)
+- Service with CRUD operations and caching support
+- Controller with RESTful endpoints
+- Repository for database operations
+- Module declaration
+- Interfaces (if pagination is enabled)
+
+Example:
 ```bash
-# Basic module
-yarn ts-node scripts/generate-module.ts <module-name>
-
-# With pagination
-yarn ts-node scripts/generate-module.ts <module-name> --pagination
-
-# With authentication
-yarn ts-node scripts/generate-module.ts <module-name> --auth
-
-# With specific version
-yarn ts-node scripts/generate-module.ts <module-name> --version 2
-
-# All options
-yarn ts-node scripts/generate-module.ts <module-name> --pagination --auth --version 2
+npm run generate -- module -n products -p -a
 ```
 
-Generated module structure:
+This will generate:
+```
+src/modules/products/
+├── dto/
+│   ├── create-products.dto.ts
+│   ├── query-products.dto.ts
+│   └── update-products.dto.ts
+├── entities/
+│   └── products.entity.ts
+├── interfaces/
+│   └── products-options.interface.ts
+├── repositories/
+│   └── products.repository.ts
+├── products.controller.ts
+├── products.module.ts
+└── products.service.ts
+```
+
+### Important Note
+
+When generating a module using the default settings (with destination in 'src/modules'), the generator will automatically register the new module in your `app.module.ts` file.
+
+If you use the `-d` flag to specify a custom directory, you'll need to manually import and register the module in your `app.module.ts` file:
+
+```typescript
+import { Module } from '@nestjs/common';
+import { AppController } from './modules/app/app.controller';
+import { AppService } from './modules/app/app.service';
+// ... other imports
+import { ProductsModule } from './modules/products/products.module'; // Add this import
+
+@Module({
+  imports: [
+    // ... other modules
+    ProductsModule, // Add this line to register the module
+  ],
+  controllers: [AppController],
+  providers: [AppService],
+})
+export class AppModule {}
 ```

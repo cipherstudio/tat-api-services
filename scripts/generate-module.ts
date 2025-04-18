@@ -6,20 +6,21 @@ const capitalize = (str: string): string => {
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
-interface GenerateModuleOptions {
+export interface GenerateModuleOptions {
   name: string;
   includePagination?: boolean;
   includeAuth?: boolean;
   baseDir?: string;
 }
 
-class ModuleGenerator {
+export class ModuleGenerator {
   private moduleName: string;
   private moduleNameCapitalized: string;
   private baseDir: string;
   private modulePath: string;
   private includePagination: boolean;
   private includeAuth: boolean;
+  private appModulePath: string = 'src/app.module.ts';
 
   constructor(options: GenerateModuleOptions) {
     this.moduleName = options.name.toLowerCase();
@@ -33,6 +34,12 @@ class ModuleGenerator {
   public async generate(): Promise<void> {
     this.createDirectoryStructure();
     await this.generateFiles();
+
+    // Register the module in app.module.ts if it's in the default location
+    if (this.baseDir === 'src/modules') {
+      await this.registerModuleInAppModule();
+    }
+
     console.log(
       `✅ Module ${this.moduleNameCapitalized} generated successfully!`,
     );
@@ -44,6 +51,7 @@ class ModuleGenerator {
       path.join(this.modulePath, 'dto'),
       path.join(this.modulePath, 'entities'),
       path.join(this.modulePath, 'interfaces'),
+      path.join(this.modulePath, 'repositories'),
     ];
 
     directories.forEach((dir) => {
@@ -66,6 +74,9 @@ class ModuleGenerator {
     if (this.includePagination) {
       await this.generateOptionsInterface();
     }
+
+    // Generate repository
+    await this.generateRepository();
 
     // Generate service
     await this.generateService();
@@ -384,210 +395,256 @@ export interface ${this.moduleNameCapitalized}QueryOptions
     );
   }
 
+  private async generateRepository(): Promise<void> {
+    const content = `import { Injectable } from '@nestjs/common';
+import { DatabaseService } from '../../database/database.service';
+import { ${this.moduleNameCapitalized} } from '../entities/${this.moduleName}.entity';
+
+@Injectable()
+export class ${this.moduleNameCapitalized}Repository {
+  constructor(private readonly db: DatabaseService) {}
+
+  async findAll(): Promise<${this.moduleNameCapitalized}[]> {
+    return this.db.${this.moduleName}.findMany();
+  }
+
+  async findOne(id: number): Promise<${this.moduleNameCapitalized}> {
+    return this.db.${this.moduleName}.findUnique({
+      where: { id },
+    });
+  }
+
+  async create(data: any): Promise<${this.moduleNameCapitalized}> {
+    return this.db.${this.moduleName}.create({
+      data,
+    });
+  }
+
+  async update(id: number, data: any): Promise<${this.moduleNameCapitalized}> {
+    return this.db.${this.moduleName}.update({
+      where: { id },
+      data,
+    });
+  }
+
+  async remove(id: number): Promise<${this.moduleNameCapitalized}> {
+    return this.db.${this.moduleName}.delete({
+      where: { id },
+    });
+  }
+}`;
+
+    await this.writeFile(
+      'repositories',
+      `${this.moduleName}.repository.ts`,
+      content,
+    );
+  }
+
   private async generateService(): Promise<void> {
     const content = `import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { ${this.moduleNameCapitalized} } from './entities/${this.moduleName}.entity';
-import { Create${this.moduleNameCapitalized}Dto } from './dto/create-${this.moduleName}.dto';
-import { Update${this.moduleNameCapitalized}Dto } from './dto/update-${this.moduleName}.dto';${
+    import { InjectRepository } from '@nestjs/typeorm';
+    import { Repository } from 'typeorm';
+    import { ${this.moduleNameCapitalized} } from './entities/${this.moduleName}.entity';
+    import { Create${this.moduleNameCapitalized}Dto } from './dto/create-${this.moduleName}.dto';
+    import { Update${this.moduleNameCapitalized}Dto } from './dto/update-${this.moduleName}.dto';${
       this.includePagination
         ? `\nimport { ${this.moduleNameCapitalized}QueryOptions } from './interfaces/${this.moduleName}-options.interface';\nimport { PaginatedResult } from '../../../common/interfaces/pagination.interface';`
         : ''
     }
-import { RedisCacheService } from '../cache/redis-cache.service';
+    import { RedisCacheService } from '../cache/redis-cache.service';
 
-@Injectable()
-export class ${this.moduleNameCapitalized}Service {
-  private readonly CACHE_PREFIX = '${this.moduleName}';
-  private readonly CACHE_TTL = 3600; // 1 hour in seconds
+    @Injectable()
+    export class ${this.moduleNameCapitalized}Service {
+      private readonly CACHE_PREFIX = '${this.moduleName}';
+      private readonly CACHE_TTL = 3600; // 1 hour in seconds
 
-  constructor(
-    @InjectRepository(${this.moduleNameCapitalized})
-    private readonly ${this.moduleName}Repository: Repository<${
-      this.moduleNameCapitalized
-    }>,
-    private readonly cacheService: RedisCacheService,
-  ) {}
+      constructor(
+        @InjectRepository(${this.moduleNameCapitalized})
+        private readonly ${this.moduleName}Repository: Repository<${
+          this.moduleNameCapitalized
+        }>,
+        private readonly cacheService: RedisCacheService,
+      ) {}
 
-  async create(create${this.moduleNameCapitalized}Dto: Create${
-    this.moduleNameCapitalized
-  }Dto): Promise<${this.moduleNameCapitalized}> {
-    const ${this.moduleName} = this.${this.moduleName}Repository.create(create${
-      this.moduleNameCapitalized
-    }Dto);
-    const saved${this.moduleNameCapitalized} = await this.${
-      this.moduleName
-    }Repository.save(${this.moduleName});
-
-    // Cache the new ${this.moduleName}
-    await this.cacheService.set(
-      this.cacheService.generateKey(this.CACHE_PREFIX, saved${
+      async create(create${this.moduleNameCapitalized}Dto: Create${
         this.moduleNameCapitalized
-      }.id),
-      saved${this.moduleNameCapitalized},
-      this.CACHE_TTL
-    );
+      }Dto): Promise<${this.moduleNameCapitalized}> {
+        const ${this.moduleName} = this.${this.moduleName}Repository.create(create${
+          this.moduleNameCapitalized
+        }Dto);
+        const saved${this.moduleNameCapitalized} = await this.${
+          this.moduleName
+        }Repository.save(${this.moduleName});
 
-    // Invalidate the list cache
-    await this.cacheService.del(this.cacheService.generateListKey(this.CACHE_PREFIX));
+        // Cache the new ${this.moduleName}
+        await this.cacheService.set(
+          this.cacheService.generateKey(this.CACHE_PREFIX, saved${
+            this.moduleNameCapitalized
+          }.id),
+          saved${this.moduleNameCapitalized},
+          this.CACHE_TTL
+        );
 
-    return saved${this.moduleNameCapitalized};
-  }
+        // Invalidate the list cache
+        await this.cacheService.del(this.cacheService.generateListKey(this.CACHE_PREFIX));
 
-  async findAll(${
-    this.includePagination
-      ? `queryOptions?: ${this.moduleNameCapitalized}QueryOptions`
-      : ''
-  }): Promise<${
-    this.includePagination
-      ? `PaginatedResult<${this.moduleNameCapitalized}>`
-      : `${this.moduleNameCapitalized}[]`
-  }> {
-    // Try to get from cache first
-    const cacheKey = this.cacheService.generateListKey(this.CACHE_PREFIX);
-    const cachedResult = await this.cacheService.get<${
-      this.includePagination
-        ? `PaginatedResult<${this.moduleNameCapitalized}>`
-        : `${this.moduleNameCapitalized}[]`
-    }>(cacheKey);
-    if (cachedResult) {
-      return cachedResult;
-    }
+        return saved${this.moduleNameCapitalized};
+      }
 
-    ${
-      this.includePagination
-        ? `const {
-      page = 1,
-      limit = 10,
-      orderBy = 'createdAt',
-      orderDir = 'DESC',
-      includeInactive = false,
-      name,
-      isActive,
-      searchTerm,
-      includes,
-    } = queryOptions || {};
+      async findAll(${
+        this.includePagination
+          ? `queryOptions?: ${this.moduleNameCapitalized}QueryOptions`
+          : ''
+      }): Promise<${
+        this.includePagination
+          ? `PaginatedResult<${this.moduleNameCapitalized}>`
+          : `${this.moduleNameCapitalized}[]`
+      }> {
+        // Try to get from cache first
+        const cacheKey = this.cacheService.generateListKey(this.CACHE_PREFIX);
+        const cachedResult = await this.cacheService.get<${
+          this.includePagination
+            ? `PaginatedResult<${this.moduleNameCapitalized}>`
+            : `${this.moduleNameCapitalized}[]`
+        }>(cacheKey);
+        if (cachedResult) {
+          return cachedResult;
+        }
 
-    const query = this.${this.moduleName}Repository.createQueryBuilder('${
-      this.moduleName
-    }');
+        ${
+          this.includePagination
+            ? `const {
+          page = 1,
+          limit = 10,
+          orderBy = 'createdAt',
+          orderDir = 'DESC',
+          includeInactive = false,
+          name,
+          isActive,
+          searchTerm,
+          includes,
+        } = queryOptions || {};
 
-    if (name) {
-      query.andWhere('${this.moduleName}.name LIKE :name', {
-        name: \`%\${name}%\`,
-      });
-    }
+        const query = this.${this.moduleName}Repository.createQueryBuilder('${
+          this.moduleName
+        }');
 
-    if (isActive !== undefined) {
-      query.andWhere('${this.moduleName}.isActive = :isActive', {
-        isActive,
-      });
-    }
+        if (name) {
+          query.andWhere('${this.moduleName}.name LIKE :name', {
+            name: \`%\${name}%\`,
+          });
+        }
 
-    if (searchTerm) {
-      query.andWhere('${this.moduleName}.name LIKE :search', {
-        search: \`%\${searchTerm}%\`,
-      });
-    }
+        if (isActive !== undefined) {
+          query.andWhere('${this.moduleName}.isActive = :isActive', {
+            isActive,
+          });
+        }
 
-    if (!includeInactive) {
-      query.andWhere('${this.moduleName}.isActive = :defaultActive', { 
-        defaultActive: true 
-      });
-    }
+        if (searchTerm) {
+          query.andWhere('${this.moduleName}.name LIKE :search', {
+            search: \`%\${searchTerm}%\`,
+          });
+        }
 
-    if (includes?.length) {
-      includes.forEach((include) => {
-        query.leftJoinAndSelect(\`${this.moduleName}.\${include}\`, include);
-      });
-    }
+        if (!includeInactive) {
+          query.andWhere('${this.moduleName}.isActive = :defaultActive', { 
+            defaultActive: true 
+          });
+        }
 
-    query.orderBy(\`${this.moduleName}.\${orderBy}\`, orderDir);
-    query.skip((page - 1) * limit).take(limit);
+        if (includes?.length) {
+          includes.forEach((include) => {
+            query.leftJoinAndSelect(\`${this.moduleName}.\${include}\`, include);
+          });
+        }
 
-    const [data, total] = await query.getManyAndCount();
-    const result = {
-      data,
-      meta: {
-        total,
-        page,
-        lastPage: Math.ceil(total / limit),
-        limit,
-      },
-    };`
-        : `const result = await this.${this.moduleName}Repository.find();`
-    }
+        query.orderBy(\`${this.moduleName}.\${orderBy}\`, orderDir);
+        query.skip((page - 1) * limit).take(limit);
 
-    // Cache the result
-    await this.cacheService.set(cacheKey, result, this.CACHE_TTL);
+        const [data, total] = await query.getManyAndCount();
+        const result = {
+          data,
+          meta: {
+            total,
+            page,
+            lastPage: Math.ceil(total / limit),
+            limit,
+          },
+        };`
+            : `const result = await this.${this.moduleName}Repository.find();`
+        }
 
-    return result;
-  }
+        // Cache the result
+        await this.cacheService.set(cacheKey, result, this.CACHE_TTL);
 
-  async findOne(id: number): Promise<${this.moduleNameCapitalized}> {
-    // Try to get from cache first
-    const cacheKey = this.cacheService.generateKey(this.CACHE_PREFIX, id);
-    const cached${this.moduleNameCapitalized} = await this.cacheService.get<${
-      this.moduleNameCapitalized
-    }>(cacheKey);
-    if (cached${this.moduleNameCapitalized}) {
-      return cached${this.moduleNameCapitalized};
-    }
+        return result;
+      }
 
-    const ${this.moduleName} = await this.${this.moduleName}Repository.findOne({ where: { id } });
-    if (!${this.moduleName}) {
-      throw new NotFoundException(\`${
+      async findOne(id: number): Promise<${this.moduleNameCapitalized}> {
+        // Try to get from cache first
+        const cacheKey = this.cacheService.generateKey(this.CACHE_PREFIX, id);
+        const cached${this.moduleNameCapitalized} = await this.cacheService.get<${
+          this.moduleNameCapitalized
+        }>(cacheKey);
+        if (cached${this.moduleNameCapitalized}) {
+          return cached${this.moduleNameCapitalized};
+        }
+
+        const ${this.moduleName} = await this.${this.moduleName}Repository.findOne({ where: { id } });
+        if (!${this.moduleName}) {
+          throw new NotFoundException(\`${
+            this.moduleNameCapitalized
+          } with ID \${id} not found\`);
+        }
+
+        // Cache the result
+        await this.cacheService.set(cacheKey, ${this.moduleName}, this.CACHE_TTL);
+
+        return ${this.moduleName};
+      }
+
+      async update(id: number, update${this.moduleNameCapitalized}Dto: Update${
         this.moduleNameCapitalized
-      } with ID \${id} not found\`);
+      }Dto): Promise<${this.moduleNameCapitalized}> {
+        const result = await this.${this.moduleName}Repository.update(id, update${
+          this.moduleNameCapitalized
+        }Dto);
+        if (result.affected === 0) {
+          throw new NotFoundException(\`${
+            this.moduleNameCapitalized
+          } with ID \${id} not found\`);
+        }
+
+        const updated${this.moduleNameCapitalized} = await this.findOne(id);
+
+        // Update cache
+        const cacheKey = this.cacheService.generateKey(this.CACHE_PREFIX, id);
+        await this.cacheService.set(cacheKey, updated${
+          this.moduleNameCapitalized
+        }, this.CACHE_TTL);
+
+        // Invalidate the list cache
+        await this.cacheService.del(this.cacheService.generateListKey(this.CACHE_PREFIX));
+
+        return updated${this.moduleNameCapitalized};
+      }
+
+      async remove(id: number): Promise<void> {
+        const result = await this.${this.moduleName}Repository.delete(id);
+        if (result.affected === 0) {
+          throw new NotFoundException(\`${
+            this.moduleNameCapitalized
+          } with ID \${id} not found\`);
+        }
+
+        // Remove from cache
+        await this.cacheService.del(this.cacheService.generateKey(this.CACHE_PREFIX, id));
+        // Invalidate the list cache
+        await this.cacheService.del(this.cacheService.generateListKey(this.CACHE_PREFIX));
+      }
     }
-
-    // Cache the result
-    await this.cacheService.set(cacheKey, ${this.moduleName}, this.CACHE_TTL);
-
-    return ${this.moduleName};
-  }
-
-  async update(id: number, update${this.moduleNameCapitalized}Dto: Update${
-    this.moduleNameCapitalized
-  }Dto): Promise<${this.moduleNameCapitalized}> {
-    const result = await this.${this.moduleName}Repository.update(id, update${
-      this.moduleNameCapitalized
-    }Dto);
-    if (result.affected === 0) {
-      throw new NotFoundException(\`${
-        this.moduleNameCapitalized
-      } with ID \${id} not found\`);
-    }
-
-    const updated${this.moduleNameCapitalized} = await this.findOne(id);
-
-    // Update cache
-    const cacheKey = this.cacheService.generateKey(this.CACHE_PREFIX, id);
-    await this.cacheService.set(cacheKey, updated${
-      this.moduleNameCapitalized
-    }, this.CACHE_TTL);
-
-    // Invalidate the list cache
-    await this.cacheService.del(this.cacheService.generateListKey(this.CACHE_PREFIX));
-
-    return updated${this.moduleNameCapitalized};
-  }
-
-  async remove(id: number): Promise<void> {
-    const result = await this.${this.moduleName}Repository.delete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException(\`${
-        this.moduleNameCapitalized
-      } with ID \${id} not found\`);
-    }
-
-    // Remove from cache
-    await this.cacheService.del(this.cacheService.generateKey(this.CACHE_PREFIX, id));
-    // Invalidate the list cache
-    await this.cacheService.del(this.cacheService.generateListKey(this.CACHE_PREFIX));
-  }
-}
 `;
 
     await this.writeFile('', `${this.moduleName}.service.ts`, content);
@@ -697,23 +754,23 @@ ${findAllMethod}
 
   private async generateModule(): Promise<void> {
     const content = `import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ${this.moduleNameCapitalized}Service } from './${this.moduleName}.service';
-import { ${this.moduleNameCapitalized}Controller } from './${this.moduleName}.controller';
-import { ${this.moduleNameCapitalized} } from './entities/${this.moduleName}.entity';
-import { RedisCacheModule } from '../cache/redis-cache.module';
-import { RedisCacheService } from '../cache/redis-cache.service';
+    import { TypeOrmModule } from '@nestjs/typeorm';
+    import { ${this.moduleNameCapitalized}Service } from './${this.moduleName}.service';
+    import { ${this.moduleNameCapitalized}Controller } from './${this.moduleName}.controller';
+    import { ${this.moduleNameCapitalized} } from './entities/${this.moduleName}.entity';
+    import { RedisCacheModule } from '../cache/redis-cache.module';
+    import { RedisCacheService } from '../cache/redis-cache.service';
 
-@Module({
-  imports: [
-    TypeOrmModule.forFeature([${this.moduleNameCapitalized}]),
-    RedisCacheModule,
-  ],
-  controllers: [${this.moduleNameCapitalized}Controller],
-  providers: [${this.moduleNameCapitalized}Service, RedisCacheService],
-  exports: [${this.moduleNameCapitalized}Service],
-})
-export class ${this.moduleNameCapitalized}Module {}
+    @Module({
+      imports: [
+        TypeOrmModule.forFeature([${this.moduleNameCapitalized}]),
+        RedisCacheModule,
+      ],
+      controllers: [${this.moduleNameCapitalized}Controller],
+      providers: [${this.moduleNameCapitalized}Service, RedisCacheService],
+      exports: [${this.moduleNameCapitalized}Service],
+    })
+    export class ${this.moduleNameCapitalized}Module {}
 `;
 
     await this.writeFile('', `${this.moduleName}.module.ts`, content);
@@ -728,6 +785,73 @@ export class ${this.moduleNameCapitalized}Module {}
     await fs.promises.writeFile(filePath, content);
     console.log(`Created ${filePath}`);
   }
+
+  private async registerModuleInAppModule(): Promise<void> {
+    try {
+      // Read the app.module.ts file
+      const appModuleContent = await fs.promises.readFile(
+        this.appModulePath,
+        'utf8',
+      );
+
+      // Check if the module is already registered
+      if (appModuleContent.includes(`${this.moduleNameCapitalized}Module`)) {
+        console.log(
+          `Module ${this.moduleNameCapitalized}Module is already registered in app.module.ts`,
+        );
+        return;
+      }
+
+      // Prepare import statement
+      const importStatement = `import { ${this.moduleNameCapitalized}Module } from './modules/${this.moduleName}/${this.moduleName}.module';`;
+
+      // Add import statement after the last import
+      let modifiedContent = appModuleContent;
+      const lastImportIndex = appModuleContent.lastIndexOf('import ');
+      const lastImportLineEndIndex = appModuleContent.indexOf(
+        '\n',
+        lastImportIndex,
+      );
+
+      if (lastImportIndex !== -1 && lastImportLineEndIndex !== -1) {
+        modifiedContent =
+          appModuleContent.substring(0, lastImportLineEndIndex + 1) +
+          importStatement +
+          '\n' +
+          appModuleContent.substring(lastImportLineEndIndex + 1);
+      }
+
+      // Add module to imports array
+      const importsArrayStartIndex = modifiedContent.indexOf('imports: [');
+      if (importsArrayStartIndex !== -1) {
+        // Find the position after the opening bracket and the last import before the closing bracket
+        const afterOpeningBracket =
+          modifiedContent.indexOf('[', importsArrayStartIndex) + 1;
+        const lastItem = modifiedContent.lastIndexOf(
+          ',',
+          modifiedContent.indexOf(']', afterOpeningBracket),
+        );
+
+        if (lastItem !== -1 && lastItem > afterOpeningBracket) {
+          // Insert after the last item
+          modifiedContent =
+            modifiedContent.substring(0, lastItem + 1) +
+            '\n    ' +
+            this.moduleNameCapitalized +
+            'Module,' +
+            modifiedContent.substring(lastItem + 1);
+        }
+      }
+
+      // Write the updated content back to the file
+      await fs.promises.writeFile(this.appModulePath, modifiedContent, 'utf8');
+      console.log(
+        `✅ Module ${this.moduleNameCapitalized}Module registered in app.module.ts`,
+      );
+    } catch (error) {
+      console.error(`❌ Failed to register module in app.module.ts:`, error);
+    }
+  }
 }
 
 // Create utils.ts file
@@ -740,11 +864,13 @@ if (!fs.existsSync('scripts/utils.ts')) {
   fs.writeFileSync('scripts/utils.ts', utilsContent);
 }
 
-// Example usage
-const generator = new ModuleGenerator({
-  name: process.argv[2] || 'example',
-  includePagination: process.argv.includes('--pagination'),
-  includeAuth: process.argv.includes('--auth'),
-});
+// This code will only run if the file is executed directly, not when imported
+if (require.main === module) {
+  const generator = new ModuleGenerator({
+    name: process.argv[2] || 'example',
+    includePagination: process.argv.includes('--pagination'),
+    includeAuth: process.argv.includes('--auth'),
+  });
 
-generator.generate().catch(console.error);
+  generator.generate().catch(console.error);
+}
