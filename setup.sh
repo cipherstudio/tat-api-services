@@ -40,9 +40,19 @@ get_parameter() {
     echo "$param_value"
 }
 
+# Check if logs directory exists and create it if not
+check_logs_dir() {
+    if [ ! -d "logs" ]; then
+        echo -e "${YELLOW}Creating logs directory...${NC}"
+        mkdir -p logs
+        echo -e "${GREEN}Logs directory created successfully${NC}"
+    fi
+}
+
 # Main menu
 show_main_menu() {
     print_header
+    check_logs_dir
     echo "Select a category:"
     echo ""
     echo "1) Installation"
@@ -113,9 +123,9 @@ module_generation_menu() {
 migrations_menu() {
     print_section "Database Migrations"
     echo "1) Create new migration"
-    echo "2) Generate migration from entity changes"
-    echo "3) Run pending migrations"
-    echo "4) Revert last migration"
+    echo "2) Run pending migrations"
+    echo "3) Revert last migration"
+    echo "4) List all migrations"
     echo "0) Back to main menu"
     echo ""
     echo -e "${GREEN}Enter your choice [0-4]:${NC}"
@@ -126,12 +136,9 @@ migrations_menu() {
             migration_name=$(get_parameter "migration_name" "migration name")
             make migration-create name=$migration_name
             ;;
-        2)
-            migration_name=$(get_parameter "migration_name" "migration name")
-            make migration-generate name=$migration_name
-            ;;
-        3) make migration-run ;;
-        4) make migration-revert ;;
+        2) make migration-run ;;
+        3) make migration-revert ;;
+        4) npm run knex:migrate:list ;;
         0) return ;;
         *) echo -e "${RED}Invalid option${NC}" ;;
     esac
@@ -247,18 +254,13 @@ docker_testing_menu() {
 docker_migrations_menu() {
     print_section "Docker Migrations"
     echo "1) Run migrations"
-    echo "2) Generate migration"
     echo "0) Back to main menu"
     echo ""
-    echo -e "${GREEN}Enter your choice [0-2]:${NC}"
+    echo -e "${GREEN}Enter your choice [0-1]:${NC}"
     
     read choice
     case $choice in
         1) make docker-migration-run ;;
-        2)
-            migration_name=$(get_parameter "migration_name" "migration name")
-            make docker-migration-generate name=$migration_name
-            ;;
         0) return ;;
         *) echo -e "${RED}Invalid option${NC}" ;;
     esac

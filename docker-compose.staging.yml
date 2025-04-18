@@ -6,9 +6,16 @@ services:
       target: staging
     environment:
       - NODE_ENV=staging
-    command: yarn start:prod
+      - LOG_LEVEL=info
+      - LOG_MAX_FILES=30d
+      - LOG_HTTP_MAX_FILES=14d
+      - LOG_MAX_SIZE=20m
+    volumes:
+      - app_logs:/app/logs
+    command: npm run start:prod
+    restart: unless-stopped
 
-  postgres:
+  redis:
     environment:
-      - POSTGRES_DB=tat_api_staging_db
-      - POSTGRES_PASSWORD=staging_password 
+      - REDIS_PASSWORD=staging_redis_password
+    restart: unless-stopped 

@@ -6,11 +6,16 @@ services:
       target: development
     environment:
       - NODE_ENV=development
+      - LOG_LEVEL=debug
+      - LOG_MAX_FILES=30d
+      - LOG_HTTP_MAX_FILES=14d
+      - LOG_MAX_SIZE=20m
     volumes:
       - .:/app
       - /app/node_modules
-    command: yarn start:dev
+      - app_logs:/app/logs
+    command: npm run start:dev
 
-  postgres:
+  redis:
     environment:
-      - POSTGRES_DB=tat_api_dev_db 
+      - REDIS_PASSWORD=dev_redis_password 

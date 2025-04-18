@@ -1,1 +1,21 @@
- 
+version: '3.8'
+
+services:
+  api:
+    build:
+      target: production
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=warn
+      - LOG_MAX_FILES=45d
+      - LOG_HTTP_MAX_FILES=30d
+      - LOG_MAX_SIZE=50m
+    volumes:
+      - app_logs:/app/logs
+    command: npm run start:prod
+    restart: always
+
+  redis:
+    environment:
+      - REDIS_PASSWORD=production_redis_password
+    restart: always 
