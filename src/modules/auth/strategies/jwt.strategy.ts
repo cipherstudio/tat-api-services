@@ -10,16 +10,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly configService: ConfigService,
     private readonly usersService: UsersService,
   ) {
+    const jwtSecret = configService.get('JWT_SECRET');
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get('JWT_SECRET'),
+      secretOrKey: jwtSecret,
     });
   }
 
   async validate(payload: { sub: number; email: string }) {
     try {
       const user = await this.usersService.findById(payload.sub);
+      console.log('🚀 ~ JwtStrategy ~ validate ~ user:', user);
 
       if (!user || !user.isActive) {
         throw new UnauthorizedException();

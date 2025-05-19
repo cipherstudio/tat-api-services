@@ -32,13 +32,14 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiBody,
 } from '@nestjs/swagger';
 
 interface RequestWithUser extends Request {
   user: User;
 }
 
-@ApiTags('auth')
+@ApiTags('authentication')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -53,6 +54,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Register a new user' })
   @ApiResponse({ status: 201, description: 'User successfully registered.' })
   @ApiResponse({ status: 400, description: 'Bad request.' })
+  @ApiBody({ type: RegisterDto })
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
@@ -64,12 +66,13 @@ export class AuthController {
   @ApiOperation({ summary: 'Login user' })
   @ApiResponse({ status: 200, description: 'User successfully logged in.' })
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
+  @ApiBody({ type: LoginDto })
   async login(@Body() loginDto: LoginDto, @Req() req: RequestWithUser) {
     const user = req.user;
     const tokens = await this.authService.login(user);
     const session = await this.sessionService.createSession(
       user.id,
-      tokens.refresh_token,
+      tokens?.refresh_token || '',
       req.headers['user-agent'] as string,
       req.ip,
     );
@@ -89,6 +92,15 @@ export class AuthController {
   @Version('1')
   @UseGuards(JwtAuthGuard)
   @Post('refresh')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Refresh JWT token' })
+  @ApiResponse({ status: 200, description: 'Tokens refreshed.' })
+  @ApiResponse({ status: 401, description: 'Unauthorized.' })
+  @ApiBody({
+    schema: {
+      properties: { refreshToken: { type: 'string', example: '...' } },
+    },
+  })
   async refresh(
     @Body('refreshToken') refreshToken: string,
     @Req() req: Request,
@@ -114,6 +126,13 @@ export class AuthController {
 
   @Version('1')
   @Post('forgot-password')
+  @ApiOperation({ summary: 'Request password reset' })
+  @ApiResponse({ status: 200, description: 'Password reset email sent.' })
+  @ApiBody({
+    schema: {
+      properties: { email: { type: 'string', example: 'user@example.com' } },
+    },
+  })
   async forgotPassword(@Body('email') email: string, @Req() req: Request) {
     const user = await this.authService.sendPasswordResetEmail(email);
 
@@ -131,6 +150,9 @@ export class AuthController {
 
   @Version('1')
   @Post('reset-password')
+  @ApiOperation({ summary: 'Reset password' })
+  @ApiResponse({ status: 200, description: 'Password reset successful.' })
+  @ApiBody({ type: ResetPasswordDto })
   async resetPassword(
     @Body() resetPasswordDto: ResetPasswordDto,
     @Req() req: Request,
@@ -153,6 +175,10 @@ export class AuthController {
   @Version('1')
   @UseGuards(JwtAuthGuard)
   @Post('change-password')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Change password' })
+  @ApiResponse({ status: 200, description: 'Password changed successfully.' })
+  @ApiBody({ type: ChangePasswordDto })
   async changePassword(
     @Body() changePasswordDto: ChangePasswordDto,
     @Req() req: RequestWithUser,

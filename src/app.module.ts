@@ -8,6 +8,7 @@ import { UsersModule } from './modules/users/users.module';
 import { TypesModule } from './modules/types/types.module';
 import { RedisCacheModule } from './modules/cache/redis-cache.module';
 import { RequestLoggerMiddleware } from './middleware/request-logger.middleware';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { RequestLoggerMiddleware } from './middleware/request-logger.middleware'
     RedisCacheModule,
     UsersModule,
     TypesModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
