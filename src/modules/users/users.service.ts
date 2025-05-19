@@ -5,6 +5,14 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { RedisCacheService } from '../cache/redis-cache.service';
 import * as bcrypt from 'bcrypt';
+import { omitFields } from '../../common/utils/omit-fields';
+
+const SENSITIVE_FIELDS = [
+  'password',
+  'refreshToken',
+  'passwordResetToken',
+  'passwordResetExpires',
+];
 
 @Injectable()
 export class UsersService {
@@ -47,6 +55,11 @@ export class UsersService {
     return user;
   }
 
+  async findByIdPublic(id: number): Promise<Partial<User>> {
+    const user = await this.findById(id);
+    return omitFields(user, SENSITIVE_FIELDS);
+  }
+
   async findByEmail(email: string): Promise<User | undefined> {
     return this.userRepository.findByEmail(email);
   }
@@ -59,17 +72,28 @@ export class UsersService {
     page: number = 1,
     limit: number = 10,
     search?: string,
-  ): Promise<{ data: User[]; meta: any }> {
+  ): Promise<{ data: Partial<User>[]; meta: any }> {
     const conditions: Record<string, any> = {};
 
     if (search) {
       conditions.search = search;
     }
 
-    return this.userRepository.findWithPagination(page, limit, conditions);
+    const result = await this.userRepository.findWithPagination(
+      page,
+      limit,
+      conditions,
+    );
+    return {
+      ...result,
+      data: result.data.map((u) => omitFields(u, SENSITIVE_FIELDS)),
+    };
   }
 
-  async update(id: number, updateUserDto: UpdateUserDto): Promise<User> {
+  async update(
+    id: number,
+    updateUserDto: UpdateUserDto,
+  ): Promise<Partial<User>> {
     const user = await this.findById(id);
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
@@ -86,7 +110,7 @@ export class UsersService {
     // Invalidate cache
     await this.cacheService.del(`user:${id}`);
 
-    return this.findById(id);
+    return this.findByIdPublic(id);
   }
 
   async incrementLoginAttempts(id: number): Promise<void> {
@@ -124,5 +148,23 @@ export class UsersService {
 
     // Invalidate cache
     await this.cacheService.del(`user:${id}`);
+  }
+
+  async getUserForLogin(id: number): Promise<Partial<User>> {
+    const user = await this.userRepository.findById(id);
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+    // Only hide password and refreshToken for login
+    return omitFields(user, ['password', 'refreshToken']);
+  }
+
+  async getUserForResetPassword(id: number): Promise<Partial<User>> {
+    const user = await this.userRepository.findById(id);
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+    // Hide password, refreshToken, passwordResetToken, passwordResetExpires
+    return omitFields(user, SENSITIVE_FIELDS);
   }
 }

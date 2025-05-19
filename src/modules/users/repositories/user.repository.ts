@@ -82,4 +82,48 @@ export class UserRepository extends KnexBaseRepository<User> {
       },
     };
   }
+
+  async findActiveUsers(page: number = 1, limit: number = 10) {
+    const result = await this.findWithPagination(
+      page,
+      limit,
+      { is_active: true },
+      'created_at',
+      'desc',
+    );
+    return {
+      ...result,
+      data: await Promise.all(
+        result.data.map(async (u) => await toCamelCase<User>(u)),
+      ),
+    };
+  }
+
+  async searchUsers(query: string, page: number = 1, limit: number = 10) {
+    const dbUsers = await this.knexService
+      .knex('users')
+      .where('email', 'like', `%${query}%`)
+      .orWhere('full_name', 'like', `%${query}%`)
+      .orderBy('created_at', 'desc')
+      .limit(limit)
+      .offset((page - 1) * limit);
+
+    const count = await this.knexService
+      .knex('users')
+      .where('email', 'like', `%${query}%`)
+      .orWhere('full_name', 'like', `%${query}%`)
+      .count('* as count')
+      .first();
+
+    return {
+      data: await Promise.all(
+        dbUsers.map(async (u) => await toCamelCase<User>(u)),
+      ),
+      meta: {
+        total: Number(count?.count || 0),
+        page,
+        limit,
+      },
+    };
+  }
 }
