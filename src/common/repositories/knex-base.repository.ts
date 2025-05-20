@@ -1,6 +1,7 @@
 import { Inject } from '@nestjs/common';
 import { Knex } from 'knex';
 import { KnexService } from '../../database/knex-service/knex.service';
+import { toCamelCase, toSnakeCase } from '../utils/case-mapping';
 
 export class KnexBaseRepository<T> {
   protected tableName: string;
@@ -18,21 +19,18 @@ export class KnexBaseRepository<T> {
   }
 
   async findById(id: number): Promise<T | undefined> {
-    return this.knexService.findById(this.tableName, id) as Promise<
-      T | undefined
-    >;
+    const dbRow = await this.knexService.findById(this.tableName, id);
+    return dbRow ? await toCamelCase<T>(dbRow) : undefined;
   }
 
   async findOne(conditions: Record<string, any>): Promise<T | undefined> {
-    return this.knexService.findOne(this.tableName, conditions) as Promise<
-      T | undefined
-    >;
+    const dbRow = await this.knexService.findOne(this.tableName, conditions);
+    return dbRow ? await toCamelCase<T>(dbRow) : undefined;
   }
 
   async find(conditions: Record<string, any> = {}): Promise<T[]> {
-    return this.knexService.findMany(this.tableName, conditions) as Promise<
-      T[]
-    >;
+    const dbRows = await this.knexService.findMany(this.tableName, conditions);
+    return Promise.all(dbRows.map(async (row) => await toCamelCase<T>(row)));
   }
 
   async findWithPagination(
@@ -42,7 +40,7 @@ export class KnexBaseRepository<T> {
     orderBy: string = 'id',
     direction: 'asc' | 'desc' = 'asc',
   ) {
-    return this.knexService.findWithPagination(
+    const result = await this.knexService.findWithPagination(
       this.tableName,
       page,
       limit,
@@ -50,10 +48,18 @@ export class KnexBaseRepository<T> {
       orderBy,
       direction,
     );
+    return {
+      ...result,
+      data: await Promise.all(
+        result.data.map(async (row) => await toCamelCase<T>(row)),
+      ),
+    };
   }
 
   async create(data: Partial<T>): Promise<T> {
-    return this.knexService.create(this.tableName, data) as Promise<T>;
+    const dbData = await toSnakeCase(data);
+    const created = await this.knexService.create(this.tableName, dbData);
+    return await toCamelCase<T>(created);
   }
 
   async save(entity: Partial<T>): Promise<T> {
@@ -64,7 +70,9 @@ export class KnexBaseRepository<T> {
   }
 
   async update(id: number, data: Partial<T>): Promise<T> {
-    return this.knexService.update(this.tableName, id, data) as Promise<T>;
+    const dbData = await toSnakeCase(data);
+    const updated = await this.knexService.update(this.tableName, id, dbData);
+    return await toCamelCase<T>(updated);
   }
 
   async delete(id: number): Promise<number> {

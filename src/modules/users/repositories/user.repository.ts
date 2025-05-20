@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { User, UserRole } from '../entities/user.entity';
 import { KnexBaseRepository } from '../../../common/repositories/knex-base.repository';
 import { KnexService } from '../../../database/knex-service/knex.service';
+import { toCamelCase, toSnakeCase } from '../../../common/utils/case-mapping';
 
 @Injectable()
 export class UserRepository extends KnexBaseRepository<User> {
@@ -9,22 +10,34 @@ export class UserRepository extends KnexBaseRepository<User> {
     super(knexService, 'users');
   }
 
-  async findByEmail(email: string): Promise<User | undefined> {
-    return this.knexService.findOne('users', { email });
+  async create(user: Partial<User>): Promise<User> {
+    const dbUser = await toSnakeCase(user);
+    const created = await super.create(dbUser);
+    return await toCamelCase<User>(created);
   }
 
-  // Example of a custom method using Knex directly
+  async update(id: number, user: Partial<User>): Promise<User> {
+    const dbUser = await toSnakeCase(user);
+    const updated = await super.update(id, dbUser);
+    return await toCamelCase<User>(updated);
+  }
+
+  async findByEmail(email: string): Promise<User | undefined> {
+    const dbUser = await this.knexService.findOne('users', { email });
+    return dbUser ? await toCamelCase<User>(dbUser) : undefined;
+  }
+
   async findActiveAdmins(): Promise<User[]> {
-    return this.knexService
+    const dbUsers = await this.knexService
       .knex('users')
       .where({
         role: UserRole.ADMIN,
         is_active: true,
       })
       .select('*');
-    }
+    return Promise.all(dbUsers.map(async (u) => await toCamelCase<User>(u)));
+  }
 
-  // Override the base method to add custom filtering
   async findWithPagination(
     page: number = 1,
     limit: number = 10,
@@ -37,14 +50,12 @@ export class UserRepository extends KnexBaseRepository<User> {
   }> {
     const query = this.knexService.knex('users');
 
-    // Apply standard conditions
     Object.keys(conditions).forEach((key) => {
       if (conditions[key] !== undefined) {
         query.where(key, conditions[key]);
       }
     });
 
-    // Apply special filter if it exists
     if (conditions.search) {
       query.where((builder) => {
         builder
@@ -61,7 +72,53 @@ export class UserRepository extends KnexBaseRepository<User> {
     ]);
 
     return {
-      data,
+      data: await Promise.all(
+        data.map(async (u) => await toCamelCase<User>(u)),
+      ),
+      meta: {
+        total: Number(count?.count || 0),
+        page,
+        limit,
+      },
+    };
+  }
+
+  async findActiveUsers(page: number = 1, limit: number = 10) {
+    const result = await this.findWithPagination(
+      page,
+      limit,
+      { is_active: true },
+      'created_at',
+      'desc',
+    );
+    return {
+      ...result,
+      data: await Promise.all(
+        result.data.map(async (u) => await toCamelCase<User>(u)),
+      ),
+    };
+  }
+
+  async searchUsers(query: string, page: number = 1, limit: number = 10) {
+    const dbUsers = await this.knexService
+      .knex('users')
+      .where('email', 'like', `%${query}%`)
+      .orWhere('full_name', 'like', `%${query}%`)
+      .orderBy('created_at', 'desc')
+      .limit(limit)
+      .offset((page - 1) * limit);
+
+    const count = await this.knexService
+      .knex('users')
+      .where('email', 'like', `%${query}%`)
+      .orWhere('full_name', 'like', `%${query}%`)
+      .count('* as count')
+      .first();
+
+    return {
+      data: await Promise.all(
+        dbUsers.map(async (u) => await toCamelCase<User>(u)),
+      ),
       meta: {
         total: Number(count?.count || 0),
         page,

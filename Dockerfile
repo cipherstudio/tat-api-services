@@ -10,7 +10,7 @@ RUN apk add --no-cache python3 make g++
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --legacy-peer-deps && \
+RUN npm Install --legacy-peer-deps && \
     npm rebuild bcrypt --build-from-source
 
 # Copy source code
@@ -31,7 +31,7 @@ RUN apk add --no-cache python3 make g++
 COPY package*.json ./
 
 # Install production dependencies only and rebuild bcrypt
-RUN npm ci --only=production --legacy-peer-deps && \
+RUN npm install --legacy-peer-deps && \
     npm rebuild bcrypt --build-from-source
 
 # Copy built application from builder stage
@@ -72,7 +72,7 @@ RUN apk add --no-cache python3 make g++
 COPY package*.json ./
 
 # Install all dependencies and rebuild bcrypt
-RUN npm ci --legacy-peer-deps && \
+RUN npm install --legacy-peer-deps && \
     npm rebuild bcrypt --build-from-source
 
 # Copy source code and environment files
@@ -106,7 +106,7 @@ RUN apk add --no-cache python3 make g++
 COPY package*.json ./
 
 # Install production dependencies only and rebuild bcrypt
-RUN npm ci --only=production --legacy-peer-deps && \
+RUN npm install --only=production --legacy-peer-deps && \
     npm rebuild bcrypt --build-from-source
 
 # Copy built application from builder stage

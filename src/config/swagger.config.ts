@@ -6,8 +6,6 @@ export function setupSwagger(app: INestApplication): void {
     .setTitle('TAT API Services')
     .setDescription('The TAT API Services Documentation')
     .setVersion('1.0')
-    .addServer('api/v1', 'Version 1 (Default)')
-    .addServer('api/v2', 'Version 2 (When Available)')
     .addBearerAuth(
       {
         type: 'http',
@@ -19,7 +17,7 @@ export function setupSwagger(app: INestApplication): void {
       },
       'JWT-auth', // This name here is important for matching up with @ApiBearerAuth() in your controller!
     )
-    .addTag('auth', 'Authentication endpoints')
+    .addTag('authentication', 'Authentication endpoints')
     .addTag('users', 'User management endpoints')
     .build();
 
