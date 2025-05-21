@@ -69,7 +69,6 @@ export class AuthController {
   @ApiBody({ type: LoginDto })
   async login(@Body() loginDto: LoginDto, @Req() req: RequestWithUser) {
     const user = req.user;
-    console.log("🚀 ~ AuthController ~ login ~ user:", user)
     const tokens = await this.authService.login(user);
     const session = await this.sessionService.createSession(
       user.id,
