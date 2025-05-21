@@ -171,6 +171,17 @@ export class DataviewsController {
   }
 
   @Version('1')
+  @Get('ab-holiday/current-year')
+  @ApiOperation({
+    summary: 'ดึงข้อมูลวันหยุดประจำปีปัจจุบัน',
+    description:
+      'ดึงข้อมูลวันหยุดทั้งหมดของปีปัจจุบัน (Current Year) จาก view AB_HOLIDAY',
+  })
+  findAbHolidayCurrentYear() {
+    return this.dataviewsService.findAbHolidayCurrentYear();
+  }
+
+  @Version('1')
   @Get('op-children-t')
   @ApiOperation({
     summary: 'ค้นหาข้อมูล OP_CHILDREN_T ด้วยเงื่อนไข',

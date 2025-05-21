@@ -7,7 +7,7 @@ import { QueryEmployeeDto } from './dto/query-employee.dto';
 import { AbDeputyPaginate } from './entities/ab-deputy.entity';
 import { AbDeputyRepository } from './repositories/ab-deputy.repository';
 import { QueryAbDeputyDto } from './dto/query-ab-deputy.dto';
-import { AbHolidayPaginate } from './entities/ab-holiday.entity';
+import { AbHoliday, AbHolidayPaginate } from './entities/ab-holiday.entity';
 import { AbHolidayRepository } from './repositories/ab-holiday.repository';
 import { QueryAbHolidayDto } from './dto/query-ab-holiday.dto';
 import { OpChildrenTPaginate } from './entities/op-children-t.entity';
@@ -90,6 +90,10 @@ export class DataviewsService {
     query: QueryAbHolidayDto,
   ): Promise<AbHolidayPaginate> {
     return this.abHolidayRepository.findWithQuery(query);
+  }
+
+  async findAbHolidayCurrentYear(): Promise<AbHoliday[]> {
+    return this.abHolidayRepository.findCurrentYear();
   }
 
   async findOpChildrenTWithQuery(

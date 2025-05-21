@@ -38,4 +38,17 @@ export class AbHolidayRepository extends KnexBaseRepository<AbHoliday> {
       },
     };
   }
+
+  async findCurrentYear(): Promise<AbHoliday[]> {
+    const currentYear = new Date().getFullYear();
+    const start = new Date(currentYear, 0, 1);
+    const end = new Date(currentYear + 1, 0, 1);
+    const dbEntities = await this.knex(this.tableName)
+      .where('HOLIDAY_DATE', '>=', start)
+      .andWhere('HOLIDAY_DATE', '<', end)
+      .select();
+    return Promise.all(
+      dbEntities.map(async (e) => await toCamelCase<AbHoliday>(e)),
+    );
+  }
 }
