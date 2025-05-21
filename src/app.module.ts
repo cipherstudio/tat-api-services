@@ -10,6 +10,7 @@ import { RedisCacheModule } from './modules/cache/redis-cache.module';
 import { RequestLoggerMiddleware } from './middleware/request-logger.middleware';
 import { AuthModule } from './modules/auth/auth.module';
 import { CountriesModule } from './modules/countries/countries.module';
+import { ExpensesOtherModule } from './modules/expenses-other/expenses-other.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { CountriesModule } from './modules/countries/countries.module';
     TypesModule,
     AuthModule,
     CountriesModule,
+    ExpensesOtherModule,
   ],
   controllers: [AppController],
   providers: [AppService],
