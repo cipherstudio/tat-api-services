@@ -18,8 +18,9 @@ import { UpdateExpensesOtherDto } from './dto/update-expenses-other.dto';
 import { ExpensesOther } from './entities/expenses-other.entity';
 import { ExpensesOtherQueryOptions } from './interfaces/expenses-other-options.interface';
 import { PaginatedResult } from '@common/interfaces/pagination.interface';
-import { ApiQuery } from '@nestjs/swagger';
+import { ApiQuery, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Expenses Other')
 @Controller('expenses-other')
 export class ExpensesOtherController {
   constructor(private readonly expensesOtherService: ExpensesOtherService) {}
