@@ -11,6 +11,7 @@ import { RequestLoggerMiddleware } from './middleware/request-logger.middleware'
 import { AuthModule } from './modules/auth/auth.module';
 import { CountriesModule } from './modules/countries/countries.module';
 import { PlacesModule } from './modules/places/places.module';
+import { OfficeInternationalModule } from './modules/office-international/office-international.module';
 import { ExpensesOtherModule } from './modules/expenses-other/expenses-other.module';
 
 @Module({
@@ -24,6 +25,7 @@ import { ExpensesOtherModule } from './modules/expenses-other/expenses-other.mod
     AuthModule,
     CountriesModule,
     PlacesModule,
+    OfficeInternationalModule,
     ExpensesOtherModule,
   ],
   controllers: [AppController],
