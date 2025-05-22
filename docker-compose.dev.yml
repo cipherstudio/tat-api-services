@@ -3,6 +3,7 @@ version: '3.8'
 services:
   tat-api:
     build:
+      context: .
       target: development
     environment:
       - NODE_ENV=development
