@@ -51,7 +51,7 @@ jobs:
           HOST: ${{ secrets.SERVER_HOST }}
           PORT: ${{ secrets.SSH_PORT || '22' }}
         run: |
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -p $PORT root@$HOST << 'EOF'
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -p $PORT root@$HOST <<EOF
             cd ./tat-api-services
             GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no"
             git reset --hard origin/dev
