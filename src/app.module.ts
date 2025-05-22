@@ -9,11 +9,7 @@ import { TypesModule } from './modules/types/types.module';
 import { RedisCacheModule } from './modules/cache/redis-cache.module';
 import { RequestLoggerMiddleware } from './middleware/request-logger.middleware';
 import { AuthModule } from './modules/auth/auth.module';
-import { CountriesModule } from './modules/countries/countries.module';
-import { PlacesModule } from './modules/places/places.module';
-import { OfficeDomesticModule } from './modules/office-domestic/office-domestic.module';
-import { OfficeInternationalModule } from './modules/office-international/office-international.module';
-import { ExpensesOtherModule } from './modules/expenses-other/expenses-other.module';
+import { MasterDataModule } from './modules/master-data/master-data.module';
 
 @Module({
   imports: [
@@ -24,11 +20,7 @@ import { ExpensesOtherModule } from './modules/expenses-other/expenses-other.mod
     UsersModule,
     TypesModule,
     AuthModule,
-    CountriesModule,
-    PlacesModule,
-    OfficeDomesticModule,
-    OfficeInternationalModule,
-    ExpensesOtherModule,
+    MasterDataModule,
   ],
   controllers: [AppController],
   providers: [AppService],
