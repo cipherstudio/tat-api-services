@@ -3,6 +3,7 @@ version: '3.8'
 services:
   tat-api:
     build:
+      context: .
       target: development
     environment:
       - NODE_ENV=development
@@ -10,10 +11,6 @@ services:
       - LOG_MAX_FILES=30d
       - LOG_HTTP_MAX_FILES=14d
       - LOG_MAX_SIZE=20m
-    volumes:
-      - .:/app
-      - /app/node_modules
-      - ./logs:/app/logs
     ports:
       - 3000:3000
     command: npm run start:dev

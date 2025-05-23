@@ -19,6 +19,7 @@ export function setupSwagger(app: INestApplication): void {
     )
     .addTag('authentication', 'Authentication endpoints')
     .addTag('users', 'User management endpoints')
+    .addTag('dataviews', 'Data views endpoints')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

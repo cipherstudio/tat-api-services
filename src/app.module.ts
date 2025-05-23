@@ -10,6 +10,7 @@ import { RedisCacheModule } from './modules/cache/redis-cache.module';
 import { RequestLoggerMiddleware } from './middleware/request-logger.middleware';
 import { AuthModule } from './modules/auth/auth.module';
 import { MasterDataModule } from './modules/master-data/master-data.module';
+import { DataviewsModule } from './modules/dataviews/dataviews.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { MasterDataModule } from './modules/master-data/master-data.module';
     TypesModule,
     AuthModule,
     MasterDataModule,
+    DataviewsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
