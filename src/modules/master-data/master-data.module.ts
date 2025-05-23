@@ -9,6 +9,7 @@ import { OfficeDomesticService } from './services/office-domestic.service.js';
 import { OfficeInternationalService } from './services/office-international.service.js';
 import { ExpensesOtherService } from './services/expenses-other.service.js';
 import { ProvincesService } from './services/provinces.service.js';
+import { AmphursService } from './services/amphurs.service.js';
 
 // Import controllers
 import { CountriesController } from './controllers/countries.controller.js';
@@ -17,6 +18,7 @@ import { OfficeDomesticController } from './controllers/office-domestic.controll
 import { OfficeInternationalController } from './controllers/office-international.controller.js';
 import { ExpensesOtherController } from './controllers/expenses-other.controller.js';
 import { ProvincesController } from './controllers/provinces.controller.js';
+import { AmphursController } from './controllers/amphurs.controller.js';
 
 // Import repositories
 import { CountriesRepository } from './repositories/countries.repository.js';
@@ -25,6 +27,7 @@ import { OfficeDomesticRepository } from './repositories/office-domestic.reposit
 import { OfficeInternationalRepository } from './repositories/office-international.repository.js';
 import { ExpensesOtherRepository } from './repositories/expenses-other.repository.js';
 import { ProvincesRepository } from './repositories/provinces.repository.js';
+import { AmphursRepository } from './repositories/amphurs.repository.js';
 
 @Module({
   imports: [
@@ -37,6 +40,7 @@ import { ProvincesRepository } from './repositories/provinces.repository.js';
     OfficeInternationalController,
     ExpensesOtherController,
     ProvincesController,
+    AmphursController,
   ],
   providers: [
     // Services
@@ -46,6 +50,7 @@ import { ProvincesRepository } from './repositories/provinces.repository.js';
     OfficeInternationalService,
     ExpensesOtherService,
     ProvincesService,
+    AmphursService,
     // Repositories
     CountriesRepository,
     PlacesRepository,
@@ -53,6 +58,7 @@ import { ProvincesRepository } from './repositories/provinces.repository.js';
     OfficeInternationalRepository,
     ExpensesOtherRepository,
     ProvincesRepository,
+    AmphursRepository,
     // Shared services
     RedisCacheService,
   ],
@@ -63,6 +69,7 @@ import { ProvincesRepository } from './repositories/provinces.repository.js';
     OfficeInternationalService,
     ExpensesOtherService,
     ProvincesService,
+    AmphursService,
   ],
 })
 export class MasterDataModule {} 
