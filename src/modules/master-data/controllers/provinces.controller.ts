@@ -68,6 +68,12 @@ export class ProvincesController {
     description: 'Name in Thai',
   })
   @ApiQuery({
+    name: 'isPerimeter',
+    type: Boolean,
+    required: false,
+    description: 'Filter by perimeter status',
+  })
+  @ApiQuery({
     name: 'searchTerm',
     type: String,
     required: false,
@@ -104,6 +110,7 @@ export class ProvincesController {
     @Query('orderDir') orderDir?: 'ASC' | 'DESC',
     @Query('nameEn') nameEn?: string,
     @Query('nameTh') nameTh?: string,
+    @Query('isPerimeter', new ValidationPipe({ transform: true })) isPerimeter?: boolean,
     @Query('searchTerm') searchTerm?: string,
     @Query('createdAfter', new ValidationPipe({ transform: true })) createdAfter?: Date,
     @Query('createdBefore', new ValidationPipe({ transform: true })) createdBefore?: Date,
@@ -117,6 +124,7 @@ export class ProvincesController {
       orderDir,
       nameEn,
       nameTh,
+      isPerimeter,
       searchTerm,
       createdAfter,
       createdBefore,

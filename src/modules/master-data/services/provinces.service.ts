@@ -41,6 +41,7 @@ export class ProvincesService {
       orderDir = 'DESC',
       nameEn,
       nameTh,
+      isPerimeter,
       searchTerm,
       createdAfter,
       createdBefore,
@@ -56,6 +57,7 @@ export class ProvincesService {
       `orderDir:${orderDir}`,
       nameEn ? `nameEn:${nameEn}` : null,
       nameTh ? `nameTh:${nameTh}` : null,
+      isPerimeter !== undefined ? `isPerimeter:${isPerimeter}` : null,
       searchTerm ? `search:${searchTerm}` : null,
       createdAfter ? `createdAfter:${createdAfter.toISOString()}` : null,
       createdBefore ? `createdBefore:${createdBefore.toISOString()}` : null,
@@ -78,6 +80,10 @@ export class ProvincesService {
 
     if (nameTh) {
       conditions.name_th = nameTh;
+    }
+
+    if (isPerimeter !== undefined) {
+      conditions.is_perimeter = isPerimeter;
     }
 
     if (createdAfter) {

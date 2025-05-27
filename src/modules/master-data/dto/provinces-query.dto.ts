@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, IsNumber, IsDate, IsEnum } from 'class-validator';
+import { IsOptional, IsString, IsNumber, IsDate, IsEnum, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class ProvincesQueryDto {
@@ -34,6 +34,12 @@ export class ProvincesQueryDto {
   @IsOptional()
   @IsString()
   nameTh?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsBoolean()
+  @Type(() => Boolean)
+  isPerimeter?: boolean;
 
   @ApiProperty({ required: false })
   @IsOptional()
