@@ -30,21 +30,39 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
     const conditions: Record<string, any> = {};
     if (query.code) conditions['CODE'] = query.code;
     if (query.name) conditions['NAME'] = query.name;
+    
+    let builder;
+    if (query.searchTerm) {
+      builder = this.knex(this.tableName).where('NAME', 'like', `%${query.searchTerm}%`);
+    } else {
+      builder = this.knex(this.tableName).where(conditions);
+    }
     if (query.sex) conditions['SEX'] = query.sex;
     if (query.province) conditions['PROVINCE'] = query.province;
     if (query.department) conditions['DEPARTMENT'] = query.department;
     if (query.position) conditions['POSITION'] = query.position;
 
-    let builder = this.knex(this.tableName).where(conditions);
-    if (query.minSalary !== undefined)
-      builder = builder.andWhere('SALARY', '>=', query.minSalary);
-    if (query.maxSalary !== undefined)
-      builder = builder.andWhere('SALARY', '<=', query.maxSalary);
+    if (!query.searchTerm) {
+      if (query.minSalary !== undefined)
+        builder = builder.andWhere('SALARY', '>=', query.minSalary);
+      if (query.maxSalary !== undefined)
+        builder = builder.andWhere('SALARY', '<=', query.maxSalary);
+    } else {
+      if (query.minSalary !== undefined)
+        builder = builder.andWhere('SALARY', '>=', query.minSalary);
+      if (query.maxSalary !== undefined)
+        builder = builder.andWhere('SALARY', '<=', query.maxSalary);
+    }
     if (query.limit !== undefined) builder = builder.limit(query.limit);
     if (query.offset !== undefined) builder = builder.offset(query.offset);
 
     // นับจำนวนทั้งหมด (ไม่ใส่ limit/offset)
-    const countQuery = this.knex(this.tableName).where(conditions);
+    let countQuery;
+    if (query.searchTerm) {
+      countQuery = this.knex(this.tableName).where('NAME', 'like', `%${query.searchTerm}%`);
+    } else {
+      countQuery = this.knex(this.tableName).where(conditions);
+    }
     if (query.minSalary !== undefined)
       countQuery.andWhere('SALARY', '>=', query.minSalary);
     if (query.maxSalary !== undefined)

@@ -9,6 +9,9 @@ export class QueryEmployeeDto {
   @ApiPropertyOptional({ description: 'ชื่อพนักงาน' })
   @IsOptional()
   name?: string;
+  @ApiPropertyOptional({ description: 'ค้นหาจากชื่อพนักงาน (LIKE query)' })
+  @IsOptional()
+  searchTerm?: string;
   @ApiPropertyOptional({ description: 'เพศ' })
   @IsOptional()
   sex?: string;

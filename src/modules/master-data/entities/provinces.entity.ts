@@ -10,6 +10,9 @@ export class Provinces {
   @ApiProperty({ description: 'The province name in English' })
   nameEn: string;
 
+  @ApiProperty({ description: 'Whether the province is a perimeter' })
+  isPerimeter: boolean;
+
   @ApiProperty({ description: 'The creation timestamp' })
   createdAt: Date;
 
@@ -22,6 +25,7 @@ export const provincesColumnMap = {
   id: 'id',
   name_th: 'nameTh',
   name_en: 'nameEn',
+  is_perimeter: 'isPerimeter',
   created_at: 'createdAt',
   updated_at: 'updatedAt',
 };
@@ -31,6 +35,7 @@ export const provincesReverseColumnMap = {
   id: 'id',
   nameTh: 'name_th',
   nameEn: 'name_en',
+  isPerimeter: 'is_perimeter',
   createdAt: 'created_at',
   updatedAt: 'updated_at',
 }; 

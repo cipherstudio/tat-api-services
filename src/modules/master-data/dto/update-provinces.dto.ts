@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsBoolean } from 'class-validator';
 
 export class UpdateProvincesDto {
   @ApiProperty({ description: 'The province name in Thai', required: false })
@@ -11,4 +11,9 @@ export class UpdateProvincesDto {
   @IsString()
   @IsOptional()
   nameEn?: string;
+
+  @ApiProperty({ description: 'Whether the province is a perimeter', required: false })
+  @IsBoolean()
+  @IsOptional()
+  isPerimeter?: boolean;
 } 
