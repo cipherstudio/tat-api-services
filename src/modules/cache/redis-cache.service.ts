@@ -40,7 +40,7 @@ export class RedisCacheService {
     return `${prefix}:${identifier}`;
   }
 
-  generateListKey(prefix: string): string {
-    return `${prefix}:list`;
+  generateListKey(prefix: string, params?: string): string {
+    return params ? `${prefix}:list:${params}` : `${prefix}:list`;
   }
 }
