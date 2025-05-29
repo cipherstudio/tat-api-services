@@ -10,6 +10,7 @@ import { OfficeInternationalService } from './services/office-international.serv
 import { ExpensesOtherService } from './services/expenses-other.service.js';
 import { ProvincesService } from './services/provinces.service.js';
 import { AmphursService } from './services/amphurs.service.js';
+import { ExpensesBangkokToPlaceService } from './services/expenses-bangkok-to-place.service.js';
 
 // Import controllers
 import { CountriesController } from './controllers/countries.controller.js';
@@ -19,6 +20,7 @@ import { OfficeInternationalController } from './controllers/office-internationa
 import { ExpensesOtherController } from './controllers/expenses-other.controller.js';
 import { ProvincesController } from './controllers/provinces.controller.js';
 import { AmphursController } from './controllers/amphurs.controller.js';
+import { ExpensesBangkokToPlaceController } from './controllers/expenses-bangkok-to-place.controller.js';
 
 // Import repositories
 import { CountriesRepository } from './repositories/countries.repository.js';
@@ -28,6 +30,7 @@ import { OfficeInternationalRepository } from './repositories/office-internation
 import { ExpensesOtherRepository } from './repositories/expenses-other.repository.js';
 import { ProvincesRepository } from './repositories/provinces.repository.js';
 import { AmphursRepository } from './repositories/amphurs.repository.js';
+import { ExpensesBangkokToPlaceRepository } from './repositories/expenses-bangkok-to-place.repository.js';
 
 @Module({
   imports: [
@@ -41,6 +44,7 @@ import { AmphursRepository } from './repositories/amphurs.repository.js';
     ExpensesOtherController,
     ProvincesController,
     AmphursController,
+    ExpensesBangkokToPlaceController,
   ],
   providers: [
     // Services
@@ -51,6 +55,7 @@ import { AmphursRepository } from './repositories/amphurs.repository.js';
     ExpensesOtherService,
     ProvincesService,
     AmphursService,
+    ExpensesBangkokToPlaceService,
     // Repositories
     CountriesRepository,
     PlacesRepository,
@@ -59,6 +64,7 @@ import { AmphursRepository } from './repositories/amphurs.repository.js';
     ExpensesOtherRepository,
     ProvincesRepository,
     AmphursRepository,
+    ExpensesBangkokToPlaceRepository,
     // Shared services
     RedisCacheService,
   ],
@@ -70,6 +76,7 @@ import { AmphursRepository } from './repositories/amphurs.repository.js';
     ExpensesOtherService,
     ProvincesService,
     AmphursService,
+    ExpensesBangkokToPlaceService,
   ],
 })
 export class MasterDataModule {} 

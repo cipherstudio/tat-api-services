@@ -6,6 +6,7 @@ const places = require('../constants/places');
 
 exports.seed = async function(knex) {
   // Deletes ALL existing entries
+  await knex('expenses_bangkok_to_place').del();
   await knex('places').del();
   await knex('places').insert(places);
 };
