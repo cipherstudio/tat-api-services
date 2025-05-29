@@ -18,6 +18,8 @@ export interface User {
   passwordResetExpires?: Date;
   createdAt: Date;
   updatedAt: Date;
+  employeeCode?: string;
+  employee?: import('../../dataviews/entities/employee.entity').Employee;
 }
 
 // Snake case to camel case mapping for database results
@@ -35,6 +37,7 @@ export const userColumnMap = {
   password_reset_expires: 'passwordResetExpires',
   created_at: 'createdAt',
   updated_at: 'updatedAt',
+  employee_code: 'employeeCode',
 };
 
 // Camel case to snake case mapping for database inserts
@@ -52,4 +55,5 @@ export const userReverseColumnMap = {
   passwordResetExpires: 'password_reset_expires',
   createdAt: 'created_at',
   updatedAt: 'updated_at',
+  employeeCode: 'employee_code',
 };

@@ -131,7 +131,7 @@ ifeq ($(OS),Windows_NT)
 	@$(PACKAGE_MANAGER) run knex:migrate:make $$env:name
 else
 	@if [ -z "$(name)" ]; then echo "Error: Migration name is required." && exit 1; fi
-	@$(PACKAGE_MANAGER) run knex:migrate:make $(name)
+	@$(PACKAGE_MANAGER) run knex:migrate:make -- $(name)
 endif
 
 migration-run: ## Run pending migrations

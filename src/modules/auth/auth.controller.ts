@@ -274,7 +274,7 @@ export class AuthController {
     if (!req.user) {
       throw new UnauthorizedException('User not found');
     }
-    return req.user;
+    return this.usersService.getMe(req.user.id);
   }
 
   @Version('1')

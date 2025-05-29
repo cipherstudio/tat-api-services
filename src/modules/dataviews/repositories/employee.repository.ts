@@ -97,4 +97,19 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
       meta: employeesResult.meta,
     };
   }
+
+  async findByCodeWithPosition4ot(
+    code: string,
+  ): Promise<(Employee & { position4ot?: ViewPosition4ot }) | undefined> {
+    const employee = await this.findByCode(code);
+    if (!employee) return undefined;
+    let position4ot;
+    if (employee.apaPpnNumber) {
+      const pos = await this.knex('VIEW_POSITION_4OT')
+        .where('POS_POSITIONCODE', employee.apaPpnNumber)
+        .first();
+      position4ot = pos ? await toCamelCase<ViewPosition4ot>(pos) : undefined;
+    }
+    return { ...employee, position4ot };
+  }
 }
