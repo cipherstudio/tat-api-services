@@ -77,7 +77,7 @@ export class DataviewsService {
   async findEmployeesWithQuery(
     query: QueryEmployeeDto,
   ): Promise<EmployeePaginate> {
-    return this.employeeRepository.findWithQuery(query);
+    return this.employeeRepository.findWithQueryWithPosition4ot(query);
   }
 
   async findAbDeputiesWithQuery(

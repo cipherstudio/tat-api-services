@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { ViewPosition4otDto } from './view-position-4ot.dto';
 
 export class EmployeeDto {
   @ApiProperty()
@@ -105,4 +106,7 @@ export class EmployeeDto {
 
   @ApiProperty()
   taxId: string;
+
+  @ApiProperty({ type: () => ViewPosition4otDto, required: false })
+  position4ot?: ViewPosition4otDto;
 }

@@ -4,6 +4,7 @@ import { KnexBaseRepository } from '../../../common/repositories/knex-base.repos
 import { KnexService } from '../../../database/knex-service/knex.service';
 import { toCamelCase } from '../../../common/utils/case-mapping';
 import { QueryEmployeeDto } from '../dto/query-employee.dto';
+import { ViewPosition4ot } from '../entities/view-position-4ot.entity';
 
 @Injectable()
 export class EmployeeRepository extends KnexBaseRepository<Employee> {
@@ -63,6 +64,37 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
         limit: query.limit ?? 10,
         offset: query.offset ?? 0,
       },
+    };
+  }
+
+  async findWithQueryWithPosition4ot(query: QueryEmployeeDto): Promise<{
+    data: (Employee & { position4ot?: ViewPosition4ot })[];
+    meta: { total: number; limit: number; offset: number };
+  }> {
+    const employeesResult = await this.findWithQuery(query);
+    const employees = employeesResult.data;
+    const apaPpnNumbers = employees.map((e) => e.apaPpnNumber).filter(Boolean);
+    let positions: ViewPosition4ot[] = [];
+    if (apaPpnNumbers.length > 0) {
+      positions = await this.knex('VIEW_POSITION_4OT').whereIn(
+        'POS_POSITIONCODE',
+        apaPpnNumbers,
+      );
+    }
+    // toCamelCase ทุก position ก่อนสร้าง map
+    const camelPositions = await Promise.all(
+      positions.map((p) => toCamelCase<ViewPosition4ot>(p)),
+    );
+    const positionMap = new Map(
+      camelPositions.map((p) => [p.posPositioncode, p]),
+    );
+    const data = employees.map((e) => ({
+      ...e,
+      position4ot: positionMap.get(e.apaPpnNumber),
+    }));
+    return {
+      data,
+      meta: employeesResult.meta,
     };
   }
 }
