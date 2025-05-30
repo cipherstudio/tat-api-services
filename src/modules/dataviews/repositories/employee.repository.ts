@@ -31,10 +31,14 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
     const conditions: Record<string, any> = {};
     if (query.code) conditions['CODE'] = query.code;
     if (query.name) conditions['NAME'] = query.name;
-    
+
     let builder;
     if (query.searchTerm) {
-      builder = this.knex(this.tableName).where('NAME', 'like', `%${query.searchTerm}%`);
+      builder = this.knex(this.tableName).where(
+        'NAME',
+        'like',
+        `%${query.searchTerm}%`,
+      );
     } else {
       builder = this.knex(this.tableName).where(conditions);
     }
@@ -60,7 +64,11 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
     // นับจำนวนทั้งหมด (ไม่ใส่ limit/offset)
     let countQuery;
     if (query.searchTerm) {
-      countQuery = this.knex(this.tableName).where('NAME', 'like', `%${query.searchTerm}%`);
+      countQuery = this.knex(this.tableName).where(
+        'NAME',
+        'like',
+        `%${query.searchTerm}%`,
+      );
     } else {
       countQuery = this.knex(this.tableName).where(conditions);
     }
