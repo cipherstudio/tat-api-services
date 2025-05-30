@@ -11,6 +11,7 @@ import { ExpensesOtherService } from './services/expenses-other.service.js';
 import { ProvincesService } from './services/provinces.service.js';
 import { AmphursService } from './services/amphurs.service.js';
 import { ExpensesBangkokToPlaceService } from './services/expenses-bangkok-to-place.service.js';
+import { ExpensesVehicleService } from './services/expenses-vehicle.service.js';
 
 // Import controllers
 import { CountriesController } from './controllers/countries.controller.js';
@@ -21,6 +22,7 @@ import { ExpensesOtherController } from './controllers/expenses-other.controller
 import { ProvincesController } from './controllers/provinces.controller.js';
 import { AmphursController } from './controllers/amphurs.controller.js';
 import { ExpensesBangkokToPlaceController } from './controllers/expenses-bangkok-to-place.controller.js';
+import { ExpensesVehicleController } from './controllers/expenses-vehicle.controller.js';
 
 // Import repositories
 import { CountriesRepository } from './repositories/countries.repository.js';
@@ -31,6 +33,7 @@ import { ExpensesOtherRepository } from './repositories/expenses-other.repositor
 import { ProvincesRepository } from './repositories/provinces.repository.js';
 import { AmphursRepository } from './repositories/amphurs.repository.js';
 import { ExpensesBangkokToPlaceRepository } from './repositories/expenses-bangkok-to-place.repository.js';
+import { ExpensesVehicleRepository } from './repositories/expenses-vehicle.repository.js';
 
 @Module({
   imports: [
@@ -45,6 +48,7 @@ import { ExpensesBangkokToPlaceRepository } from './repositories/expenses-bangko
     ProvincesController,
     AmphursController,
     ExpensesBangkokToPlaceController,
+    ExpensesVehicleController,
   ],
   providers: [
     // Services
@@ -56,6 +60,7 @@ import { ExpensesBangkokToPlaceRepository } from './repositories/expenses-bangko
     ProvincesService,
     AmphursService,
     ExpensesBangkokToPlaceService,
+    ExpensesVehicleService,
     // Repositories
     CountriesRepository,
     PlacesRepository,
@@ -65,6 +70,7 @@ import { ExpensesBangkokToPlaceRepository } from './repositories/expenses-bangko
     ProvincesRepository,
     AmphursRepository,
     ExpensesBangkokToPlaceRepository,
+    ExpensesVehicleRepository,
     // Shared services
     RedisCacheService,
   ],
@@ -77,6 +83,7 @@ import { ExpensesBangkokToPlaceRepository } from './repositories/expenses-bangko
     ProvincesService,
     AmphursService,
     ExpensesBangkokToPlaceService,
+    ExpensesVehicleService,
   ],
 })
 export class MasterDataModule {} 
