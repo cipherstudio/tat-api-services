@@ -134,6 +134,7 @@ migrations_menu() {
     case $choice in
         1)
             migration_name=$(get_parameter "migration_name" "migration name")
+            migration_name=$(echo "$migration_name" | xargs)
             make migration-create name=$migration_name
             ;;
         2) make migration-run ;;

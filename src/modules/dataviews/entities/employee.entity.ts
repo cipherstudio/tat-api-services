@@ -34,6 +34,7 @@ export interface Employee {
   typeData: string;
   cardId: string;
   taxId: string;
+  position4ot?: import('./view-position-4ot.entity').ViewPosition4ot;
 }
 
 export const employeeColumnMap = {
@@ -120,4 +121,3 @@ export type EmployeePaginate = {
     offset: number;
   };
 };
- 

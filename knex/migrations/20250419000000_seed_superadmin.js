@@ -20,6 +20,7 @@ exports.up = async function (knex) {
       password: hashedPassword,
       full_name: 'Super Admin',
       role: 'admin',
+      employee_code: '38019',
       is_active: 1,
       created_at: new Date(),
       updated_at: new Date(),

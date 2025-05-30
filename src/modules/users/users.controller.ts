@@ -13,6 +13,7 @@ import {
   Query,
   ValidationPipe,
   Version,
+  Req,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -49,6 +50,13 @@ export class UsersController {
   findAll(@Query(new ValidationPipe({ transform: true })) query: QueryUserDto) {
     const { page = 1, limit = 10, searchTerm } = query;
     return this.usersService.findAll(page, limit, searchTerm);
+  }
+
+  @Version('1')
+  @Get('me')
+  @ApiOperation({ summary: 'Get current user (me)' })
+  getMe(@Req() req) {
+    return this.usersService.getMe(req.user.id);
   }
 
   @Version('1')

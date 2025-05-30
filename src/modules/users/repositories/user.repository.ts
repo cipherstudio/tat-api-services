@@ -3,10 +3,14 @@ import { User, UserRole } from '../entities/user.entity';
 import { KnexBaseRepository } from '../../../common/repositories/knex-base.repository';
 import { KnexService } from '../../../database/knex-service/knex.service';
 import { toCamelCase, toSnakeCase } from '../../../common/utils/case-mapping';
+import { EmployeeRepository } from '../../dataviews/repositories/employee.repository';
 
 @Injectable()
 export class UserRepository extends KnexBaseRepository<User> {
-  constructor(knexService: KnexService) {
+  constructor(
+    knexService: KnexService,
+    private readonly employeeRepository: EmployeeRepository,
+  ) {
     super(knexService, 'users');
   }
 
@@ -124,6 +128,21 @@ export class UserRepository extends KnexBaseRepository<User> {
         page,
         limit,
       },
+    };
+  }
+
+  async findByIdWithEmployee(id: number): Promise<User & { employee?: any }> {
+    const user = await this.knexService.knex('users').where({ id }).first();
+    if (!user) return undefined;
+    let employee;
+    if (user.employee_code) {
+      employee = await this.employeeRepository.findByCodeWithPosition4ot(
+        user.employee_code,
+      );
+    }
+    return {
+      ...(await toCamelCase(user)),
+      employee: employee || undefined,
     };
   }
 }

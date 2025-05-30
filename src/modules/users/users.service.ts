@@ -167,4 +167,8 @@ export class UsersService {
     // Hide password, refreshToken, passwordResetToken, passwordResetExpires
     return omitFields(user, SENSITIVE_FIELDS);
   }
+
+  async getMe(userId: number) {
+    return this.userRepository.findByIdWithEmployee(userId);
+  }
 }
