@@ -206,7 +206,7 @@ const countries = [
     { id: 205, code: "SN", name_en: "SENEGAL", name_th: "เซเนกัล" },
     { id: 206, code: "SO", name_en: "SOMALIA", name_th: "โซมาเลีย" },
     { id: 207, code: "SR", name_en: "SURINAME", name_th: "ซูรินาม" },
-    { id: 208, code: "SS", name_en: "SOUTH SUDAN", name_th: "เกาะเซาท์จอร์เจียและหมู่เกาะเซาท์แซนด์วิช" },
+    { id: 208, code: "SS", name_en: "SOUTH SUDAN", name_th: "ซูดานใต้" },
     { id: 209, code: "ST", name_en: "SAO TOME AND PRINCIPE", name_th: "เซาตูเมและปรินซีปี" },
     { id: 210, code: "SV", name_en: "EL SALVADOR", name_th: "เอลซัลวาดอร์" },
     { id: 211, code: "SX", name_en: "SINT MAARTEN", name_th: "ซินต์มาร์เติน" },
