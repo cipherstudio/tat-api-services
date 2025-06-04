@@ -12,6 +12,8 @@ import { ProvincesService } from './services/provinces.service.js';
 import { AmphursService } from './services/amphurs.service.js';
 import { ExpensesBangkokToPlaceService } from './services/expenses-bangkok-to-place.service.js';
 import { ExpensesVehicleService } from './services/expenses-vehicle.service.js';
+import { CommitteePositionService } from './services/committee-position.service.js';
+import { OutsiderEquivalentService } from './services/outsider-equivalent.service.js';
 
 // Import controllers
 import { CountriesController } from './controllers/countries.controller.js';
@@ -23,6 +25,8 @@ import { ProvincesController } from './controllers/provinces.controller.js';
 import { AmphursController } from './controllers/amphurs.controller.js';
 import { ExpensesBangkokToPlaceController } from './controllers/expenses-bangkok-to-place.controller.js';
 import { ExpensesVehicleController } from './controllers/expenses-vehicle.controller.js';
+import { CommitteePositionController } from './controllers/committee-position.controller.js';
+import { OutsiderEquivalentController } from './controllers/outsider-equivalent.controller.js';
 
 // Import repositories
 import { CountriesRepository } from './repositories/countries.repository.js';
@@ -34,6 +38,8 @@ import { ProvincesRepository } from './repositories/provinces.repository.js';
 import { AmphursRepository } from './repositories/amphurs.repository.js';
 import { ExpensesBangkokToPlaceRepository } from './repositories/expenses-bangkok-to-place.repository.js';
 import { ExpensesVehicleRepository } from './repositories/expenses-vehicle.repository.js';
+import { CommitteePositionRepository } from './repositories/committee-position.repository.js';
+import { OutsiderEquivalentRepository } from './repositories/outsider-equivalent.repository.js';
 
 @Module({
   imports: [
@@ -49,6 +55,8 @@ import { ExpensesVehicleRepository } from './repositories/expenses-vehicle.repos
     AmphursController,
     ExpensesBangkokToPlaceController,
     ExpensesVehicleController,
+    CommitteePositionController,
+    OutsiderEquivalentController,
   ],
   providers: [
     // Services
@@ -61,6 +69,8 @@ import { ExpensesVehicleRepository } from './repositories/expenses-vehicle.repos
     AmphursService,
     ExpensesBangkokToPlaceService,
     ExpensesVehicleService,
+    CommitteePositionService,
+    OutsiderEquivalentService,
     // Repositories
     CountriesRepository,
     PlacesRepository,
@@ -71,6 +81,8 @@ import { ExpensesVehicleRepository } from './repositories/expenses-vehicle.repos
     AmphursRepository,
     ExpensesBangkokToPlaceRepository,
     ExpensesVehicleRepository,
+    CommitteePositionRepository,
+    OutsiderEquivalentRepository,
     // Shared services
     RedisCacheService,
   ],
@@ -84,6 +96,8 @@ import { ExpensesVehicleRepository } from './repositories/expenses-vehicle.repos
     AmphursService,
     ExpensesBangkokToPlaceService,
     ExpensesVehicleService,
+    CommitteePositionService,
+    OutsiderEquivalentService,
   ],
 })
 export class MasterDataModule {} 
