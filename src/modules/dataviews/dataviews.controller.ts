@@ -56,7 +56,11 @@ export class DataviewsController {
   })
   @ApiQuery({ name: 'code', required: false, description: 'รหัสพนักงาน' })
   @ApiQuery({ name: 'name', required: false, description: 'ชื่อพนักงาน' })
-  @ApiQuery({ name: 'searchTerm', required: false, description: 'ค้นหาจากชื่อพนักงาน (LIKE query)' })
+  @ApiQuery({
+    name: 'searchTerm',
+    required: false,
+    description: 'ค้นหาจากชื่อพนักงาน (LIKE query)',
+  })
   @ApiQuery({ name: 'sex', required: false, description: 'เพศ' })
   @ApiQuery({ name: 'province', required: false, description: 'จังหวัด' })
   @ApiQuery({ name: 'department', required: false, description: 'แผนก' })

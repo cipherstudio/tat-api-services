@@ -28,16 +28,14 @@ print_section() {
 get_parameter() {
     local param_name=$1
     local param_desc=$2
-    local param_value=""
-    
-    while [ -z "$param_value" ]; do
+    PARAM_VALUE=""
+    while [ -z "$PARAM_VALUE" ]; do
         echo -e "${YELLOW}Enter $param_desc:${NC}"
-        read param_value
-        if [ -z "$param_value" ]; then
+        read PARAM_VALUE
+        if [ -z "$PARAM_VALUE" ]; then
             echo -e "${RED}Error: $param_desc is required${NC}"
         fi
     done
-    echo "$param_value"
 }
 
 # Check if logs directory exists and create it if not
@@ -99,19 +97,23 @@ module_generation_menu() {
     read choice
     case $choice in
         1) 
-            module_name=$(get_parameter "module_name" "module name")
+            get_parameter "module_name" "module name"
+            module_name="$PARAM_VALUE"
             make generate name=$module_name
             ;;
         2)
-            module_name=$(get_parameter "module_name" "module name")
+            get_parameter "module_name" "module name"
+            module_name="$PARAM_VALUE"
             make generate-with-auth name=$module_name
             ;;
         3)
-            module_name=$(get_parameter "module_name" "module name")
+            get_parameter "module_name" "module name"
+            module_name="$PARAM_VALUE"
             make generate-with-pagination name=$module_name
             ;;
         4)
-            module_name=$(get_parameter "module_name" "module name")
+            get_parameter "module_name" "module name"
+            module_name="$PARAM_VALUE"
             make generate-full name=$module_name
             ;;
         0) return ;;
@@ -133,7 +135,8 @@ migrations_menu() {
     read choice
     case $choice in
         1)
-            migration_name=$(get_parameter "migration_name" "migration name")
+            get_parameter "migration_name" "migration name"
+            migration_name="$PARAM_VALUE"
             migration_name=$(echo "$migration_name" | xargs)
             make migration-create name=$migration_name
             ;;

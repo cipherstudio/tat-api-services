@@ -11,6 +11,7 @@ import { RequestLoggerMiddleware } from './middleware/request-logger.middleware'
 import { AuthModule } from './modules/auth/auth.module';
 import { MasterDataModule } from './modules/master-data/master-data.module';
 import { DataviewsModule } from './modules/dataviews/dataviews.module';
+import { FilesModule } from './modules/files/files.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { DataviewsModule } from './modules/dataviews/dataviews.module';
     AuthModule,
     MasterDataModule,
     DataviewsModule,
+    FilesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
