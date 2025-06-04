@@ -90,7 +90,7 @@ export class AuthController {
   }
 
   @Version('1')
-  @UseGuards(JwtAuthGuard)
+  //@UseGuards(JwtAuthGuard)
   @Post('refresh')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Refresh JWT token' })
