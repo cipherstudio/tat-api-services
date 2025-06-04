@@ -43,6 +43,8 @@ COPY --from=builder /app/knexfile.js ./knexfile.js
 
 # Create logs directory
 RUN mkdir -p logs
+# Create uploads directory with permission 777
+RUN mkdir -p uploads && chmod 777 uploads
 
 # Copy environment files
 COPY .env.* ./
@@ -80,6 +82,8 @@ COPY . .
 
 # Create logs directory
 RUN mkdir -p logs
+# Create uploads directory with permission 777
+RUN mkdir -p uploads && chmod 777 uploads
 
 # Environment argument with default to development
 ARG NODE_ENV=development
@@ -118,6 +122,8 @@ COPY --from=builder /app/knexfile.js ./knexfile.js
 
 # Create logs directory
 RUN mkdir -p logs
+# Create uploads directory with permission 777
+RUN mkdir -p uploads && chmod 777 uploads
 
 # Copy environment files
 COPY .env.* ./
