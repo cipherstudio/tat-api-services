@@ -29,8 +29,10 @@ export class DisbursementSupportingQuestionRepository extends KnexBaseRepository
 
   async findById(
     id: number,
+    orderBy: string = 'id',
+    direction: 'asc' | 'desc' = 'asc',
   ): Promise<DisbursementSupportingQuestion | undefined> {
-    const dbEntity = await super.findById(id);
+    const dbEntity = await super.findById(id, orderBy, direction);
     return dbEntity
       ? await toCamelCase<DisbursementSupportingQuestion>(dbEntity)
       : undefined;
@@ -38,8 +40,10 @@ export class DisbursementSupportingQuestionRepository extends KnexBaseRepository
 
   async findOne(
     conditions: Record<string, any>,
+    orderBy: string = 'id',
+    direction: 'asc' | 'desc' = 'asc',
   ): Promise<DisbursementSupportingQuestion | undefined> {
-    const dbEntity = await super.findOne(conditions);
+    const dbEntity = await super.findOne(conditions, orderBy, direction);
     return dbEntity
       ? await toCamelCase<DisbursementSupportingQuestion>(dbEntity)
       : undefined;
@@ -47,8 +51,10 @@ export class DisbursementSupportingQuestionRepository extends KnexBaseRepository
 
   async find(
     conditions: Record<string, any> = {},
+    orderBy: string = 'id',
+    direction: 'asc' | 'desc' = 'asc',
   ): Promise<DisbursementSupportingQuestion[]> {
-    const dbEntities = await super.find(conditions);
+    const dbEntities = await super.find(conditions, orderBy, direction);
     return Promise.all(
       dbEntities.map(
         async (e) => await toCamelCase<DisbursementSupportingQuestion>(e),
