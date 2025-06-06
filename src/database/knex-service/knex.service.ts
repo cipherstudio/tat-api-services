@@ -36,16 +36,39 @@ export class KnexService implements OnModuleInit, OnModuleDestroy {
   }
 
   // Helper methods for common database operations
-  async findById(table: string, id: number) {
-    return this._knexInstance(table).where({ id }).first();
+  async findById(
+    table: string,
+    id: number,
+    orderBy: string = 'id',
+    direction: 'asc' | 'desc' = 'asc',
+  ) {
+    return this._knexInstance(table)
+      .where({ id })
+      .orderBy(orderBy, direction)
+      .first();
   }
 
-  async findOne(table: string, conditions: Record<string, any>) {
-    return this._knexInstance(table).where(conditions).first();
+  async findOne(
+    table: string,
+    conditions: Record<string, any>,
+    orderBy: string = 'id',
+    direction: 'asc' | 'desc' = 'asc',
+  ) {
+    return this._knexInstance(table)
+      .where(conditions)
+      .orderBy(orderBy, direction)
+      .first();
   }
 
-  async findMany(table: string, conditions: Record<string, any> = {}) {
-    return this._knexInstance(table).where(conditions);
+  async findMany(
+    table: string,
+    conditions: Record<string, any> = {},
+    orderBy: string = 'id',
+    direction: 'asc' | 'desc' = 'asc',
+  ) {
+    return this._knexInstance(table)
+      .where(conditions)
+      .orderBy(orderBy, direction);
   }
 
   async findWithPagination(

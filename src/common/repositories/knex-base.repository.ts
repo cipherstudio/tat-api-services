@@ -18,18 +18,45 @@ export class KnexBaseRepository<T> {
     return this.knexService.knex;
   }
 
-  async findById(id: number): Promise<T | undefined> {
-    const dbRow = await this.knexService.findById(this.tableName, id);
+  async findById(
+    id: number,
+    orderBy: string = 'id',
+    direction: 'asc' | 'desc' = 'asc',
+  ): Promise<T | undefined> {
+    const dbRow = await this.knexService.findById(
+      this.tableName,
+      id,
+      orderBy,
+      direction,
+    );
     return dbRow ? await toCamelCase<T>(dbRow) : undefined;
   }
 
-  async findOne(conditions: Record<string, any>): Promise<T | undefined> {
-    const dbRow = await this.knexService.findOne(this.tableName, conditions);
+  async findOne(
+    conditions: Record<string, any>,
+    orderBy: string = 'id',
+    direction: 'asc' | 'desc' = 'asc',
+  ): Promise<T | undefined> {
+    const dbRow = await this.knexService.findOne(
+      this.tableName,
+      conditions,
+      orderBy,
+      direction,
+    );
     return dbRow ? await toCamelCase<T>(dbRow) : undefined;
   }
 
-  async find(conditions: Record<string, any> = {}): Promise<T[]> {
-    const dbRows = await this.knexService.findMany(this.tableName, conditions);
+  async find(
+    conditions: Record<string, any> = {},
+    orderBy: string = 'id',
+    direction: 'asc' | 'desc' = 'asc',
+  ): Promise<T[]> {
+    const dbRows = await this.knexService.findMany(
+      this.tableName,
+      conditions,
+      orderBy,
+      direction,
+    );
     return Promise.all(dbRows.map(async (row) => await toCamelCase<T>(row)));
   }
 

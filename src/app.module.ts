@@ -12,6 +12,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { MasterDataModule } from './modules/master-data/master-data.module';
 import { DataviewsModule } from './modules/dataviews/dataviews.module';
 import { FilesModule } from './modules/files/files.module';
+import { DisbursementsupportingModule } from './modules/disbursementsupporting/disbursementsupporting.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { FilesModule } from './modules/files/files.module';
     MasterDataModule,
     DataviewsModule,
     FilesModule,
+    DisbursementsupportingModule,
   ],
   controllers: [AppController],
   providers: [AppService],
