@@ -1,6 +1,5 @@
 const accommodationRates = [
     {
-      "order": 1,
       "position_title": "ประธานกรรมการ",
       "level_code": null,
       "flat_rate_enabled": false,
@@ -11,10 +10,8 @@ const accommodationRates = [
       "double_room_amount": null,
       "is_editable_amount": true,
       "is_editable_days": true,
-      "note": "พักเดี่ยวเท่านั้น"
     },
     {
-      "order": 2,
       "position_title": "กรรมการ",
       "level_code": null,
       "flat_rate_enabled": false,
@@ -25,10 +22,8 @@ const accommodationRates = [
       "double_room_amount": null,
       "is_editable_amount": true,
       "is_editable_days": true,
-      "note": "พักเดี่ยวเท่านั้น"
     },
     {
-      "order": 3,
       "position_title": "ผู้ว่าการ ททท",
       "level_code": null,
       "flat_rate_enabled": false,
@@ -39,10 +34,8 @@ const accommodationRates = [
       "double_room_amount": null,
       "is_editable_amount": true,
       "is_editable_days": true,
-      "note": "พักเดี่ยวเท่านั้น"
     },
     {
-      "order": 4,
       "position_title": "C11",
       "level_code": "11",
       "flat_rate_enabled": false,
@@ -53,10 +46,8 @@ const accommodationRates = [
       "double_room_amount": null,
       "is_editable_amount": true,
       "is_editable_days": true,
-      "note": null
     },
     {
-      "order": 5,
       "position_title": "C10",
       "level_code": "10",
       "flat_rate_enabled": false,
@@ -67,10 +58,8 @@ const accommodationRates = [
       "double_room_amount": null,
       "is_editable_amount": true,
       "is_editable_days": true,
-      "note": null
     },
     {
-      "order": 6,
       "position_title": "C9",
       "level_code": "09",
       "flat_rate_enabled": false,
@@ -81,10 +70,8 @@ const accommodationRates = [
       "double_room_amount": null,
       "is_editable_amount": true,
       "is_editable_days": true,
-      "note": null
     },
     {
-      "order": 7,
       "position_title": "C8",
       "level_code": "08",
       "flat_rate_enabled": true,
@@ -95,10 +82,8 @@ const accommodationRates = [
       "double_room_amount": 1015,
       "is_editable_amount": true,
       "is_editable_days": true,
-      "note": "flat_rate ปรับเงินไม่ได้"
     },
     {
-      "order": 8,
       "position_title": "C7",
       "level_code": "07",
       "flat_rate_enabled": true,
@@ -109,10 +94,8 @@ const accommodationRates = [
       "double_room_amount": 1015,
       "is_editable_amount": true,
       "is_editable_days": true,
-      "note": "flat_rate ปรับเงินไม่ได้"
     },
     {
-      "order": 9,
       "position_title": "C6",
       "level_code": "06",
       "flat_rate_enabled": true,
@@ -123,10 +106,8 @@ const accommodationRates = [
       "double_room_amount": 1015,
       "is_editable_amount": true,
       "is_editable_days": true,
-      "note": "flat_rate ปรับเงินไม่ได้"
     },
     {
-      "order": 10,
       "position_title": "C5",
       "level_code": "05",
       "flat_rate_enabled": true,
@@ -137,10 +118,8 @@ const accommodationRates = [
       "double_room_amount": 1015,
       "is_editable_amount": true,
       "is_editable_days": true,
-      "note": "flat_rate ปรับเงินไม่ได้"
     },
     {
-      "order": 11,
       "position_title": "C4",
       "level_code": "04",
       "flat_rate_enabled": true,
@@ -151,10 +130,8 @@ const accommodationRates = [
       "double_room_amount": 1015,
       "is_editable_amount": true,
       "is_editable_days": true,
-      "note": "flat_rate ปรับเงินไม่ได้"
     },
     {
-      "order": 12,
       "position_title": "C3",
       "level_code": "03",
       "flat_rate_enabled": true,
@@ -165,6 +142,7 @@ const accommodationRates = [
       "double_room_amount": 1015,
       "is_editable_amount": true,
       "is_editable_days": true,
-      "note": "flat_rate ปรับเงินไม่ได้"
     }
   ]
+
+  module.exports = accommodationRates;

@@ -7,7 +7,7 @@ exports.up = function(knex) {
       table.increments('id').primary();
       table.string('position_title').nullable(); 
       table.string('level_code').nullable(); 
-      table.enu('area_type', ['ในเขต', 'นอกเขต']).notNullable(); 
+      table.enu('area_type', ['IN', 'OUT']).notNullable(); 
       table.decimal('per_diem_standard', 10, 2).notNullable(); 
       table.boolean('is_editable_per_diem').notNullable().defaultTo(false); 
       table.decimal('max_per_diem', 10, 2).nullable(); 
