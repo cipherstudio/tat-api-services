@@ -20,7 +20,7 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
   }
 
   async findByCode(code: string): Promise<Employee | undefined> {
-    const dbEntity = await super.findOne({ CODE: code });
+    const dbEntity = await super.findOne({ CODE: code }, 'CODE');
     return dbEntity ? await toCamelCase<Employee>(dbEntity) : undefined;
   }
 

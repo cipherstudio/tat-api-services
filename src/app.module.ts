@@ -13,6 +13,7 @@ import { MasterDataModule } from './modules/master-data/master-data.module';
 import { DataviewsModule } from './modules/dataviews/dataviews.module';
 import { FilesModule } from './modules/files/files.module';
 import { DisbursementsupportingModule } from './modules/disbursementsupporting/disbursementsupporting.module';
+import { ApprovalModule } from './modules/approval/approval.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { DisbursementsupportingModule } from './modules/disbursementsupporting/d
     DataviewsModule,
     FilesModule,
     DisbursementsupportingModule,
+    ApprovalModule,
   ],
   controllers: [AppController],
   providers: [AppService],
