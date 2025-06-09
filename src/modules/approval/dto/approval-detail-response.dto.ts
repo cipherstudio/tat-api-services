@@ -1,5 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Approval } from '../entities/approval.entity';
+import { TransportationExpenseDto } from './transportation-expense.dto';
+import { OtherExpenseDto } from './other-expense.dto';
+import { ApprovalConditionDto } from './approval-condition.dto';
+import { ApprovalBudgetDto } from './approval-budget.dto';
 
 export class ApprovalStatusHistoryDto {
   @ApiProperty({ description: 'Status ID' })
@@ -84,4 +88,50 @@ export class ApprovalDetailResponseDto implements Approval {
 
   @ApiProperty({ description: 'Current status of the approval' })
   currentStatus: string;
+
+  @ApiProperty({
+    description: 'Transportation expenses',
+    type: [TransportationExpenseDto],
+    required: false
+  })
+  transportationExpenses?: TransportationExpenseDto[];
+
+  @ApiProperty({
+    description: 'Other expenses',
+    type: [OtherExpenseDto],
+    required: false
+  })
+  otherExpenses?: OtherExpenseDto[];
+
+  @ApiProperty({
+    description: 'Total outbound amount for form 3',
+    required: false
+  })
+  form3TotalOutbound?: number;
+
+  @ApiProperty({
+    description: 'Total inbound amount for form 3',
+    required: false
+  })
+  form3TotalInbound?: number;
+
+  @ApiProperty({
+    description: 'Total amount for form 3',
+    required: false
+  })
+  form3TotalAmount?: number;
+
+  @ApiProperty({
+    description: 'Approval conditions',
+    type: [ApprovalConditionDto],
+    required: false
+  })
+  conditions?: ApprovalConditionDto[];
+
+  @ApiProperty({
+    description: 'รายการงบประมาณ',
+    type: [ApprovalBudgetDto],
+    required: false
+  })
+  budgets?: ApprovalBudgetDto[];
 } 

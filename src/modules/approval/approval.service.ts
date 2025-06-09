@@ -176,12 +176,96 @@ export class ApprovalService {
       .orderBy('created_at', 'desc')
       .select('id', 'status', 'user_id as userId', 'created_at as createdAt');
 
+    // Get transportation expenses
+    const transportationExpenses = await this.knexService.knex('approval_transportation_expense')
+      .where('approval_id', id)
+      .select(
+        'id',
+        'staff_member_id as staffId',
+        'work_location_id as workLocationId',
+        'travel_type as travelType',
+        'expense_type as expenseType',
+        'travel_method as travelMethod',
+        'outbound_origin as outboundOrigin',
+        'outbound_destination as outboundDestination',
+        'outbound_trips as outboundTrips',
+        'outbound_expense as outboundExpense',
+        'outbound_total as outboundTotal',
+        'inbound_origin as inboundOrigin',
+        'inbound_destination as inboundDestination',
+        'inbound_trips as inboundTrips',
+        'inbound_expense as inboundExpense',
+        'inbound_total as inboundTotal',
+        'total_amount as totalAmount'
+      );
+
+    // Get other expenses
+    const otherExpenses = await this.knexService.knex('approval_other_expense')
+      .where('approval_id', id)
+      .select(
+        'id',
+        'type',
+        'amount',
+        'position',
+        'reason',
+        'acknowledged'
+      );
+
+    // Get conditions
+    const conditions = await this.knexService.knex('approval_conditions')
+      .where('approval_id', id)
+      .select('id', 'text');
+
+    // Get budgets
+    const budgets = await this.knexService.knex('approval_budgets')
+      .where('approval_id', id)
+      .select(
+        'id',
+        'budget_type',
+        'item_type',
+        'reservation_code',
+        'department',
+        'budget_code'
+      );
+
+    // Transform transportation expenses to match DTO structure
+    const transformedExpenses = transportationExpenses.map(expense => ({
+      id: expense.id,
+      staffId: expense.staffId,
+      workLocationId: expense.workLocationId,
+      travelType: expense.travelType,
+      expenseType: expense.expenseType,
+      travelMethod: expense.travelMethod,
+      outbound: expense.outboundOrigin ? {
+        origin: expense.outboundOrigin,
+        destination: expense.outboundDestination,
+        trips: expense.outboundTrips,
+        expense: expense.outboundExpense,
+        total: expense.outboundTotal
+      } : undefined,
+      inbound: expense.inboundOrigin ? {
+        origin: expense.inboundOrigin,
+        destination: expense.inboundDestination,
+        trips: expense.inboundTrips,
+        expense: expense.inboundExpense,
+        total: expense.inboundTotal
+      } : undefined,
+      totalAmount: expense.totalAmount
+    }));
+
     const currentStatus = statusHistory[0]?.status || 'ฉบับร่าง';
 
     const response: ApprovalDetailResponseDto = {
       ...approval,
       statusHistory,
-      currentStatus
+      currentStatus,
+      transportationExpenses: transformedExpenses,
+      otherExpenses,
+      conditions,
+      budgets,
+      form3TotalOutbound: approval.form3_total_outbound,
+      form3TotalInbound: approval.form3_total_inbound,
+      form3TotalAmount: approval.form3_total_amount
     };
 
     // Cache the result
@@ -200,8 +284,138 @@ export class ApprovalService {
     const trx = await this.knexService.knex.transaction();
 
     try {
-      // Update approval record
-      await this.approvalRepository.update(id, updateApprovalDto, trx);
+      // Update approval record with form 3 totals
+      const approvalUpdateData = {
+        ...updateApprovalDto,
+        form3_total_outbound: updateApprovalDto.form3TotalOutbound,
+        form3_total_inbound: updateApprovalDto.form3TotalInbound,
+        form3_total_amount: updateApprovalDto.form3TotalAmount,
+      };
+      await this.approvalRepository.update(id, approvalUpdateData, trx);
+
+      // Handle transportation expenses
+      // First, delete all existing transportation expenses for this approval
+      await trx('approval_transportation_expense')
+        .where('approval_id', id)
+        .delete();
+
+      // Process transportation expenses from staff members' work locations
+      const expensesToInsert = [];
+      for (const staffMember of updateApprovalDto.staffMembers) {
+        for (const workLocation of staffMember.workLocations) {
+          if (workLocation.transportationExpenses?.length > 0) {
+            // Get staff member ID from employee code
+            const staffMemberRecord = await trx('staff_member')
+              .where('employee_code', staffMember.employeeCode)
+              .first();
+
+            if (!staffMemberRecord) {
+              throw new NotFoundException(`Staff member with employee code ${staffMember.employeeCode} not found`);
+            }
+
+            // Get work location ID from location and destination
+            const workLocationRecord = await trx('work_location')
+              .where('location', workLocation.location)
+              .where('destination', workLocation.destination)
+              .first();
+
+            if (!workLocationRecord) {
+              throw new NotFoundException(`Work location with location ${workLocation.location} and destination ${workLocation.destination} not found`);
+            }
+
+            // Add transportation expenses
+            for (const expense of workLocation.transportationExpenses) {
+              expensesToInsert.push({
+                approval_id: id,
+                staff_member_id: staffMemberRecord.id,
+                work_location_id: workLocationRecord.id,
+                travel_type: expense.travelType,
+                expense_type: expense.expenseType,
+                travel_method: expense.travelMethod,
+                outbound_origin: expense.outbound?.origin,
+                outbound_destination: expense.outbound?.destination,
+                outbound_trips: expense.outbound?.trips,
+                outbound_expense: expense.outbound?.expense,
+                outbound_total: expense.outbound?.total,
+                inbound_origin: expense.inbound?.origin,
+                inbound_destination: expense.inbound?.destination,
+                inbound_trips: expense.inbound?.trips,
+                inbound_expense: expense.inbound?.expense,
+                inbound_total: expense.inbound?.total,
+                total_amount: expense.totalAmount,
+                created_at: new Date(),
+                updated_at: new Date()
+              });
+            }
+          }
+        }
+      }
+
+      if (expensesToInsert.length > 0) {
+        await trx('approval_transportation_expense').insert(expensesToInsert);
+      }
+
+      // Handle other expenses
+      // First, delete all existing other expenses for this approval
+      await trx('approval_other_expense')
+        .where('approval_id', id)
+        .delete();
+
+      // If otherExpenses is provided and not empty, insert new expenses
+      if (updateApprovalDto.otherExpenses?.length > 0) {
+        const otherExpensesToInsert = updateApprovalDto.otherExpenses.map(expense => ({
+          approval_id: id,
+          type: expense.type,
+          amount: expense.amount,
+          position: expense.position,
+          reason: expense.reason,
+          acknowledged: expense.acknowledged,
+          created_at: new Date(),
+          updated_at: new Date()
+        }));
+
+        await trx('approval_other_expense').insert(otherExpensesToInsert);
+      }
+
+      // Handle conditions
+      // First, delete all existing conditions for this approval
+      await trx('approval_conditions')
+        .where('approval_id', id)
+        .delete();
+
+      // If conditions is provided and not empty, insert new conditions
+      if (updateApprovalDto.conditions?.length > 0) {
+        const conditionsToInsert = updateApprovalDto.conditions.map(condition => ({
+          approval_id: id,
+          text: condition.text,
+          created_at: new Date(),
+          updated_at: new Date()
+        }));
+
+        await trx('approval_conditions').insert(conditionsToInsert);
+      }
+
+      // Handle budgets
+      // First, delete all existing budgets for this approval
+      await trx('approval_budgets')
+        .where('approval_id', id)
+        .delete();
+
+      // If budgets is provided and not empty, insert new budgets
+      if (updateApprovalDto.budgets?.length > 0) {
+        const budgetsToInsert = updateApprovalDto.budgets.map(budget => ({
+          approval_id: id,
+          budget_type: budget.budget_type,
+          item_type: budget.item_type,
+          reservation_code: budget.reservation_code,
+          department: budget.department,
+          budget_code: budget.budget_code,
+          created_at: new Date(),
+          updated_at: new Date()
+        }));
+
+        await trx('approval_budgets').insert(budgetsToInsert);
+      }
 
       // Handle date ranges
       // First, delete all existing date ranges for this approval

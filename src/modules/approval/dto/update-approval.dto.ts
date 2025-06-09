@@ -1,10 +1,14 @@
-import { IsString, IsOptional, IsNumber, IsArray, ValidateNested, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsArray, ValidateNested, IsEnum, IsBoolean, IsDateString } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { ApprovalDateRangeDto } from './approval-date-range.dto';
 import { ApprovalContentDto } from './approval-content.dto';
 import { ApprovalTripEntryDto } from './approval-trip-entry.dto';
 import { ApprovalStaffMemberDto } from './approval-staff-member.dto';
+import { TransportationExpenseDto } from './transportation-expense.dto';
+import { OtherExpenseDto } from './other-expense.dto';
+import { ApprovalConditionDto } from './approval-condition.dto';
+import { ApprovalBudgetDto } from './approval-budget.dto';
 //import { ApprovalWorkLocationDto } from './approval-work-location.dto';
 
 /**
@@ -15,8 +19,148 @@ import { ApprovalStaffMemberDto } from './approval-staff-member.dto';
  *   extends: ['CreateApprovalDto']
  * })
  */
+export class TripDateRangeDto {
+  @ApiProperty({
+    description: 'วันที่เริ่มต้น',
+    example: '2024-03-20'
+  })
+  @IsDateString()
+  start: string;
+
+  @ApiProperty({
+    description: 'วันที่สิ้นสุด',
+    example: '2024-03-25'
+  })
+  @IsDateString()
+  end: string;
+}
+
+export class TripEntryDto {
+  @ApiProperty({
+    description: 'สถานที่',
+    example: 'Bangkok'
+  })
+  @IsString()
+  location: string;
+
+  @ApiProperty({
+    description: 'จุดหมายปลายทาง',
+    example: 'Phuket'
+  })
+  @IsString()
+  destination: string;
+
+  @ApiProperty({
+    description: 'จังหวัดใกล้เคียง',
+    example: true
+  })
+  @IsBoolean()
+  nearbyProvinces: boolean;
+
+  @ApiProperty({
+    description: 'รายละเอียด',
+    example: 'Business trip for conference'
+  })
+  @IsString()
+  details: string;
+
+  @ApiProperty({
+    description: 'สถานะการตรวจสอบ',
+    example: true
+  })
+  @IsBoolean()
+  checked: boolean;
+
+  @ApiProperty({
+    description: 'ประเภทจุดหมายปลายทาง',
+    example: 'domestic'
+  })
+  @IsString()
+  destinationType: string;
+
+  @ApiProperty({
+    description: 'ช่วงวันที่เดินทาง',
+    type: [TripDateRangeDto]
+  })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TripDateRangeDto)
+  tripDateRanges: TripDateRangeDto[];
+}
+
+export class WorkLocationDto extends TripEntryDto {
+  @ApiProperty({
+    description: 'รายการค่าใช้จ่ายการเดินทาง',
+    type: [TransportationExpenseDto]
+  })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TransportationExpenseDto)
+  transportationExpenses: TransportationExpenseDto[];
+}
+
+export class StaffMemberDto {
+  @ApiProperty({
+    description: 'รหัสพนักงาน',
+    example: 'EMP001'
+  })
+  @IsString()
+  employeeCode: string;
+
+  @ApiProperty({
+    description: 'ประเภทพนักงาน',
+    example: 'Full-time'
+  })
+  @IsString()
+  type: string;
+
+  @ApiProperty({
+    description: 'ชื่อพนักงาน',
+    example: 'John Doe'
+  })
+  @IsString()
+  name: string;
+
+  @ApiProperty({
+    description: 'บทบาท',
+    example: 'Developer'
+  })
+  @IsString()
+  role: string;
+
+  @ApiProperty({
+    description: 'ตำแหน่ง',
+    example: 'Senior Developer'
+  })
+  @IsString()
+  position: string;
+
+  @ApiProperty({
+    description: 'ระดับสิทธิ์',
+    example: 'C5'
+  })
+  @IsString()
+  rightEquivalent: string;
+
+  @ApiProperty({
+    description: 'ตำแหน่งในองค์กร',
+    example: 'IT Department'
+  })
+  @IsString()
+  organizationPosition: string;
+
+  @ApiProperty({
+    description: 'สถานที่ทำงาน',
+    type: [WorkLocationDto]
+  })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => WorkLocationDto)
+  workLocations: WorkLocationDto[];
+}
+
 export class UpdateApprovalDto {
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Reference to another approval',
     required: false,
     example: 123
@@ -25,7 +169,7 @@ export class UpdateApprovalDto {
   @IsNumber()
   approvalRef?: number;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Record type',
     required: false,
     example: 'TRAVEL'
@@ -34,7 +178,7 @@ export class UpdateApprovalDto {
   @IsString()
   recordType?: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'The name of the employee',
     required: false,
     example: 'John Doe'
@@ -43,7 +187,7 @@ export class UpdateApprovalDto {
   @IsString()
   name?: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Employee code',
     required: false,
     example: 'EMP001'
@@ -52,7 +196,7 @@ export class UpdateApprovalDto {
   @IsString()
   employeeCode?: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Travel type',
     required: false,
     example: 'DOMESTIC'
@@ -61,7 +205,7 @@ export class UpdateApprovalDto {
   @IsString()
   travelType?: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'International sub option',
     required: false,
     example: 'ASIA'
@@ -70,7 +214,7 @@ export class UpdateApprovalDto {
   @IsString()
   internationalSubOption?: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Work start date',
     required: false,
     example: '2024-03-20'
@@ -79,7 +223,7 @@ export class UpdateApprovalDto {
   @IsString()
   workStartDate?: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Work end date',
     required: false,
     example: '2024-03-25'
@@ -88,7 +232,7 @@ export class UpdateApprovalDto {
   @IsString()
   workEndDate?: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Start country',
     required: false,
     example: 'Thailand'
@@ -97,7 +241,7 @@ export class UpdateApprovalDto {
   @IsString()
   startCountry?: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'End country',
     required: false,
     example: 'Japan'
@@ -106,7 +250,7 @@ export class UpdateApprovalDto {
   @IsString()
   endCountry?: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Remarks',
     required: false,
     example: 'Business trip for annual meeting'
@@ -115,7 +259,7 @@ export class UpdateApprovalDto {
   @IsString()
   remarks?: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Number of travelers',
     required: false,
     example: '2'
@@ -124,7 +268,7 @@ export class UpdateApprovalDto {
   @IsString()
   numTravelers?: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Document number',
     required: false,
     example: 'DOC-2024-001'
@@ -133,7 +277,7 @@ export class UpdateApprovalDto {
   @IsString()
   documentNo?: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Document telephone',
     required: false,
     example: '0812345678'
@@ -142,7 +286,7 @@ export class UpdateApprovalDto {
   @IsString()
   documentTel?: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Document to',
     required: false,
     example: 'HR Department'
@@ -151,7 +295,7 @@ export class UpdateApprovalDto {
   @IsString()
   documentTo?: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Document title',
     required: false,
     example: 'Business Trip Request'
@@ -160,7 +304,7 @@ export class UpdateApprovalDto {
   @IsString()
   documentTitle?: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Travel date ranges',
     type: [ApprovalDateRangeDto],
     required: false,
@@ -181,7 +325,7 @@ export class UpdateApprovalDto {
   @Type(() => ApprovalDateRangeDto)
   travelDateRanges?: ApprovalDateRangeDto[];
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Approval contents',
     type: [ApprovalContentDto],
     required: false,
@@ -202,23 +346,109 @@ export class UpdateApprovalDto {
 
   @ApiProperty({
     description: 'Trip entries for the approval',
-    type: [ApprovalTripEntryDto],
-    required: false,
+    type: [TripEntryDto],
+    required: false
   })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => ApprovalTripEntryDto)
-  tripEntries?: ApprovalTripEntryDto[];
+  @Type(() => TripEntryDto)
+  tripEntries?: TripEntryDto[];
 
   @ApiProperty({
     description: 'Staff members for the approval',
-    type: [ApprovalStaffMemberDto],
-    required: false,
+    type: [StaffMemberDto],
+    required: false
   })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => ApprovalStaffMemberDto)
-  staffMembers?: ApprovalStaffMemberDto[];
+  @Type(() => StaffMemberDto)
+  staffMembers?: StaffMemberDto[];
+
+  @ApiProperty({
+    description: 'Other expenses',
+    type: [OtherExpenseDto],
+    required: false,
+    example: [
+      {
+        "type": "meeting",
+        "amount": 5000,
+        "position": "Manager",
+        "reason": "Monthly team meeting",
+        "acknowledged": true
+      }
+    ]
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => OtherExpenseDto)
+  otherExpenses?: OtherExpenseDto[];
+
+  @ApiProperty({
+    description: 'Total outbound amount for form 3',
+    required: false,
+    example: 1000
+  })
+  @IsOptional()
+  @IsNumber()
+  form3TotalOutbound?: number;
+
+  @ApiProperty({
+    description: 'Total inbound amount for form 3',
+    required: false,
+    example: 800
+  })
+  @IsOptional()
+  @IsNumber()
+  form3TotalInbound?: number;
+
+  @ApiProperty({
+    description: 'Total amount for form 3',
+    required: false,
+    example: 1800
+  })
+  @IsOptional()
+  @IsNumber()
+  form3TotalAmount?: number;
+
+  @ApiProperty({
+    description: 'Approval conditions',
+    type: [ApprovalConditionDto],
+    required: false,
+    example: [
+      {
+        "text": "ต้องส่งรายงานการเดินทางภายใน 7 วัน"
+      },
+      {
+        "text": "ต้องแจ้งการเปลี่ยนแปลงแผนการเดินทางล่วงหน้า 24 ชั่วโมง"
+      }
+    ]
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ApprovalConditionDto)
+  conditions?: ApprovalConditionDto[];
+
+  @ApiProperty({
+    description: 'รายการงบประมาณ',
+    type: [ApprovalBudgetDto],
+    required: false,
+    example: [
+      {
+        "budget_type": "งบประมาณรายจ่ายประจำปี",
+        "item_type": "ค่าอุปกรณ์",
+        "reservation_code": "RES001",
+        "department": "แผนกเทคโนโลยีสารสนเทศ",
+        "budget_code": "BUD001"
+      }
+    ]
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ApprovalBudgetDto)
+  budgets?: ApprovalBudgetDto[];
 }
