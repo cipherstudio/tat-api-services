@@ -40,15 +40,6 @@ export class ApprovalTripEntryDto {
   details?: string;
 
   @ApiProperty({
-    description: 'Whether the trip is checked',
-    example: true,
-    required: false,
-  })
-  @IsOptional()
-  @IsBoolean()
-  checked?: boolean;
-
-  @ApiProperty({
     description: 'Type of destination',
     enum: ['domestic', 'international'],
     example: 'domestic',

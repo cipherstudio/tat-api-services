@@ -54,11 +54,15 @@ export class ApprovalService {
       // Generate increment ID
       const incrementId = await this.generateIncrementId();
 
-      // Create the approval record with increment ID
-      const savedApproval = await this.approvalRepository.create({
+      // Transform data to snake case
+      const data = {
         ...createApprovalDto,
-        incrementId
-      }, trx);
+        incrementId,
+        userId
+      };
+
+      // Create the approval record with increment ID and user ID
+      const savedApproval = await this.approvalRepository.create(data, trx);
 
       // Create the approval status record
       await trx('approval_status').insert({
@@ -105,18 +109,11 @@ export class ApprovalService {
       orderDir = 'DESC',
       includeInactive = false,
       name,
-      isActive,
       searchTerm,
     } = queryOptions || {};
 
     // Prepare conditions
     const conditions: Record<string, any> = {};
-    
-    if (isActive !== undefined) {
-      conditions.is_active = isActive;
-    } else if (!includeInactive) {
-      conditions.is_active = true;
-    }
 
     if (name) {
       conditions.name = name;
@@ -127,8 +124,7 @@ export class ApprovalService {
 
     // Convert orderBy from camelCase to snake_case if needed
     const dbOrderBy = orderBy === 'createdAt' ? 'created_at' : 
-                     orderBy === 'updatedAt' ? 'updated_at' : 
-                     orderBy === 'isActive' ? 'is_active' : orderBy;
+                     orderBy === 'updatedAt' ? 'updated_at' : orderBy;
 
     const result = await this.approvalRepository.findWithPagination(
       page,
@@ -170,27 +166,130 @@ export class ApprovalService {
       throw new NotFoundException(`Approval with ID ${id} not found`);
     }
 
+    // Map the approval data to the response DTO
+    const approvalDto: ApprovalDetailResponseDto = {
+      ...approval,
+      confidentialityLevel: approval.confidentiality_level ? JSON.parse(approval.confidentiality_level) : undefined,
+      urgencyLevel: approval.urgency_level ? JSON.parse(approval.urgency_level) : undefined,
+      departments: approval.departments ? JSON.parse(approval.departments) : undefined,
+      degrees: approval.degrees ? JSON.parse(approval.degrees) : undefined,
+      staff: approval.staff,
+      comments: approval.comments,
+      approvalDate: approval.approval_date,
+      finalDepartments: approval.final_departments ? JSON.parse(approval.final_departments) : undefined,
+      finalDegrees: approval.final_degrees ? JSON.parse(approval.final_degrees) : undefined,
+      finalStaff: approval.final_staff,
+      signerDate: approval.signer_date,
+      documentEnding: approval.document_ending,
+      documentEndingWording: approval.document_ending_wording,
+      signerName: approval.signer_name,
+      useFileSignature: approval.use_file_signature,
+      signatureAttachmentId: approval.signature_attachment_id,
+      useSystemSignature: approval.use_system_signature,
+    };
+
     // Get status history
     const statusHistory = await this.knexService.knex('approval_status')
       .where('approval_id', id)
       .orderBy('created_at', 'desc')
       .select('id', 'status', 'user_id as userId', 'created_at as createdAt');
 
+    // Get transportation expenses
+    const transportationExpenses = await this.knexService.knex('approval_transportation_expense')
+      .where('approval_id', id)
+      .select(
+        'id',
+        'staff_member_id as staffId',
+        'work_location_id as workLocationId',
+        'travel_type as travelType',
+        'expense_type as expenseType',
+        'travel_method as travelMethod',
+        'outbound_origin as outboundOrigin',
+        'outbound_destination as outboundDestination',
+        'outbound_trips as outboundTrips',
+        'outbound_expense as outboundExpense',
+        'outbound_total as outboundTotal',
+        'inbound_origin as inboundOrigin',
+        'inbound_destination as inboundDestination',
+        'inbound_trips as inboundTrips',
+        'inbound_expense as inboundExpense',
+        'inbound_total as inboundTotal',
+        'total_amount as totalAmount'
+      );
+
+    // Get other expenses
+    const otherExpenses = await this.knexService.knex('approval_other_expense')
+      .where('approval_id', id)
+      .select(
+        'id',
+        'type',
+        'amount',
+        'position',
+        'reason',
+        'acknowledged'
+      );
+
+    // Get conditions
+    const conditions = await this.knexService.knex('approval_conditions')
+      .where('approval_id', id)
+      .select('id', 'text');
+
+    // Get budgets
+    const budgets = await this.knexService.knex('approval_budgets')
+      .where('approval_id', id)
+      .select(
+        'id',
+        'budget_type',
+        'item_type',
+        'reservation_code',
+        'department',
+        'budget_code'
+      );
+
+    // Transform transportation expenses to match DTO structure
+    const transformedExpenses = transportationExpenses.map(expense => ({
+      id: expense.id,
+      staffId: expense.staffId,
+      workLocationId: expense.workLocationId,
+      travelType: expense.travelType,
+      expenseType: expense.expenseType,
+      travelMethod: expense.travelMethod,
+      outbound: expense.outboundOrigin ? {
+        origin: expense.outboundOrigin,
+        destination: expense.outboundDestination,
+        trips: expense.outboundTrips,
+        expense: expense.outboundExpense,
+        total: expense.outboundTotal
+      } : undefined,
+      inbound: expense.inboundOrigin ? {
+        origin: expense.inboundOrigin,
+        destination: expense.inboundDestination,
+        trips: expense.inboundTrips,
+        expense: expense.inboundExpense,
+        total: expense.inboundTotal
+      } : undefined,
+      totalAmount: expense.totalAmount
+    }));
+
     const currentStatus = statusHistory[0]?.status || 'ฉบับร่าง';
 
-    const response: ApprovalDetailResponseDto = {
-      ...approval,
-      statusHistory,
-      currentStatus
-    };
+    approvalDto.statusHistory = statusHistory;
+    approvalDto.currentStatus = currentStatus;
+    approvalDto.transportationExpenses = transformedExpenses;
+    approvalDto.otherExpenses = otherExpenses;
+    approvalDto.conditions = conditions;
+    approvalDto.budgets = budgets;
+    approvalDto.form3TotalOutbound = approval.form3_total_outbound;
+    approvalDto.form3TotalInbound = approval.form3_total_inbound;
+    approvalDto.form3TotalAmount = approval.form3_total_amount;
 
     // Cache the result
-    await this.cacheService.set(cacheKey, response, this.CACHE_TTL);
+    await this.cacheService.set(cacheKey, approvalDto, this.CACHE_TTL);
 
-    return response;
+    return approvalDto;
   }
 
-  async update(id: number, updateApprovalDto: UpdateApprovalDto): Promise<Approval> {
+  async update(id: number, updateDto: UpdateApprovalDto): Promise<Approval> {
     const approval = await this.findById(id);
     if (!approval) {
       throw new NotFoundException(`Approval with ID ${id} not found`);
@@ -201,125 +300,199 @@ export class ApprovalService {
 
     try {
       // Update approval record
-      await this.approvalRepository.update(id, updateApprovalDto, trx);
+      await trx('approval')
+        .where('id', id)
+        .update({
+          record_type: updateDto.recordType,
+          name: updateDto.name,
+          employee_code: updateDto.employeeCode,
+          travel_type: updateDto.travelType,
+          international_sub_option: updateDto.internationalSubOption,
+          work_start_date: updateDto.workStartDate,
+          work_end_date: updateDto.workEndDate,
+          start_country: updateDto.startCountry,
+          end_country: updateDto.endCountry,
+          remarks: updateDto.remarks,
+          num_travelers: updateDto.numTravelers,
+          document_no: updateDto.documentNo,
+          document_tel: updateDto.documentTel,
+          document_to: updateDto.documentTo,
+          document_title: updateDto.documentTitle,
+          form3_total_outbound: updateDto.form3TotalOutbound,
+          form3_total_inbound: updateDto.form3TotalInbound,
+          form3_total_amount: updateDto.form3TotalAmount,
+          staff: updateDto.staff,
+          comments: updateDto.comments,
+          approval_date: updateDto.approvalDate,
+          final_staff: updateDto.finalStaff,
+          signer_date: updateDto.signerDate,
+          document_ending: updateDto.documentEnding,
+          document_ending_wording: updateDto.documentEndingWording,
+          signer_name: updateDto.signerName,
+          use_file_signature: updateDto.useFileSignature,
+          signature_attachment_id: updateDto.signatureAttachmentId,
+          use_system_signature: updateDto.useSystemSignature,
+          updated_at: new Date(),
+        });
 
-      // Handle date ranges
-      // First, delete all existing date ranges for this approval
-      await trx('approval_date_ranges')
-        .where('approval_id', id)
-        .delete();
+      // Get the updated approval record
+      const updatedApprovalRecord = await trx('approval')
+        .where('id', id)
+        .first();
 
-      // If travelDateRanges is provided and not empty, insert new ranges
-      if (updateApprovalDto.travelDateRanges?.length > 0) {
-        const dateRangesToInsert = updateApprovalDto.travelDateRanges.map(range => ({
-          approval_id: id,
-          start_date: range.start,
-          end_date: range.end,
-          created_at: new Date(),
-          updated_at: new Date()
-        }));
-
-        await trx('approval_date_ranges').insert(dateRangesToInsert);
+      // Process travel date ranges
+      if (updateDto.travelDateRanges && Array.isArray(updateDto.travelDateRanges)) {
+        console.log('Processing travel date ranges:', JSON.stringify(updateDto.travelDateRanges, null, 2));
+        await trx('approval_trip_date_ranges').where('approval_id', id).delete();
+        for (const range of updateDto.travelDateRanges) {
+          if (range && typeof range === 'object') {
+            await trx('approval_trip_date_ranges').insert({
+              approval_id: id,
+              start_date: range.start,
+              end_date: range.end,
+            });
+          }
+        }
       }
 
-      // Handle approval contents
-      // First, delete all existing contents for this approval
-      await trx('approval_contents')
-        .where('approval_id', id)
-        .delete();
-
-      // If approvalContents is provided and not empty, insert new contents
-      if (updateApprovalDto.approvalContents?.length > 0) {
-        const contentsToInsert = updateApprovalDto.approvalContents.map(content => ({
-          approval_id: id,
-          detail: content.detail,
-          created_at: new Date(),
-          updated_at: new Date()
-        }));
-
-        await trx('approval_contents').insert(contentsToInsert);
+      // Process approval contents
+      if (updateDto.approvalContents && Array.isArray(updateDto.approvalContents)) {
+        console.log('Processing approval contents:', JSON.stringify(updateDto.approvalContents, null, 2));
+        await trx('approval_contents').where('approval_id', id).delete();
+        for (const content of updateDto.approvalContents) {
+          if (content && typeof content === 'object') {
+            await trx('approval_contents').insert({
+              approval_id: id,
+              detail: content.detail,
+            });
+          }
+        }
       }
 
-      // Handle staff members and their work locations
-      // First, delete all existing work locations and their date ranges
-      await trx('approval_work_locations_date_ranges')
-        .where('approval_id', id)
-        .delete();
+      // Process trip entries
+      if (updateDto.tripEntries && Array.isArray(updateDto.tripEntries)) {
+        console.log('Processing trip entries:', JSON.stringify(updateDto.tripEntries, null, 2));
+        await trx('approval_trip_entries').where('approval_id', id).delete();
+        for (const entry of updateDto.tripEntries) {
+          if (entry && typeof entry === 'object') {
+            const [tripEntryId] = await trx('approval_trip_entries').insert({
+              approval_id: id,
+              location: entry.location,
+              destination: entry.destination,
+              nearby_provinces: entry.nearbyProvinces,
+              details: entry.details,
+              destination_type: entry.destinationType,
+            }).returning('id');
 
-      await trx('approval_work_locations')
-        .where('approval_id', id)
-        .delete();
-
-      await trx('approval_staff_members')
-        .where('approval_id', id)
-        .delete();
-
-      // If staffMembers is provided and not empty, insert new members and their work locations
-      if (updateApprovalDto.staffMembers?.length > 0) {
-        for (const member of updateApprovalDto.staffMembers) {
-          // Insert staff member
-          const [staffMemberId] = await trx('approval_staff_members').insert({
-            approval_id: id,
-            employee_code: member.employeeCode,
-            type: member.type,
-            name: member.name,
-            role: member.role,
-            position: member.position,
-            right_equivalent: member.rightEquivalent,
-            organization_position: member.organizationPosition,
-            created_at: new Date(),
-            updated_at: new Date()
-          });
-
-          // Handle work locations for this staff member
-          if (member.workLocations?.length > 0) {
-            for (const location of member.workLocations) {
-              // Insert work location
-              const [workLocationId] = await trx('approval_work_locations').insert({
-                approval_id: id,
-                staff_member_id: staffMemberId,
-                location: location.location,
-                destination: location.destination,
-                nearby_provinces: location.nearbyProvinces,
-                details: location.details,
-                checked: location.checked,
-                destination_type: location.destinationType,
-                created_at: new Date(),
-                updated_at: new Date()
-              });
-
-              // Handle work location date ranges
-              if (location.tripDateRanges?.length > 0) {
-                const dateRangesToInsert = location.tripDateRanges.map(range => ({
-                  approval_id: id,
-                  approval_work_locations_id: workLocationId,
-                  start_date: range.start,
-                  end_date: range.end,
-                  created_at: new Date(),
-                  updated_at: new Date()
-                }));
-
-                await trx('approval_work_locations_date_ranges').insert(dateRangesToInsert);
+            if (entry.tripDateRanges && Array.isArray(entry.tripDateRanges)) {
+              for (const range of entry.tripDateRanges) {
+                if (range && typeof range === 'object') {
+                  await trx('approval_trip_date_ranges').insert({
+                    approval_id: id,
+                    approval_trip_entries_id: tripEntryId.id,
+                    start_date: range.start,
+                    end_date: range.end,
+                  });
+                }
               }
             }
           }
         }
       }
 
+      // Process other expenses
+      if (updateDto.otherExpenses && Array.isArray(updateDto.otherExpenses)) {
+        console.log('Processing other expenses:', JSON.stringify(updateDto.otherExpenses, null, 2));
+        await trx('approval_other_expense').where('approval_id', id).delete();
+        for (const expense of updateDto.otherExpenses) {
+          if (expense && typeof expense === 'object') {
+            await trx('approval_other_expense').insert({
+              approval_id: id,
+              type: expense.type,
+              amount: expense.amount,
+              position: expense.position,
+              reason: expense.reason,
+              acknowledged: expense.acknowledged,
+            });
+          }
+        }
+      }
+
+      // Process conditions
+      if (updateDto.conditions && Array.isArray(updateDto.conditions)) {
+        console.log('Processing conditions:', JSON.stringify(updateDto.conditions, null, 2));
+        await trx('approval_conditions').where('approval_id', id).delete();
+        for (const condition of updateDto.conditions) {
+          if (condition && typeof condition === 'object') {
+            await trx('approval_conditions').insert({
+              approval_id: id,
+              text: condition.text,
+            });
+          }
+        }
+      }
+
+      // Process budgets
+      if (updateDto.budgets && Array.isArray(updateDto.budgets)) {
+        console.log('Processing budgets:', JSON.stringify(updateDto.budgets, null, 2));
+        await trx('approval_budgets').where('approval_id', id).delete();
+        for (const budget of updateDto.budgets) {
+          if (budget && typeof budget === 'object') {
+            await trx('approval_budgets').insert({
+              approval_id: id,
+              budget_type: budget.budget_type,
+              item_type: budget.item_type,
+              reservation_code: budget.reservation_code,
+              department: budget.department,
+              budget_code: budget.budget_code,
+            });
+          }
+        }
+      }
+
+      // Process JSON fields
+      const updateData: any = {};
+
+      if (updateDto.confidentialityLevel && Array.isArray(updateDto.confidentialityLevel)) {
+        console.log('Processing confidentiality levels:', JSON.stringify(updateDto.confidentialityLevel, null, 2));
+        updateData.confidentiality_level = JSON.stringify(updateDto.confidentialityLevel);
+      }
+
+      if (updateDto.urgencyLevel && Array.isArray(updateDto.urgencyLevel)) {
+        console.log('Processing urgency levels:', JSON.stringify(updateDto.urgencyLevel, null, 2));
+        updateData.urgency_level = JSON.stringify(updateDto.urgencyLevel);
+      }
+
+      if (updateDto.departments && Array.isArray(updateDto.departments)) {
+        console.log('Processing departments:', JSON.stringify(updateDto.departments, null, 2));
+        updateData.departments = JSON.stringify(updateDto.departments);
+      }
+
+      if (updateDto.degrees && Array.isArray(updateDto.degrees)) {
+        console.log('Processing degrees:', JSON.stringify(updateDto.degrees, null, 2));
+        updateData.degrees = JSON.stringify(updateDto.degrees);
+      }
+
+      if (updateDto.finalDepartments && Array.isArray(updateDto.finalDepartments)) {
+        console.log('Processing final departments:', JSON.stringify(updateDto.finalDepartments, null, 2));
+        updateData.final_departments = JSON.stringify(updateDto.finalDepartments);
+      }
+
+      if (updateDto.finalDegrees && Array.isArray(updateDto.finalDegrees)) {
+        console.log('Processing final degrees:', JSON.stringify(updateDto.finalDegrees, null, 2));
+        updateData.final_degrees = JSON.stringify(updateDto.finalDegrees);
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        await trx('approval')
+          .where('id', id)
+          .update(updateData);
+      }
+
       // Commit the transaction
       await trx.commit();
 
-      // Get updated approval
-      const updatedApproval = await this.findById(id);
-
-      // Update cache
-      const cacheKey = this.cacheService.generateKey(this.CACHE_PREFIX, id);
-      await this.cacheService.set(cacheKey, updatedApproval, this.CACHE_TTL);
-
-      // Invalidate the list cache
-      await this.cacheService.del(this.cacheService.generateListKey(this.CACHE_PREFIX));
-
-      return updatedApproval;
+      return updatedApprovalRecord;
     } catch (error) {
       // Rollback the transaction in case of error
       await trx.rollback();

@@ -3,7 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 export class ClothingExpenseEligibilityResponseDto {
   @ApiProperty({
     description: 'Employee code',
-    example: 'EMP001',
+    example: '66019',
   })
   employeeCode: string;
 

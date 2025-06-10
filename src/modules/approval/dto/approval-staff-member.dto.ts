@@ -74,7 +74,7 @@ export class ApprovalWorkLocationDto {
 export class ApprovalStaffMemberDto {
   @ApiProperty({
     description: 'Employee code',
-    example: 'EMP001',
+    example: '66019',
     required: false,
   })
   @IsOptional()

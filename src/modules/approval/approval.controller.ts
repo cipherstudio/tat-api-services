@@ -20,6 +20,7 @@ import {
   ApiResponse,
   ApiBody,
   ApiBearerAuth,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { ApprovalService } from './approval.service';
 import { CreateApprovalDto } from './dto/create-approval.dto';
@@ -62,6 +63,67 @@ export class ApprovalController {
     summary: 'Get all approvals',
     description: 'Retrieve all approval records with pagination and filtering',
   })
+  @ApiQuery({
+    name: 'page',
+    type: Number,
+    required: false,
+    description: 'Page number',
+  })
+  @ApiQuery({
+    name: 'limit',
+    type: Number,
+    required: false,
+    description: 'Number of items per page',
+  })
+  @ApiQuery({
+    name: 'orderBy',
+    type: String,
+    required: false,
+    description: 'Field to order by',
+  })
+  @ApiQuery({
+    name: 'orderDir',
+    type: String,
+    required: false,
+    description: 'Order direction',
+    enum: ['ASC', 'DESC'],
+  })
+  @ApiQuery({
+    name: 'includeInactive',
+    type: Boolean,
+    required: false,
+    description: 'Include inactive approvals',
+  })
+  @ApiQuery({
+    name: 'name',
+    type: String,
+    required: false,
+    description: 'Filter by name',
+  })
+  @ApiQuery({
+    name: 'searchTerm',
+    type: String,
+    required: false,
+    description: 'Search term',
+  })
+  @ApiQuery({
+    name: 'createdAfter',
+    type: Date,
+    required: false,
+    description: 'Filter by creation date (after)',
+  })
+  @ApiQuery({
+    name: 'createdBefore',
+    type: Date,
+    required: false,
+    description: 'Filter by creation date (before)',
+  })
+  @ApiQuery({
+    name: 'includes',
+    type: [String],
+    required: false,
+    description: 'Relations to include',
+  })
   @ApiResponse({ status: 200, description: 'Success' })
   findAll(
     @Query('page', new ValidationPipe({ transform: true })) page?: number,
@@ -70,7 +132,6 @@ export class ApprovalController {
     @Query('orderDir') orderDir?: 'ASC' | 'DESC',
     @Query('includeInactive') includeInactive?: boolean,
     @Query('name') name?: string,
-    @Query('isActive') isActive?: boolean,
     @Query('searchTerm') searchTerm?: string,
     @Query('createdAfter') createdAfter?: Date,
     @Query('createdBefore') createdBefore?: Date,
@@ -83,7 +144,6 @@ export class ApprovalController {
       orderDir,
       includeInactive,
       name,
-      isActive,
       searchTerm,
       createdAfter,
       createdBefore,
