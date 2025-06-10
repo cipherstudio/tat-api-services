@@ -48,19 +48,27 @@ exports.up = function(knex) {
     table.float('form5_total_amount').nullable();
 
     // form 8
-    // table.json('confidentiality_level').nullable();
-    // table.json('urgency_level').nullable();
-    // table.json('final_departments').nullable();
-    // table.json('final_degrees').nullable();
-    // table.json('final_staff').nullable(); // Record<string, string>
-    // table.date('signer_date').nullable();
-    // table.string('signature_type').nullable();
-    // table.boolean('use_file_signature').defaultTo(false);
-    // table.boolean('use_system_signature').defaultTo(false);
-    // table.string('signature_file_path').nullable(); // แทน File ด้วย path
-    // table.string('document_ending').nullable();
-    // table.text('document_ending_wording').nullable();
-    // table.string('signatory').nullable();
+    // เลือกผู้เห็นชอบผ่านเรื่อง
+    table.json('confidentiality_level').nullable();
+    table.json('urgency_level').nullable();
+    table.json('departments').nullable();
+    table.json('degrees').nullable();
+    table.string('staff').nullable();
+    table.string('comments').nullable();
+    table.string('approval_date').nullable();
+    // เลือกผู้อนุมัติ (ขั้นตอนสุดท้าย)
+    table.json('final_departments').nullable();
+    table.json('final_degrees').nullable();
+    table.string('final_staff').nullable();
+    // ผู้เสนอลงนาม
+    table.string('signer_date').nullable();
+    table.string('document_ending').nullable();
+    table.text('document_ending_wording').nullable();
+    table.string('signer_name').nullable();
+    table.boolean('use_file_signature').defaultTo(false);
+    table.integer('signature_attachment_id').nullable();
+    table.boolean('use_system_signature').defaultTo(false);
+
 
     table.integer('user_id').unsigned().notNullable().references('id').inTable('users');
 

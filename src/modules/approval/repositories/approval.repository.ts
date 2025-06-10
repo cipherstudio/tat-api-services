@@ -8,43 +8,33 @@ import type { Knex } from 'knex';
 @Injectable()
 export class ApprovalRepository extends KnexBaseRepository<Approval> {
   constructor(knexService: KnexService) {
-    super(knexService, 'approvals');
+    super(knexService, 'approval');
   }
 
   async create(data: Partial<Approval>, trx?: Knex.Transaction): Promise<Approval> {
-    const snakeCaseData = toSnakeCase(data);
-    const [id] = await (trx || this.knexService.knex)(this.tableName)
-      .insert(snakeCaseData)
-      .returning('id');
-
-    return this.findById(id);
+    const snakeCaseData = await toSnakeCase(data);
+    const created = await this.knexService.create(this.tableName, snakeCaseData);
+    return await toCamelCase<Approval>(created);
   }
 
   async update(id: number, entity: Partial<Approval>, trx?: Knex.Transaction): Promise<Approval> {
     const dbEntity = await toSnakeCase(entity);
-    const updated = await (trx || this.knexService.knex)(this.tableName)
-      .where('id', id)
-      .update({
-        ...dbEntity,
-        updated_at: new Date()
-      })
-      .returning('*')
-      .then(rows => rows[0]);
+    const updated = await this.knexService.update(this.tableName, id, dbEntity);
     return await toCamelCase<Approval>(updated);
   }
 
   async findById(id: number): Promise<Approval | undefined> {
-    const dbEntity = await super.findById(id);
+    const dbEntity = await this.knexService.findById(this.tableName, id);
     return dbEntity ? await toCamelCase<Approval>(dbEntity) : undefined;
   }
 
   async findOne(conditions: Record<string, any>): Promise<Approval | undefined> {
-    const dbEntity = await super.findOne(conditions);
+    const dbEntity = await this.knexService.findOne(this.tableName, conditions);
     return dbEntity ? await toCamelCase<Approval>(dbEntity) : undefined;
   }
 
   async find(conditions: Record<string, any> = {}): Promise<Approval[]> {
-    const dbEntities = await super.find(conditions);
+    const dbEntities = await this.knexService.findMany(this.tableName, conditions);
     return Promise.all(dbEntities.map(async (e) => await toCamelCase<Approval>(e)));
   }
 
@@ -55,7 +45,16 @@ export class ApprovalRepository extends KnexBaseRepository<Approval> {
     orderBy: string = 'id',
     direction: 'asc' | 'desc' = 'asc',
   ) {
-    const result = await super.findWithPagination(page, limit, conditions, orderBy, direction);
+    const snakeCaseConditions = await toSnakeCase(conditions);
+    
+    const result = await this.knexService.findWithPagination(
+      this.tableName,
+      page,
+      limit,
+      snakeCaseConditions,
+      orderBy,
+      direction
+    );
     const totalPages = Math.ceil(result.meta.total / limit);
     return {
       ...result,
@@ -69,13 +68,10 @@ export class ApprovalRepository extends KnexBaseRepository<Approval> {
   }
 
   async softDelete(id: number): Promise<boolean> {
-    const result = await this.knexService
-      .knex(this.tableName)
-      .where('id', id)
-      .update({
-        deleted_at: new Date(),
-      });
-    return result > 0;
+    const result = await this.knexService.update(this.tableName, id, {
+      deleted_at: new Date()
+    });
+    return result !== undefined;
   }
 
   // Add custom repository methods here as needed

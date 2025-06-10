@@ -23,6 +23,9 @@ export class ApprovalDetailResponseDto implements Approval {
   @ApiProperty({ description: 'The unique identifier for the approval' })
   id: number;
 
+  @ApiProperty({ description: 'The user ID who created the approval' })
+  userId: number;
+
   @ApiProperty({ description: 'The increment ID' })
   incrementId: string;
 
@@ -79,6 +82,65 @@ export class ApprovalDetailResponseDto implements Approval {
 
   @ApiProperty({ description: 'When the approval was last updated' })
   updatedAt: Date;
+
+  @ApiProperty({ 
+    description: 'ชั้นความลับ', 
+    required: false,
+    example: ['ลับมาก', 'ลับที่สุด']
+  })
+  confidentialityLevel?: string[];
+
+  @ApiProperty({ 
+    description: 'ความด่วน', 
+    required: false,
+    example: ['ด่วน', 'ด่วนมาก']
+  })
+  urgencyLevel?: string[];
+
+  @ApiProperty({ description: 'กลุ่มผู้อนุมัติ', required: false, type: [String] })
+  departments?: string[];
+
+  @ApiProperty({ description: 'ถึงหน่วยงาน', required: false, type: [String] })
+  degrees?: string[];
+
+  @ApiProperty({ description: 'ผู้เห็นชอบผ่านเรื่อง', required: false })
+  staff?: string;
+
+  @ApiProperty({ description: 'ความเห็น', required: false })
+  comments?: string;
+
+  @ApiProperty({ description: 'วันที่ ผู้เห็นชอบผ่านเรื่อง', required: false })
+  approvalDate?: string;
+
+  @ApiProperty({ description: 'กลุ่มหน่วยงาน เลือกผู้อนุมัติ (ขั้นตอนสุดท้าย)', required: false, type: [String] })
+  finalDepartments?: string[];
+
+  @ApiProperty({ description: 'ถึงหน่วยงาน เลือกผู้อนุมัติ (ขั้นตอนสุดท้าย)', required: false, type: [String] })
+  finalDegrees?: string[];
+
+  @ApiProperty({ description: 'ผู้อนุมัติ (ขั้นตอนสุดท้าย)', required: false })
+  finalStaff?: string;
+
+  @ApiProperty({ description: 'วันที่ลงนาม', required: false })
+  signerDate?: string;
+
+  @ApiProperty({ description: 'เลือกแบบคำลงท้ายเอกสาร', required: false })
+  documentEnding?: string;
+
+  @ApiProperty({ description: 'คำลงท้ายเอกสาร', required: false })
+  documentEndingWording?: string;
+
+  @ApiProperty({ description: 'ผู้ลงนามในใบบันทึก', required: false })
+  signerName?: string;
+
+  @ApiProperty({ description: 'ใช้ลายเซ็นจากไฟล์แนบ', required: false })
+  useFileSignature?: boolean;
+
+  @ApiProperty({ description: 'รหัสไฟล์ลายเซ็น', required: false })
+  signatureAttachmentId?: number;
+
+  @ApiProperty({ description: 'ใช้ลายเซ็นจากระบบ E-Office', required: false })
+  useSystemSignature?: boolean;
 
   @ApiProperty({ 
     description: 'Status history of the approval',
