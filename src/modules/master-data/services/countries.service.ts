@@ -47,6 +47,7 @@
           createdBefore,
           updatedAfter,
           updatedBefore,
+          type,
         } = queryOptions || {};
 
         // Generate cache key that includes all query parameters
@@ -63,6 +64,7 @@
           createdBefore ? `createdBefore:${createdBefore.toISOString()}` : null,
           updatedAfter ? `updatedAfter:${updatedAfter.toISOString()}` : null,
           updatedBefore ? `updatedBefore:${updatedBefore.toISOString()}` : null,
+          type ? `type:${type}` : null,
         ].filter(Boolean).join(':');
 
         const cacheKey = this.cacheService.generateListKey(this.CACHE_PREFIX, cacheParams);
@@ -84,6 +86,10 @@
 
         if (code) {
           conditions.code = code;
+        }
+
+        if (type) {
+          conditions.type = type;
         }
 
         if (createdAfter) {

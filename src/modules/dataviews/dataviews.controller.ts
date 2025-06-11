@@ -441,13 +441,23 @@ export class DataviewsController {
   @ApiOperation({
     summary: 'ค้นหาข้อมูล V_TX_OT ด้วยเงื่อนไข',
     description:
-      'สามารถกรองข้อมูล V_TX_OT ตาม budYear, sectionCode, budgetCode, limit, offset ได้',
+      'สามารถกรองข้อมูล V_TX_OT ตาม budYear, sectionCode, sectionName, activitySubDesc, budgetCode, limit, offset ได้',
   })
   @ApiQuery({ name: 'budYear', required: false, description: 'BUD_YEAR' })
   @ApiQuery({
     name: 'sectionCode',
     required: false,
     description: 'SECTION_CODE',
+  })
+  @ApiQuery({
+    name: 'sectionName',
+    required: false,
+    description: 'SECTION_NAME',
+  })
+  @ApiQuery({
+    name: 'activitySubDesc',
+    required: false,
+    description: 'ACTIVITY_SUB_DESC',
   })
   @ApiQuery({ name: 'budgetCode', required: false, description: 'BUDGET_CODE' })
   @ApiQuery({

@@ -5,8 +5,8 @@
 exports.up = function (knex) {
   return knex.schema.createTable('files', function (table) {
     table.increments('id').primary();
-    table.string('original_name').notNullable();
-    table.string('file_name').notNullable().unique();
+    table.string('original_name', 600).notNullable();
+    table.string('file_name', 600).notNullable().unique();
     table.string('mime_type').notNullable();
     table.integer('size').notNullable();
     table.string('path').notNullable();
