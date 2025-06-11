@@ -10,6 +10,7 @@ import { ApprovalBudgetDto } from './approval-budget.dto';
 import { ApprovalAccommodationExpenseDto } from './approval-accommodation-expense.dto';
 import { ApprovalAccommodationTransportExpenseDto } from './approval-accommodation-transport-expense.dto';
 import { ApprovalAccommodationHolidayExpenseDto } from './approval-accommodation-holiday-expense.dto';
+import { ApprovalEntertainmentExpenseDto } from './approval-entertainment-expense.dto';
 
 
 /**
@@ -205,6 +206,17 @@ export class StaffMemberDto {
   @ValidateNested({ each: true })
   @Type(() => WorkLocationDto)
   workLocations: WorkLocationDto[];
+
+  @ApiProperty({
+    description: 'ค่ารับรองตามสิทธิ์',
+    type: [ApprovalEntertainmentExpenseDto],
+    required: false
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ApprovalEntertainmentExpenseDto)
+  entertainmentExpenses?: ApprovalEntertainmentExpenseDto[];
 }
 
 export class UpdateApprovalDto {
@@ -504,6 +516,13 @@ export class UpdateApprovalDto {
                 "note": "Public holiday"
               }
             ]
+          }
+        ],
+        "entertainmentExpenses": [
+          {
+            "entertainmentShortChecked": true,
+            "entertainmentLongChecked": false,
+            "entertainmentAmount": 1000
           }
         ]
       }

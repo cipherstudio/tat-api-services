@@ -415,57 +415,58 @@ export class ApprovalService {
         await trx('approval_accommodation_expense').where('approval_id', id).delete();
         await trx('approval_accommodation_transport_expense').where('approval_id', id).delete();
         await trx('approval_accommodation_holiday_expense').where('approval_id', id).delete();
+        await trx('approval_entertainment_expense').where('approval_id', id).delete();
         
         for (const staffMember of updateDto.staffMembers) {
-          // Insert staff member
-          const [insertedStaffMember] = await trx('approval_staff_members').insert({
-            approval_id: id,
-            employee_code: staffMember.employeeCode,
-            type: staffMember.type,
-            name: staffMember.name,
-            role: staffMember.role,
-            position: staffMember.position,
-            right_equivalent: staffMember.rightEquivalent,
-            organization_position: staffMember.organizationPosition,
-            created_at: new Date(),
-            updated_at: new Date()
-          }).returning('id');
+          const [insertedStaffMember] = await trx('approval_staff_members')
+            .insert({
+              approval_id: id,
+              employee_code: staffMember.employeeCode,
+              type: staffMember.type,
+              name: staffMember.name,
+              role: staffMember.role,
+              position: staffMember.position,
+              right_equivalent: staffMember.rightEquivalent,
+              organization_position: staffMember.organizationPosition,
+              created_at: new Date(),
+              updated_at: new Date(),
+            })
+            .returning('id');
 
-          // Process work locations for this staff member
-          if (staffMember.workLocations && Array.isArray(staffMember.workLocations)) {
+          // Process work locations
+          if (Array.isArray(staffMember.workLocations)) {
             for (const workLocation of staffMember.workLocations) {
-              // Insert work location
-              const [workLocationId] = await trx('approval_work_locations').insert({
-                approval_id: id,
-                staff_member_id: insertedStaffMember.id,
-                location: workLocation.location,
-                destination: workLocation.destination,
-                nearby_provinces: workLocation.nearbyProvinces,
-                details: workLocation.details,
-                destination_type: workLocation.destinationType,
-                checked: workLocation.checked,
-                created_at: new Date(),
-                updated_at: new Date()
-              }).returning('id');
+              const [workLocationId] = await trx('approval_work_locations')
+                .insert({
+                  approval_id: id,
+                  staff_member_id: insertedStaffMember.id,
+                  location: workLocation.location,
+                  destination: workLocation.destination,
+                  nearby_provinces: workLocation.nearbyProvinces,
+                  details: workLocation.details,
+                  checked: workLocation.checked,
+                  destination_type: workLocation.destinationType,
+                  created_at: new Date(),
+                  updated_at: new Date(),
+                })
+                .returning('id');
 
-              // Insert work location date ranges
-              if (workLocation.tripDateRanges && Array.isArray(workLocation.tripDateRanges)) {
-                for (const range of workLocation.tripDateRanges) {
-                  if (range && typeof range === 'object') {
-                    await trx('approval_work_locations_date_ranges').insert({
-                      approval_id: id,
-                      approval_work_locations_id: workLocationId.id,
-                      start_date: range.start,
-                      end_date: range.end,
-                      created_at: new Date(),
-                      updated_at: new Date()
-                    });
-                  }
+              // Process date ranges
+              if (Array.isArray(workLocation.tripDateRanges)) {
+                for (const dateRange of workLocation.tripDateRanges) {
+                  await trx('approval_work_locations_date_ranges').insert({
+                    approval_id: id,
+                    approval_work_locations_id: workLocationId.id,
+                    start_date: dateRange.start,
+                    end_date: dateRange.end,
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                  });
                 }
               }
 
-              // Process transportation expenses for this work location
-              if (workLocation.transportationExpenses && Array.isArray(workLocation.transportationExpenses)) {
+              // Process transportation expenses
+              if (Array.isArray(workLocation.transportationExpenses)) {
                 for (const expense of workLocation.transportationExpenses) {
                   await trx('approval_transportation_expense').insert({
                     approval_id: id,
@@ -486,7 +487,7 @@ export class ApprovalService {
                     inbound_total: expense.inbound?.total,
                     total_amount: expense.totalAmount,
                     created_at: new Date(),
-                    updated_at: new Date()
+                    updated_at: new Date(),
                   });
                 }
               }
@@ -571,6 +572,21 @@ export class ApprovalService {
                   }
                 }
               }
+
+              // Process entertainment expenses
+              if (Array.isArray(staffMember.entertainmentExpenses)) {
+                for (const expense of staffMember.entertainmentExpenses) {
+                  await trx('approval_entertainment_expense').insert({
+                    approval_id: id,
+                    staff_member_id: insertedStaffMember.id,
+                    entertainment_short_checked: expense.entertainmentShortChecked,
+                    entertainment_long_checked: expense.entertainmentLongChecked,
+                    entertainment_amount: expense.entertainmentAmount,
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                  });
+                }
+              }
             }
           }
         }
@@ -589,6 +605,8 @@ export class ApprovalService {
               position: expense.position,
               reason: expense.reason,
               acknowledged: expense.acknowledged,
+              created_at: new Date(),
+              updated_at: new Date(),
             });
           }
         }
