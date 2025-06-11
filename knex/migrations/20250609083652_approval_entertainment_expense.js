@@ -15,7 +15,6 @@ exports.up = function(knex) {
 
     table.integer('approval_id').nullable();
     table.integer('staff_member_id').nullable();
-    table.integer('approval_accommodation_expense_id').nullable();
   });
 };
 

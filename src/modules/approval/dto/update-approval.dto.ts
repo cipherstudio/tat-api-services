@@ -3,13 +3,12 @@ import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { ApprovalDateRangeDto } from './approval-date-range.dto';
 import { ApprovalContentDto } from './approval-content.dto';
-import { ApprovalTripEntryDto } from './approval-trip-entry.dto';
-import { ApprovalStaffMemberDto } from './approval-staff-member.dto';
 import { TransportationExpenseDto } from './transportation-expense.dto';
 import { OtherExpenseDto } from './other-expense.dto';
 import { ApprovalConditionDto } from './approval-condition.dto';
 import { ApprovalBudgetDto } from './approval-budget.dto';
-//import { ApprovalWorkLocationDto } from './approval-work-location.dto';
+import { ApprovalAccommodationExpenseDto } from './approval-accommodation-expense.dto';
+
 
 /**
  * DTO for updating a approval
@@ -104,6 +103,17 @@ export class WorkLocationDto extends TripEntryDto {
   transportationExpenses: TransportationExpenseDto[];
 
   @ApiProperty({
+    description: 'รายการค่าใช้จ่ายที่พัก',
+    type: [ApprovalAccommodationExpenseDto],
+    required: false
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ApprovalAccommodationExpenseDto)
+  accommodationExpenses?: ApprovalAccommodationExpenseDto[];
+
+  @ApiProperty({
     description: 'Checked status',
     example: true,
     required: false
@@ -186,7 +196,7 @@ export class UpdateApprovalDto {
   @ApiProperty({
     description: 'Record type',
     required: false,
-    example: 'TRAVEL'
+    example: 'owner'
   })
   @IsOptional()
   @IsString()
@@ -213,7 +223,7 @@ export class UpdateApprovalDto {
   @ApiProperty({
     description: 'Travel type',
     required: false,
-    example: 'DOMESTIC'
+    example: 'domestic'
   })
   @IsOptional()
   @IsString()
@@ -222,7 +232,7 @@ export class UpdateApprovalDto {
   @ApiProperty({
     description: 'International sub option',
     required: false,
-    example: 'ASIA'
+    example: 'travel_later'
   })
   @IsOptional()
   @IsString()
@@ -416,6 +426,39 @@ export class UpdateApprovalDto {
                   "total": 800
                 },
                 "totalAmount": 1800
+              }
+            ],
+            "accommodationExpenses": [
+              {
+                "totalAmount": 5000,
+                "hasMealOut": true,
+                "hasMealIn": true,
+                "mealOutAmount": 200,
+                "mealInAmount": 150,
+                "mealOutCount": 2,
+                "mealInCount": 1,
+                "allowanceOutChecked": true,
+                "allowanceOutRate": 300,
+                "allowanceOutDays": 3,
+                "allowanceOutTotal": 900,
+                "allowanceInChecked": true,
+                "allowanceInRate": 200,
+                "allowanceInDays": 2,
+                "allowanceInTotal": 400,
+                "lodgingFixedChecked": false,
+                "lodgingDoubleChecked": true,
+                "lodgingSingleChecked": false,
+                "lodgingNights": 3,
+                "lodgingRate": 1000,
+                "lodgingDoubleNights": 3,
+                "lodgingDoubleRate": 800,
+                "lodgingSingleNights": 0,
+                "lodgingSingleRate": 0,
+                "lodgingDoublePerson": "John Smith",
+                "lodgingDoublePersonExternal": "Jane Smith",
+                "lodgingTotal": 2400,
+                "movingCostChecked": true,
+                "movingCostRate": 300
               }
             ]
           }
