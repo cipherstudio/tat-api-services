@@ -61,8 +61,8 @@ const multerOptions = {
 
 @ApiTags('Files')
 @Controller('files')
-@UseGuards(JwtAuthGuard)
-@ApiBearerAuth('JWT-auth')
+// @UseGuards(JwtAuthGuard)
+// @ApiBearerAuth('JWT-auth')
 export class FilesController {
   constructor(private readonly filesService: FilesService) {}
 

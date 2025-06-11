@@ -1,170 +1,164 @@
 const accommodationRates = [
-    {
-      "order": 1,
-      "position_title": "ประธานกรรมการ",
-      "level_code": null,
-      "flat_rate_enabled": false,
-      "flat_rate_amount": null,
-      "single_room_enabled": true,
-      "single_room_amount": 1450,
-      "double_room_enabled": false,
-      "double_room_amount": null,
-      "is_editable_amount": true,
-      "is_editable_days": true,
-      "note": "พักเดี่ยวเท่านั้น"
-    },
-    {
-      "order": 2,
-      "position_title": "กรรมการ",
-      "level_code": null,
-      "flat_rate_enabled": false,
-      "flat_rate_amount": null,
-      "single_room_enabled": true,
-      "single_room_amount": 1450,
-      "double_room_enabled": false,
-      "double_room_amount": null,
-      "is_editable_amount": true,
-      "is_editable_days": true,
-      "note": "พักเดี่ยวเท่านั้น"
-    },
-    {
-      "order": 3,
-      "position_title": "ผู้ว่าการ ททท",
-      "level_code": null,
-      "flat_rate_enabled": false,
-      "flat_rate_amount": null,
-      "single_room_enabled": true,
-      "single_room_amount": 1450,
-      "double_room_enabled": false,
-      "double_room_amount": null,
-      "is_editable_amount": true,
-      "is_editable_days": true,
-      "note": "พักเดี่ยวเท่านั้น"
-    },
-    {
-      "order": 4,
-      "position_title": "C11",
-      "level_code": "11",
-      "flat_rate_enabled": false,
-      "flat_rate_amount": null,
-      "single_room_enabled": true,
-      "single_room_amount": 1450,
-      "double_room_enabled": false,
-      "double_room_amount": null,
-      "is_editable_amount": true,
-      "is_editable_days": true,
-      "note": null
-    },
-    {
-      "order": 5,
-      "position_title": "C10",
-      "level_code": "10",
-      "flat_rate_enabled": false,
-      "flat_rate_amount": null,
-      "single_room_enabled": true,
-      "single_room_amount": 1450,
-      "double_room_enabled": false,
-      "double_room_amount": null,
-      "is_editable_amount": true,
-      "is_editable_days": true,
-      "note": null
-    },
-    {
-      "order": 6,
-      "position_title": "C9",
-      "level_code": "09",
-      "flat_rate_enabled": false,
-      "flat_rate_amount": null,
-      "single_room_enabled": true,
-      "single_room_amount": 1450,
-      "double_room_enabled": false,
-      "double_room_amount": null,
-      "is_editable_amount": true,
-      "is_editable_days": true,
-      "note": null
-    },
-    {
-      "order": 7,
-      "position_title": "C8",
-      "level_code": "08",
-      "flat_rate_enabled": true,
-      "flat_rate_amount": 1000,
-      "single_room_enabled": true,
-      "single_room_amount": 1450,
-      "double_room_enabled": true,
-      "double_room_amount": 1015,
-      "is_editable_amount": true,
-      "is_editable_days": true,
-      "note": "flat_rate ปรับเงินไม่ได้"
-    },
-    {
-      "order": 8,
-      "position_title": "C7",
-      "level_code": "07",
-      "flat_rate_enabled": true,
-      "flat_rate_amount": 1000,
-      "single_room_enabled": true,
-      "single_room_amount": 1450,
-      "double_room_enabled": true,
-      "double_room_amount": 1015,
-      "is_editable_amount": true,
-      "is_editable_days": true,
-      "note": "flat_rate ปรับเงินไม่ได้"
-    },
-    {
-      "order": 9,
-      "position_title": "C6",
-      "level_code": "06",
-      "flat_rate_enabled": true,
-      "flat_rate_amount": 1000,
-      "single_room_enabled": true,
-      "single_room_amount": 1450,
-      "double_room_enabled": true,
-      "double_room_amount": 1015,
-      "is_editable_amount": true,
-      "is_editable_days": true,
-      "note": "flat_rate ปรับเงินไม่ได้"
-    },
-    {
-      "order": 10,
-      "position_title": "C5",
-      "level_code": "05",
-      "flat_rate_enabled": true,
-      "flat_rate_amount": 1000,
-      "single_room_enabled": true,
-      "single_room_amount": 1450,
-      "double_room_enabled": true,
-      "double_room_amount": 1015,
-      "is_editable_amount": true,
-      "is_editable_days": true,
-      "note": "flat_rate ปรับเงินไม่ได้"
-    },
-    {
-      "order": 11,
-      "position_title": "C4",
-      "level_code": "04",
-      "flat_rate_enabled": true,
-      "flat_rate_amount": 1000,
-      "single_room_enabled": true,
-      "single_room_amount": 1450,
-      "double_room_enabled": true,
-      "double_room_amount": 1015,
-      "is_editable_amount": true,
-      "is_editable_days": true,
-      "note": "flat_rate ปรับเงินไม่ได้"
-    },
-    {
-      "order": 12,
-      "position_title": "C3",
-      "level_code": "03",
-      "flat_rate_enabled": true,
-      "flat_rate_amount": 1000,
-      "single_room_enabled": true,
-      "single_room_amount": 1450,
-      "double_room_enabled": true,
-      "double_room_amount": 1015,
-      "is_editable_amount": true,
-      "is_editable_days": true,
-      "note": "flat_rate ปรับเงินไม่ได้"
-    }
-  ]
+  // ======================================================
+  // =============== DOMESTIC TRAVEL RULES ================
+  // ======================================================
+  {
+    "travel_type": "DOMESTIC",
+    "position_name": "ประธานกรรมการ, กรรมการ",
+    "level_code_start": null,
+    "level_code_end": null,
+    "position_group_name": "ประธานกรรมการ, กรรมการ",
+    "rate_mode": "UNLIMITED",
+    "flat_rate_amount": null,
+    "single_room_amount": null,
+    "double_room_percentage": null
+  },
+  {
+    "travel_type": "DOMESTIC",
+    "position_name": "ผู้ว่าการ, รองผู้ว่าการ",
+    "level_code_start": "09",
+    "level_code_end": "11",
+    "position_group_name": "ผู้ว่าการ, รองผู้ว่าการ และพนักงานระดับ 9 ขึ้นไป",
+    "rate_mode": "UNLIMITED",
+    "flat_rate_amount": null,
+    "single_room_amount": null,
+    "double_room_percentage": null
+  },
+  {
+    "travel_type": "DOMESTIC",
+    "position_name": null,
+    "level_code_start": "03",
+    "level_code_end": "08",
+    "position_group_name": "พนักงานระดับ 8 ลงมา, ลูกจ้าง, ลูกจ้างต่างประเทศ",
+    "rate_mode": "CHOICE",
+    "flat_rate_amount": 1000.00,
+    "single_room_amount": 1450.00,
+    "double_room_percentage": 70
+  },
+  // ======================================================
+  // ============== INTERNATIONAL TRAVEL RULES ============
+  // ======================================================
+  {
+    "travel_type": "INTERNATIONAL",
+    "position_name": "ประธานกรรมการ, กรรมการ, ผู้ว่าการ",
+    "level_code_start": null,
+    "level_code_end": null,
+    "position_group_name": "ประธานกรรมการ, กรรมการ, ผู้ว่าการ",
+    "rate_mode": "UNLIMITED",
+    "flat_rate_amount": null,
+    "single_room_amount": null,
+    "double_room_percentage": null
+  },
+  {
+    "travel_type": "INTERNATIONAL",
+    "position_name": "รองผู้ว่าการ",
+    "level_code_start": "09",
+    "level_code_end": "11",
+    "position_group_name": "รองผู้ว่าการ และพนักงานระดับ 9 ขึ้นไป",
+    "rate_mode": "ACTUAL_ONLY",
+    "flat_rate_amount": null,
+    "single_room_amount": 10000.00,
+    "double_room_percentage": 70
+  },
+  {
+    "travel_type": "INTERNATIONAL",
+    "position_name": "รองผู้ว่าการ",
+    "level_code_start": "09",
+    "level_code_end": "11",
+    "position_group_name": "รองผู้ว่าการ และพนักงานระดับ 9 ขึ้นไป",
+    "rate_mode": "ACTUAL_ONLY",
+    "flat_rate_amount": null,
+    "single_room_amount": 7000.00,
+    "double_room_percentage": 70
+  },
+  {
+    "travel_type": "INTERNATIONAL",
+    "position_name": "รองผู้ว่าการ",
+    "level_code_start": "09",
+    "level_code_end": "11",
+    "position_group_name": "รองผู้ว่าการ และพนักงานระดับ 9 ขึ้นไป",
+    "rate_mode": "ACTUAL_ONLY",
+    "flat_rate_amount": null,
+    "single_room_amount": 4500.00,
+    "double_room_percentage": 70
+  },
+  {
+    "travel_type": "INTERNATIONAL",
+    "position_name": null,
+    "level_code_start": "03",
+    "level_code_end": "08",
+    "position_group_name": "พนักงานระดับ 8 ลงมา หรือลูกจ้าง",
+    "rate_mode": "ACTUAL_ONLY",
+    "flat_rate_amount": null,
+    "single_room_amount": 7500.00,
+    "double_room_percentage": 70
+  },
+  {
+    "travel_type": "INTERNATIONAL",
+    "position_name": null,
+    "level_code_start": "03",
+    "level_code_end": "08",
+    "position_group_name": "พนักงานระดับ 8 ลงมา หรือลูกจ้าง",
+    "rate_mode": "ACTUAL_ONLY",
+    "flat_rate_amount": null,
+    "single_room_amount": 5000.00,
+    "double_room_percentage": 70
+  },
+  {
+    "travel_type": "INTERNATIONAL",
+    "position_name": null,
+    "level_code_start": "03",
+    "level_code_end": "08",
+    "position_group_name": "พนักงานระดับ 8 ลงมา หรือลูกจ้าง",
+    "rate_mode": "ACTUAL_ONLY",
+    "flat_rate_amount": null,
+    "single_room_amount": 3100.00,
+    "double_room_percentage": 70
+  },
+  {
+    "travel_type": "INTERNATIONAL",
+    "position_name": "รองผู้ว่าการ",
+    "level_code_start": "09",
+    "level_code_end": "11",
+    "position_group_name": "รองผู้ว่าการ และพนักงานระดับ 9 ขึ้นไป",
+    "rate_mode": "ACTUAL_ONLY",
+    "flat_rate_amount": null,
+    "single_room_amount": 10000.00,
+    "double_room_percentage": 70
+  },
+  {
+    "travel_type": "INTERNATIONAL",
+    "position_name": "รองผู้ว่าการ",
+    "level_code_start": "09",
+    "level_code_end": "11",
+    "position_group_name": "รองผู้ว่าการ และพนักงานระดับ 9 ขึ้นไป",
+    "rate_mode": "ACTUAL_ONLY",
+    "flat_rate_amount": null,
+    "single_room_amount": 10000.00,
+    "double_room_percentage": 70
+  },
+  {
+    "travel_type": "INTERNATIONAL",
+    "position_name": null,
+    "level_code_start": "03",
+    "level_code_end": "08",
+    "position_group_name": "พนักงานระดับ 8 ลงมา หรือลูกจ้าง",
+    "rate_mode": "ACTUAL_ONLY",
+    "flat_rate_amount": null,
+    "single_room_amount": 7500.00,
+    "double_room_percentage": 70
+  },
+  {
+    "travel_type": "INTERNATIONAL",
+    "position_name": null,
+    "level_code_start": "03",
+    "level_code_end": "08",
+    "position_group_name": "พนักงานระดับ 8 ลงมา หรือลูกจ้าง",
+    "rate_mode": "ACTUAL_ONLY",
+    "flat_rate_amount": null,
+    "single_room_amount": 7500.00,
+    "double_room_percentage": 70
+  }
+];
+
+module.exports = accommodationRates;

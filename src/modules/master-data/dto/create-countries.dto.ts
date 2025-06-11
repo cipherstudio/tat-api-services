@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsNumber } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 /**
@@ -19,4 +19,14 @@ export class CreateCountriesDto {
   @IsString()
   @IsNotEmpty()
   nameTh: string;
+
+  @ApiProperty({ description: 'The country type (A, B, or null)', required: false })
+  @IsString()
+  @IsOptional()
+  type?: string | null;
+
+  @ApiProperty({ description: 'The percentage increase for the country', required: false })
+  @IsNumber()
+  @IsOptional()
+  percentIncrease?: number;
 }

@@ -18,10 +18,26 @@ export class VTxOtRepository extends KnexBaseRepository<VTxOt> {
     if (query.budgetCode) conditions['BUDGET_CODE'] = query.budgetCode;
 
     let builder = this.knex(this.tableName).where(conditions);
+
+    if (query.sectionName) {
+      builder = builder.whereRaw('LOWER("SECTION_NAME") LIKE ?', [`%${query.sectionName.toLowerCase()}%`]);
+    }
+
+    if (query.activitySubDesc) {
+      builder = builder.whereRaw('LOWER("ACTIVITY_SUB_DESC") LIKE ?', [`%${query.activitySubDesc.toLowerCase()}%`]);
+    }
+
     if (query.limit !== undefined) builder = builder.limit(query.limit);
     if (query.offset !== undefined) builder = builder.offset(query.offset);
 
     const countQuery = this.knex(this.tableName).where(conditions);
+    if (query.sectionName) {
+      countQuery.whereRaw('LOWER("SECTION_NAME") LIKE ?', [`%${query.sectionName.toLowerCase()}%`]);
+    }
+    if (query.activitySubDesc) {
+      countQuery.whereRaw('LOWER("ACTIVITY_SUB_DESC") LIKE ?', [`%${query.activitySubDesc.toLowerCase()}%`]);
+    }
+
     const countResult = await countQuery.count('* as count').first();
     const total = Number(countResult?.count || 0);
 

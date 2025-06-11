@@ -1,40 +1,40 @@
 import { Injectable } from '@nestjs/common';
-import { Countries } from '../entities/countries.entity';
+import { PerDiemRates } from '../entities/per-diem-rates.entity';
 import { KnexBaseRepository } from '../../../common/repositories/knex-base.repository';
 import { KnexService } from '../../../database/knex-service/knex.service';
 import { toCamelCase, toSnakeCase } from '../../../common/utils/case-mapping';
 
 @Injectable()
-export class CountriesRepository extends KnexBaseRepository<Countries> {
+export class PerDiemRatesRepository extends KnexBaseRepository<PerDiemRates> {
   constructor(knexService: KnexService) {
-    super(knexService, 'countries');
+    super(knexService, 'per_diem_rates');
   }
 
-  async create(entity: Partial<Countries>): Promise<Countries> {
+  async create(entity: Partial<PerDiemRates>): Promise<PerDiemRates> {
     const dbEntity = await toSnakeCase(entity);
     const created = await super.create(dbEntity);
-    return await toCamelCase<Countries>(created);
+    return await toCamelCase<PerDiemRates>(created);
   }
 
-  async update(id: number, entity: Partial<Countries>): Promise<Countries> {
+  async update(id: number, entity: Partial<PerDiemRates>): Promise<PerDiemRates> {
     const dbEntity = await toSnakeCase(entity);
     const updated = await super.update(id, dbEntity);
-    return await toCamelCase<Countries>(updated);
+    return await toCamelCase<PerDiemRates>(updated);
   }
 
-  async findById(id: number): Promise<Countries | undefined> {
+  async findById(id: number): Promise<PerDiemRates | undefined> {
     const dbEntity = await super.findById(id);
-    return dbEntity ? await toCamelCase<Countries>(dbEntity) : undefined;
+    return dbEntity ? await toCamelCase<PerDiemRates>(dbEntity) : undefined;
   }
 
-  async findOne(conditions: Record<string, any>): Promise<Countries | undefined> {
+  async findOne(conditions: Record<string, any>): Promise<PerDiemRates | undefined> {
     const dbEntity = await super.findOne(conditions);
-    return dbEntity ? await toCamelCase<Countries>(dbEntity) : undefined;
+    return dbEntity ? await toCamelCase<PerDiemRates>(dbEntity) : undefined;
   }
 
-  async find(conditions: Record<string, any> = {}): Promise<Countries[]> {
+  async find(conditions: Record<string, any> = {}): Promise<PerDiemRates[]> {
     const dbEntities = await super.find(conditions);
-    return Promise.all(dbEntities.map(async (e) => await toCamelCase<Countries>(e)));
+    return Promise.all(dbEntities.map(async (e) => await toCamelCase<PerDiemRates>(e)));
   }
 
   async findWithPagination(
@@ -47,7 +47,7 @@ export class CountriesRepository extends KnexBaseRepository<Countries> {
     const result = await super.findWithPagination(page, limit, conditions, orderBy, direction);
     return {
       ...result,
-      data: await Promise.all(result.data.map(async (e) => await toCamelCase<Countries>(e))),
+      data: await Promise.all(result.data.map(async (e) => await toCamelCase<PerDiemRates>(e))),
     };
   }
 
@@ -70,10 +70,8 @@ export class CountriesRepository extends KnexBaseRepository<Countries> {
     if (searchTerm) {
       query.where((builder) => {
         builder
-          .whereRaw('LOWER("name_en") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
-          .orWhereRaw('"name_th" LIKE ?', [`%${searchTerm}%`])
-          .orWhereRaw('LOWER("code") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
-          .orWhereRaw('LOWER("type") LIKE ?', [`%${searchTerm.toLowerCase()}%`]);
+          .whereRaw('LOWER("position_group") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
+          .orWhereRaw('LOWER("position_name") LIKE ?', [`%${searchTerm.toLowerCase()}%`]);
       });
     }
 
@@ -83,14 +81,18 @@ export class CountriesRepository extends KnexBaseRepository<Countries> {
     const countResult = await query.clone().count('* as count').first();
     const total = Number(countResult?.count || 0);
 
+    // Convert orderBy to snake_case for database
+    const dbOrderBy = await toSnakeCase({ [orderBy]: null });
+    const dbOrderByKey = Object.keys(dbOrderBy)[0];
+
     // Get paginated data
     const data = await query
-      .orderBy(orderBy, direction)
+      .orderBy(dbOrderByKey, direction)
       .limit(limit)
       .offset(offset);
 
     return {
-      data: await Promise.all(data.map(async (e) => await toCamelCase<Countries>(e))),
+      data: await Promise.all(data.map(async (e) => await toCamelCase<PerDiemRates>(e))),
       meta: {
         total,
         page,
@@ -99,6 +101,4 @@ export class CountriesRepository extends KnexBaseRepository<Countries> {
       },
     };
   }
-
-  // Add custom repository methods here as needed
-}
+} 

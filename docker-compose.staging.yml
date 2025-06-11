@@ -12,6 +12,7 @@ services:
       - LOG_MAX_SIZE=20m
     volumes:
       - ./logs:/app/logs
+      - ./uploads:/app/uploads
     ports:
       - "8080:3000"
     command: npm run start:prod
