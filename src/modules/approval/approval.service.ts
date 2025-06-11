@@ -571,7 +571,7 @@ export class ApprovalService {
         await trx('approval_accommodation_transport_expense').where('approval_id', id).delete();
         await trx('approval_accommodation_holiday_expense').where('approval_id', id).delete();
         await trx('approval_entertainment_expense').where('approval_id', id).delete();
-        await trx('approval_clothing_expense').where('approval_id', id).delete();
+        //await trx('approval_clothing_expense').where('approval_id', id).delete();
         
         for (const staffMember of updateDto.staffMembers) {
           const [insertedStaffMember] = await trx('approval_staff_members')
@@ -747,24 +747,63 @@ export class ApprovalService {
               // Process clothing expenses
               if (Array.isArray(staffMember.clothingExpenses)) {
                 for (const expense of staffMember.clothingExpenses) {
-                  await trx('approval_clothing_expense').insert({
-                    approval_id: id,
-                    staff_member_id: insertedStaffMember.id,
-                    employee_code: staffMember.employeeCode,
-                    clothing_file_checked: expense.clothingFileChecked,
-                    clothing_amount: expense.clothingAmount,
-                    clothing_reason: expense.clothingReason,
-                    reporting_date: expense.reportingDate,
-                    next_claim_date: expense.nextClaimDate,
-                    work_end_date: expense.workEndDate,
-                    created_at: new Date(),
-                    updated_at: new Date(),
-                  });
+                  // Check if record exists
+                  const existingExpense = await trx('approval_clothing_expense')
+                    .where({
+                      approval_id: id,
+                      employee_code: staffMember.employeeCode
+                    })
+                    .first();
+
+                  if (existingExpense) {
+                    // Update existing record
+                    await trx('approval_clothing_expense')
+                      .where({
+                        approval_id: id,
+                        employee_code: staffMember.employeeCode
+                      })
+                      .update({
+                        clothing_file_checked: expense.clothingFileChecked,
+                        clothing_amount: expense.clothingAmount,
+                        clothing_reason: expense.clothingReason,
+                        reporting_date: expense.reportingDate,
+                        next_claim_date: expense.nextClaimDate,
+                        work_end_date: expense.workEndDate,
+                        updated_at: new Date()
+                      });
+                  } else {
+                    // Insert new record
+                    await trx('approval_clothing_expense').insert({
+                      approval_id: id,
+                      staff_member_id: insertedStaffMember.id,
+                      employee_code: staffMember.employeeCode,
+                      clothing_file_checked: expense.clothingFileChecked,
+                      clothing_amount: expense.clothingAmount,
+                      clothing_reason: expense.clothingReason,
+                      reporting_date: expense.reportingDate,
+                      next_claim_date: expense.nextClaimDate,
+                      work_end_date: expense.workEndDate,
+                      created_at: new Date(),
+                      updated_at: new Date()
+                    });
+                  }
                 }
               }
             }
           }
         }
+      }
+
+      // After processing all staff members, clean up old clothing expenses
+      if (updateDto.staffMembers && Array.isArray(updateDto.staffMembers)) {
+        // Get all employee codes from current staff members
+        const currentEmployeeCodes = updateDto.staffMembers.map(staff => staff.employeeCode);
+
+        // Delete clothing expenses for employee codes that are no longer in the staff members list
+        await trx('approval_clothing_expense')
+          .where('approval_id', id)
+          .whereNotIn('employee_code', currentEmployeeCodes)
+          .delete();
       }
 
       // Process other expenses
