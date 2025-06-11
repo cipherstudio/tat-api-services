@@ -31,19 +31,30 @@ export class ApprovalService {
   ) {}
 
   private async generateIncrementId(): Promise<string> {
-    const year = new Date().getFullYear();
+    // Get current date
+    const now = new Date();
+    
+    // Convert to Buddhist year and get last 2 digits
+    const beYear = now.getFullYear() + 543;
+    const yearLastTwoDigits = beYear.toString().slice(-2);
+    
+    // Get current month and pad with leading zero
+    const currentMonth = (now.getMonth() + 1).toString().padStart(2, '0');
+    
+    // Find the last increment ID for current month
+    const prefix = `EX${yearLastTwoDigits}${currentMonth}`;
     const result = await this.knexService.knex('approval')
-      .where('increment_id', 'like', `${year}%`)
+      .where('increment_id', 'like', `${prefix}%`)
       .orderBy('increment_id', 'desc')
       .first();
 
     let sequence = 1;
     if (result?.increment_id) {
-      const lastSequence = parseInt(result.increment_id.slice(-4));
+      const lastSequence = parseInt(result.increment_id.slice(-5));
       sequence = lastSequence + 1;
     }
 
-    return `${year}${sequence.toString().padStart(4, '0')}`;
+    return `${prefix}${sequence.toString().padStart(5, '0')}`;
   }
 
   async create(createApprovalDto: CreateApprovalDto, userId: number): Promise<Approval> {
