@@ -343,10 +343,10 @@ export class ApprovalService {
       // Process travel date ranges
       if (updateDto.travelDateRanges && Array.isArray(updateDto.travelDateRanges)) {
         console.log('Processing travel date ranges:', JSON.stringify(updateDto.travelDateRanges, null, 2));
-        await trx('approval_trip_date_ranges').where('approval_id', id).delete();
+        await trx('approval_date_ranges').where('approval_id', id).delete();
         for (const range of updateDto.travelDateRanges) {
           if (range && typeof range === 'object') {
-            await trx('approval_trip_date_ranges').insert({
+            await trx('approval_date_ranges').insert({
               approval_id: id,
               start_date: range.start,
               end_date: range.end,
@@ -385,6 +385,11 @@ export class ApprovalService {
             }).returning('id');
 
             if (entry.tripDateRanges && Array.isArray(entry.tripDateRanges)) {
+              // Delete existing trip date ranges for this trip entry
+              await trx('approval_trip_date_ranges')
+                .where('approval_id', id)
+                .delete();
+
               for (const range of entry.tripDateRanges) {
                 if (range && typeof range === 'object') {
                   await trx('approval_trip_date_ranges').insert({
@@ -392,6 +397,93 @@ export class ApprovalService {
                     approval_trip_entries_id: tripEntryId.id,
                     start_date: range.start,
                     end_date: range.end,
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Process staff members and their work locations
+      if (updateDto.staffMembers && Array.isArray(updateDto.staffMembers)) {
+        console.log('Processing staff members:', JSON.stringify(updateDto.staffMembers, null, 2));
+        await trx('approval_staff_members').where('approval_id', id).delete();
+        await trx('approval_work_locations').where('approval_id', id).delete();
+        await trx('approval_work_locations_date_ranges').where('approval_id', id).delete();
+        await trx('approval_transportation_expense').where('approval_id', id).delete();
+        
+        for (const staffMember of updateDto.staffMembers) {
+          // Insert staff member
+          const [insertedStaffMember] = await trx('approval_staff_members').insert({
+            approval_id: id,
+            employee_code: staffMember.employeeCode,
+            type: staffMember.type,
+            name: staffMember.name,
+            role: staffMember.role,
+            position: staffMember.position,
+            right_equivalent: staffMember.rightEquivalent,
+            organization_position: staffMember.organizationPosition,
+            created_at: new Date(),
+            updated_at: new Date()
+          }).returning('id');
+
+          // Process work locations for this staff member
+          if (staffMember.workLocations && Array.isArray(staffMember.workLocations)) {
+            for (const workLocation of staffMember.workLocations) {
+              // Insert work location
+              const [workLocationId] = await trx('approval_work_locations').insert({
+                approval_id: id,
+                staff_member_id: insertedStaffMember.id,
+                location: workLocation.location,
+                destination: workLocation.destination,
+                nearby_provinces: workLocation.nearbyProvinces,
+                details: workLocation.details,
+                destination_type: workLocation.destinationType,
+                checked: workLocation.checked,
+                created_at: new Date(),
+                updated_at: new Date()
+              }).returning('id');
+
+              // Insert work location date ranges
+              if (workLocation.tripDateRanges && Array.isArray(workLocation.tripDateRanges)) {
+                for (const range of workLocation.tripDateRanges) {
+                  if (range && typeof range === 'object') {
+                    await trx('approval_work_locations_date_ranges').insert({
+                      approval_id: id,
+                      approval_work_locations_id: workLocationId.id,
+                      start_date: range.start,
+                      end_date: range.end,
+                      created_at: new Date(),
+                      updated_at: new Date()
+                    });
+                  }
+                }
+              }
+
+              // Process transportation expenses for this work location
+              if (workLocation.transportationExpenses && Array.isArray(workLocation.transportationExpenses)) {
+                for (const expense of workLocation.transportationExpenses) {
+                  await trx('approval_transportation_expense').insert({
+                    approval_id: id,
+                    staff_member_id: insertedStaffMember.id,
+                    work_location_id: workLocationId.id,
+                    travel_type: expense.travelType,
+                    expense_type: expense.expenseType,
+                    travel_method: expense.travelMethod,
+                    outbound_origin: expense.outbound?.origin,
+                    outbound_destination: expense.outbound?.destination,
+                    outbound_trips: expense.outbound?.trips,
+                    outbound_expense: expense.outbound?.expense,
+                    outbound_total: expense.outbound?.total,
+                    inbound_origin: expense.inbound?.origin,
+                    inbound_destination: expense.inbound?.destination,
+                    inbound_trips: expense.inbound?.trips,
+                    inbound_expense: expense.inbound?.expense,
+                    inbound_total: expense.inbound?.total,
+                    total_amount: expense.totalAmount,
+                    created_at: new Date(),
+                    updated_at: new Date()
                   });
                 }
               }

@@ -186,7 +186,7 @@ export class UpdateApprovalDto {
   @ApiProperty({
     description: 'Record type',
     required: false,
-    example: 'TRAVEL'
+    example: 'owner'
   })
   @IsOptional()
   @IsString()
@@ -213,7 +213,7 @@ export class UpdateApprovalDto {
   @ApiProperty({
     description: 'Travel type',
     required: false,
-    example: 'DOMESTIC'
+    example: 'domestic'
   })
   @IsOptional()
   @IsString()
@@ -222,7 +222,7 @@ export class UpdateApprovalDto {
   @ApiProperty({
     description: 'International sub option',
     required: false,
-    example: 'ASIA'
+    example: 'travel_later'
   })
   @IsOptional()
   @IsString()
