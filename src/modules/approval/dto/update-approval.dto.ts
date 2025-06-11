@@ -11,6 +11,7 @@ import { ApprovalAccommodationExpenseDto } from './approval-accommodation-expens
 import { ApprovalAccommodationTransportExpenseDto } from './approval-accommodation-transport-expense.dto';
 import { ApprovalAccommodationHolidayExpenseDto } from './approval-accommodation-holiday-expense.dto';
 import { ApprovalEntertainmentExpenseDto } from './approval-entertainment-expense.dto';
+import { ApprovalClothingExpenseDto } from './approval-clothing-expense.dto';
 
 
 /**
@@ -217,6 +218,17 @@ export class StaffMemberDto {
   @ValidateNested({ each: true })
   @Type(() => ApprovalEntertainmentExpenseDto)
   entertainmentExpenses?: ApprovalEntertainmentExpenseDto[];
+
+  @ApiProperty({
+    description: 'ค่าเครื่องแต่งกาย',
+    type: [ApprovalClothingExpenseDto],
+    required: false
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ApprovalClothingExpenseDto)
+  clothingExpenses?: ApprovalClothingExpenseDto[];
 }
 
 export class UpdateApprovalDto {
@@ -523,6 +535,16 @@ export class UpdateApprovalDto {
             "entertainmentShortChecked": true,
             "entertainmentLongChecked": false,
             "entertainmentAmount": 1000
+          }
+        ],
+        "clothingExpenses": [
+          {
+            "clothingFileChecked": true,
+            "clothingAmount": 1000,
+            "clothingReason": "Business trip",
+            "reportingDate": "2024-03-20",
+            "nextClaimDate": "2024-03-25",
+            "workEndDate": "2024-03-25"
           }
         ]
       }

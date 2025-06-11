@@ -257,6 +257,107 @@ export class ApprovalService {
         'budget_code'
       );
 
+    // Get accommodation expenses
+    const accommodationExpenses = await this.knexService.knex('approval_accommodation_expense')
+      .where('approval_id', id)
+      .select(
+        'id',
+        'staff_member_id as staffId',
+        'work_location_id as workLocationId',
+        'total_amount as totalAmount',
+        'has_meal_out as hasMealOut',
+        'has_meal_in as hasMealIn',
+        'meal_out_amount as mealOutAmount',
+        'meal_in_amount as mealInAmount',
+        'meal_out_count as mealOutCount',
+        'meal_in_count as mealInCount',
+        'allowance_out_checked as allowanceOutChecked',
+        'allowance_out_rate as allowanceOutRate',
+        'allowance_out_days as allowanceOutDays',
+        'allowance_out_total as allowanceOutTotal',
+        'allowance_in_checked as allowanceInChecked',
+        'allowance_in_rate as allowanceInRate',
+        'allowance_in_days as allowanceInDays',
+        'allowance_in_total as allowanceInTotal',
+        'lodging_fixed_checked as lodgingFixedChecked',
+        'lodging_double_checked as lodgingDoubleChecked',
+        'lodging_single_checked as lodgingSingleChecked',
+        'lodging_nights as lodgingNights',
+        'lodging_rate as lodgingRate',
+        'lodging_double_nights as lodgingDoubleNights',
+        'lodging_double_rate as lodgingDoubleRate',
+        'lodging_single_nights as lodgingSingleNights',
+        'lodging_single_rate as lodgingSingleRate',
+        'lodging_double_person as lodgingDoublePerson',
+        'lodging_double_person_external as lodgingDoublePersonExternal',
+        'lodging_total as lodgingTotal',
+        'moving_cost_checked as movingCostChecked',
+        'moving_cost_rate as movingCostRate'
+      );
+
+    // Get accommodation transport expenses
+    const accommodationTransportExpenses = await this.knexService.knex('approval_accommodation_transport_expense')
+      .where('approval_id', id)
+      .select(
+        'id',
+        'approval_accommodation_expense_id as approvalAccommodationExpenseId',
+        'type',
+        'amount',
+        'checked',
+        'flight_route as flightRoute'
+      );
+
+    // Get accommodation holiday expenses
+    const accommodationHolidayExpenses = await this.knexService.knex('approval_accommodation_holiday_expense')
+      .where('approval_id', id)
+      .select(
+        'id',
+        'approval_accommodation_expense_id as approvalAccommodationExpenseId',
+        'date',
+        'thai_date as thaiDate',
+        'checked',
+        'time',
+        'hours',
+        'total',
+        'note'
+      );
+
+    // Get entertainment expenses
+    const entertainmentExpenses = await this.knexService.knex('approval_entertainment_expense')
+      .where('approval_id', id)
+      .select(
+        'id',
+        'staff_member_id as staffId',
+        'entertainment_short_checked as entertainmentShortChecked',
+        'entertainment_long_checked as entertainmentLongChecked',
+        'entertainment_amount as entertainmentAmount'
+      );
+
+    // Get clothing expenses
+    const clothingExpenses = await this.knexService.knex('approval_clothing_expense')
+      .where('approval_id', id)
+      .select(
+        'id',
+        'staff_member_id as staffId',
+        'employee_code as employeeCode',
+        'clothing_file_checked as clothingFileChecked',
+        'clothing_amount as clothingAmount',
+        'clothing_reason as clothingReason',
+        'reporting_date as reportingDate',
+        'next_claim_date as nextClaimDate',
+        'work_end_date as workEndDate'
+      );
+
+    // Get staff members
+    const staffMembers = await this.knexService.knex('approval_staff_members')
+      .where('approval_id', id)
+      .select('id', 'employee_code as employeeCode', 'type', 'name', 'role', 'position', 'right_equivalent as rightEquivalent', 'organization_position as organizationPosition');
+
+    // Get work locations for each staff member
+    const workLocations = await this.knexService.knex('approval_work_locations')
+      .where('approval_id', id)
+      .select('id', 'staff_member_id as staffMemberId', 'location', 'destination', 'nearby_provinces as nearbyProvinces', 'details', 'checked', 'destination_type as destinationType');
+
     // Transform transportation expenses to match DTO structure
     const transformedExpenses = transportationExpenses.map(expense => ({
       id: expense.id,
@@ -282,10 +383,52 @@ export class ApprovalService {
       totalAmount: expense.totalAmount
     }));
 
-    const currentStatus = statusHistory[0]?.status || 'ฉบับร่าง';
+    // Transform staff members to include their expenses
+    const transformedStaffMembers = staffMembers.map(staff => {
+      const staffWorkLocations = workLocations.filter(location => location.staffMemberId === staff.id);
+      const staffTransportationExpenses = transformedExpenses.filter(
+        expense => expense.staffId === staff.id
+      );
+      const staffAccommodationExpenses = accommodationExpenses.filter(
+        expense => expense.staffId === staff.id
+      );
+      const staffAccommodationTransportExpenses = accommodationTransportExpenses.filter(
+        expense => expense.staffId === staff.id
+      );
+      const staffAccommodationHolidayExpenses = accommodationHolidayExpenses.filter(
+        expense => expense.staffId === staff.id
+      );
+      const staffEntertainmentExpenses = entertainmentExpenses.filter(
+        expense => expense.staffId === staff.id
+      );
+      const staffClothingExpenses = clothingExpenses.filter(
+        expense => expense.staffId === staff.id
+      );
+
+      return {
+        ...staff,
+        workLocations: staffWorkLocations.map(location => ({
+          ...location,
+          transportationExpenses: staffTransportationExpenses.filter(
+            expense => expense.workLocationId === location.id
+          ),
+          accommodationExpenses: staffAccommodationExpenses.filter(
+            expense => expense.workLocationId === location.id
+          ),
+          accommodationTransportExpenses: staffAccommodationTransportExpenses.filter(
+            expense => expense.workLocationId === location.id
+          ),
+          accommodationHolidayExpenses: staffAccommodationHolidayExpenses.filter(
+            expense => expense.workLocationId === location.id
+          ),
+        })),
+        entertainmentExpenses: staffEntertainmentExpenses,
+        clothingExpenses: staffClothingExpenses,
+      };
+    });
 
     approvalDto.statusHistory = statusHistory;
-    approvalDto.currentStatus = currentStatus;
+    approvalDto.currentStatus = statusHistory[0]?.status || 'ฉบับร่าง';
     approvalDto.transportationExpenses = transformedExpenses;
     approvalDto.otherExpenses = otherExpenses;
     approvalDto.conditions = conditions;
@@ -293,6 +436,7 @@ export class ApprovalService {
     approvalDto.form3TotalOutbound = approval.form3_total_outbound;
     approvalDto.form3TotalInbound = approval.form3_total_inbound;
     approvalDto.form3TotalAmount = approval.form3_total_amount;
+    approvalDto.staffMembers = transformedStaffMembers;
 
     // Cache the result
     await this.cacheService.set(cacheKey, approvalDto, this.CACHE_TTL);
@@ -427,6 +571,7 @@ export class ApprovalService {
         await trx('approval_accommodation_transport_expense').where('approval_id', id).delete();
         await trx('approval_accommodation_holiday_expense').where('approval_id', id).delete();
         await trx('approval_entertainment_expense').where('approval_id', id).delete();
+        await trx('approval_clothing_expense').where('approval_id', id).delete();
         
         for (const staffMember of updateDto.staffMembers) {
           const [insertedStaffMember] = await trx('approval_staff_members')
@@ -593,6 +738,25 @@ export class ApprovalService {
                     entertainment_short_checked: expense.entertainmentShortChecked,
                     entertainment_long_checked: expense.entertainmentLongChecked,
                     entertainment_amount: expense.entertainmentAmount,
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                  });
+                }
+              }
+
+              // Process clothing expenses
+              if (Array.isArray(staffMember.clothingExpenses)) {
+                for (const expense of staffMember.clothingExpenses) {
+                  await trx('approval_clothing_expense').insert({
+                    approval_id: id,
+                    staff_member_id: insertedStaffMember.id,
+                    employee_code: staffMember.employeeCode,
+                    clothing_file_checked: expense.clothingFileChecked,
+                    clothing_amount: expense.clothingAmount,
+                    clothing_reason: expense.clothingReason,
+                    reporting_date: expense.reportingDate,
+                    next_claim_date: expense.nextClaimDate,
+                    work_end_date: expense.workEndDate,
                     created_at: new Date(),
                     updated_at: new Date(),
                   });
