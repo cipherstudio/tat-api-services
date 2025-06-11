@@ -5,7 +5,6 @@
 exports.up = function(knex) {
     return knex.schema.createTable('accommodation_rates', function (table) {
         table.increments('id').primary();
-        table.integer('order').notNullable();
         table.string('position_title', 100).notNullable();
         table.string('level_code', 10).nullable();
         table.boolean('flat_rate_enabled').defaultTo(false);
@@ -16,7 +15,6 @@ exports.up = function(knex) {
         table.decimal('double_room_amount', 8, 2).nullable();
         table.boolean('is_editable_amount').defaultTo(true);
         table.boolean('is_editable_days').defaultTo(true);
-        table.text('note').nullable();
         table.timestamps(true, true);
         
         // Index สำหรับการค้นหา

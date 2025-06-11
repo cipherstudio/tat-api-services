@@ -14,6 +14,9 @@ import { ExpensesBangkokToPlaceService } from './services/expenses-bangkok-to-pl
 import { ExpensesVehicleService } from './services/expenses-vehicle.service.js';
 import { CommitteePositionService } from './services/committee-position.service.js';
 import { OutsiderEquivalentService } from './services/outsider-equivalent.service.js';
+import { PerDiemRatesService } from './services/per-diem-rates.service';
+import { AccommodationRatesService } from './services/accommodation-rates.service';
+import { ExpensesOtherConditionsService } from './services/expenses-other-conditions.service';
 
 // Import controllers
 import { CountriesController } from './controllers/countries.controller.js';
@@ -27,6 +30,9 @@ import { ExpensesBangkokToPlaceController } from './controllers/expenses-bangkok
 import { ExpensesVehicleController } from './controllers/expenses-vehicle.controller.js';
 import { CommitteePositionController } from './controllers/committee-position.controller.js';
 import { OutsiderEquivalentController } from './controllers/outsider-equivalent.controller.js';
+import { PerDiemRatesController } from './controllers/per-diem-rates.controller';
+import { AccommodationRatesController } from './controllers/accommodation-rates.controller';
+import { ExpensesOtherConditionsController } from './controllers/expenses-other-conditions.controller';
 
 // Import repositories
 import { CountriesRepository } from './repositories/countries.repository.js';
@@ -40,6 +46,9 @@ import { ExpensesBangkokToPlaceRepository } from './repositories/expenses-bangko
 import { ExpensesVehicleRepository } from './repositories/expenses-vehicle.repository.js';
 import { CommitteePositionRepository } from './repositories/committee-position.repository.js';
 import { OutsiderEquivalentRepository } from './repositories/outsider-equivalent.repository.js';
+import { PerDiemRatesRepository } from './repositories/per-diem-rates.repository';
+import { AccommodationRatesRepository } from './repositories/accommodation-rates.repository';
+import { ExpensesOtherConditionsRepository } from './repositories/expenses-other-conditions.repository';
 
 @Module({
   imports: [
@@ -57,6 +66,9 @@ import { OutsiderEquivalentRepository } from './repositories/outsider-equivalent
     ExpensesVehicleController,
     CommitteePositionController,
     OutsiderEquivalentController,
+    PerDiemRatesController,
+    AccommodationRatesController,
+    ExpensesOtherConditionsController,
   ],
   providers: [
     // Services
@@ -71,6 +83,9 @@ import { OutsiderEquivalentRepository } from './repositories/outsider-equivalent
     ExpensesVehicleService,
     CommitteePositionService,
     OutsiderEquivalentService,
+    PerDiemRatesService,
+    AccommodationRatesService,
+    ExpensesOtherConditionsService,
     // Repositories
     CountriesRepository,
     PlacesRepository,
@@ -83,6 +98,9 @@ import { OutsiderEquivalentRepository } from './repositories/outsider-equivalent
     ExpensesVehicleRepository,
     CommitteePositionRepository,
     OutsiderEquivalentRepository,
+    PerDiemRatesRepository,
+    AccommodationRatesRepository,
+    ExpensesOtherConditionsRepository,
     // Shared services
     RedisCacheService,
   ],
@@ -98,6 +116,9 @@ import { OutsiderEquivalentRepository } from './repositories/outsider-equivalent
     ExpensesVehicleService,
     CommitteePositionService,
     OutsiderEquivalentService,
+    PerDiemRatesService,
+    AccommodationRatesService,
+    ExpensesOtherConditionsService,
   ],
 })
 export class MasterDataModule {} 

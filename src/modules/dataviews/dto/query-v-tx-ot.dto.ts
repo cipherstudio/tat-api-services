@@ -11,9 +11,17 @@ export class QueryVTxOtDto {
   @IsOptional()
   sectionCode?: string;
 
+  @ApiPropertyOptional({ description: 'SECTION_NAME' })
+  @IsOptional()
+  sectionName?: string;
+
   @ApiPropertyOptional({ description: 'BUDGET_CODE' })
   @IsOptional()
   budgetCode?: string;
+
+  @ApiPropertyOptional({ description: 'ACTIVITY_SUB_DESC' })
+  @IsOptional()
+  activitySubDesc?: string;
 
   @ApiPropertyOptional({
     description: 'จำนวนรายการต่อหน้า (pagination)',
