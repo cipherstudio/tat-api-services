@@ -7,7 +7,7 @@ exports.up = function(knex) {
     table.increments('id').primary();
 
     table.string('date').nullable();
-    table.float('thaiDate').nullable();
+    table.string('thai_date').nullable();
     table.boolean('checked').defaultTo(false);
     table.string('time').nullable();
     table.string('hours').nullable();

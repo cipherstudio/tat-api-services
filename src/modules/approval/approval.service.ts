@@ -414,6 +414,7 @@ export class ApprovalService {
         await trx('approval_transportation_expense').where('approval_id', id).delete();
         await trx('approval_accommodation_expense').where('approval_id', id).delete();
         await trx('approval_accommodation_transport_expense').where('approval_id', id).delete();
+        await trx('approval_accommodation_holiday_expense').where('approval_id', id).delete();
         
         for (const staffMember of updateDto.staffMembers) {
           // Insert staff member
@@ -543,6 +544,26 @@ export class ApprovalService {
                           amount: transportExpense.amount,
                           checked: transportExpense.checked,
                           flight_route: transportExpense.flightRoute,
+                          created_at: new Date(),
+                          updated_at: new Date(),
+                        });
+                    }
+                  }
+
+                  // Process accommodation holiday expenses
+                  if (Array.isArray(workLocation.accommodationHolidayExpenses)) {
+                    for (const holidayExpense of workLocation.accommodationHolidayExpenses) {
+                      await trx('approval_accommodation_holiday_expense')
+                        .insert({
+                          approval_id: id,
+                          approval_accommodation_expense_id: accommodationExpense.id,
+                          date: holidayExpense.date,
+                          thai_date: holidayExpense.thaiDate,
+                          checked: holidayExpense.checked,
+                          time: holidayExpense.time,
+                          hours: holidayExpense.hours,
+                          total: holidayExpense.total,
+                          note: holidayExpense.note,
                           created_at: new Date(),
                           updated_at: new Date(),
                         });

@@ -9,6 +9,7 @@ import { ApprovalConditionDto } from './approval-condition.dto';
 import { ApprovalBudgetDto } from './approval-budget.dto';
 import { ApprovalAccommodationExpenseDto } from './approval-accommodation-expense.dto';
 import { ApprovalAccommodationTransportExpenseDto } from './approval-accommodation-transport-expense.dto';
+import { ApprovalAccommodationHolidayExpenseDto } from './approval-accommodation-holiday-expense.dto';
 
 
 /**
@@ -124,6 +125,17 @@ export class WorkLocationDto extends TripEntryDto {
   @ValidateNested({ each: true })
   @Type(() => ApprovalAccommodationTransportExpenseDto)
   accommodationTransportExpenses?: ApprovalAccommodationTransportExpenseDto[];
+
+  @ApiProperty({
+    description: 'รายการค่าวันหยุด',
+    type: [ApprovalAccommodationHolidayExpenseDto],
+    required: false
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ApprovalAccommodationHolidayExpenseDto)
+  accommodationHolidayExpenses?: ApprovalAccommodationHolidayExpenseDto[];
 
   @ApiProperty({
     description: 'Checked status',
@@ -479,6 +491,17 @@ export class UpdateApprovalDto {
                 "amount": 5000,
                 "checked": true,
                 "flightRoute": "BKK-PHUKET"
+              }
+            ],
+            "accommodationHolidayExpenses": [
+              {
+                "date": "2024-03-20",
+                "thaiDate": "วันอังคารที่ 3 มิถุนายน พ.ศ. 2568",
+                "checked": true,
+                "time": "full",
+                "hours": "1",
+                "total": 750,
+                "note": "Public holiday"
               }
             ]
           }
