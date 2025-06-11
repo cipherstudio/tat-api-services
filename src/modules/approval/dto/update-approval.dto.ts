@@ -8,6 +8,7 @@ import { OtherExpenseDto } from './other-expense.dto';
 import { ApprovalConditionDto } from './approval-condition.dto';
 import { ApprovalBudgetDto } from './approval-budget.dto';
 import { ApprovalAccommodationExpenseDto } from './approval-accommodation-expense.dto';
+import { ApprovalAccommodationTransportExpenseDto } from './approval-accommodation-transport-expense.dto';
 
 
 /**
@@ -103,7 +104,7 @@ export class WorkLocationDto extends TripEntryDto {
   transportationExpenses: TransportationExpenseDto[];
 
   @ApiProperty({
-    description: 'รายการค่าใช้จ่ายที่พัก',
+    description: 'รายการค่าเบี้ยเลี้ยง ค่าที่พัก ค่าขนย้ายสิ่งของ',
     type: [ApprovalAccommodationExpenseDto],
     required: false
   })
@@ -112,6 +113,17 @@ export class WorkLocationDto extends TripEntryDto {
   @ValidateNested({ each: true })
   @Type(() => ApprovalAccommodationExpenseDto)
   accommodationExpenses?: ApprovalAccommodationExpenseDto[];
+
+  @ApiProperty({
+    description: 'รายการค่าพาหนะ',
+    type: [ApprovalAccommodationTransportExpenseDto],
+    required: false
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ApprovalAccommodationTransportExpenseDto)
+  accommodationTransportExpenses?: ApprovalAccommodationTransportExpenseDto[];
 
   @ApiProperty({
     description: 'Checked status',
@@ -459,6 +471,14 @@ export class UpdateApprovalDto {
                 "lodgingTotal": 2400,
                 "movingCostChecked": true,
                 "movingCostRate": 300
+              }
+            ],
+            "accommodationTransportExpenses": [
+              {
+                "type": "flight",
+                "amount": 5000,
+                "checked": true,
+                "flightRoute": "BKK-PHUKET"
               }
             ]
           }

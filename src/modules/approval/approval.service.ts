@@ -412,6 +412,8 @@ export class ApprovalService {
         await trx('approval_work_locations').where('approval_id', id).delete();
         await trx('approval_work_locations_date_ranges').where('approval_id', id).delete();
         await trx('approval_transportation_expense').where('approval_id', id).delete();
+        await trx('approval_accommodation_expense').where('approval_id', id).delete();
+        await trx('approval_accommodation_transport_expense').where('approval_id', id).delete();
         
         for (const staffMember of updateDto.staffMembers) {
           // Insert staff member
@@ -488,54 +490,64 @@ export class ApprovalService {
                 }
               }
 
-              // Process accommodation expenses for this work location
-              if (workLocation.accommodationExpenses && Array.isArray(workLocation.accommodationExpenses)) {
+              // Process accommodation expenses
+              if (Array.isArray(workLocation.accommodationExpenses)) {
                 for (const expense of workLocation.accommodationExpenses) {
-                  await trx('approval_accommodation_expense').insert({
-                    approval_id: id,
-                    staff_member_id: insertedStaffMember.id,
-                    work_location_id: workLocationId.id,
-                    total_amount: expense.totalAmount,
+                  const [accommodationExpense] = await trx('approval_accommodation_expense')
+                    .insert({
+                      approval_id: id,
+                      staff_member_id: insertedStaffMember.id,
+                      work_location_id: workLocationId.id,
+                      total_amount: expense.totalAmount,
+                      has_meal_out: expense.hasMealOut,
+                      has_meal_in: expense.hasMealIn,
+                      meal_out_amount: expense.mealOutAmount,
+                      meal_in_amount: expense.mealInAmount,
+                      meal_out_count: expense.mealOutCount,
+                      meal_in_count: expense.mealInCount,
+                      allowance_out_checked: expense.allowanceOutChecked,
+                      allowance_out_rate: expense.allowanceOutRate,
+                      allowance_out_days: expense.allowanceOutDays,
+                      allowance_out_total: expense.allowanceOutTotal,
+                      allowance_in_checked: expense.allowanceInChecked,
+                      allowance_in_rate: expense.allowanceInRate,
+                      allowance_in_days: expense.allowanceInDays,
+                      allowance_in_total: expense.allowanceInTotal,
+                      lodging_fixed_checked: expense.lodgingFixedChecked,
+                      lodging_double_checked: expense.lodgingDoubleChecked,
+                      lodging_single_checked: expense.lodgingSingleChecked,
+                      lodging_nights: expense.lodgingNights,
+                      lodging_rate: expense.lodgingRate,
+                      lodging_double_nights: expense.lodgingDoubleNights,
+                      lodging_double_rate: expense.lodgingDoubleRate,
+                      lodging_single_nights: expense.lodgingSingleNights,
+                      lodging_single_rate: expense.lodgingSingleRate,
+                      lodging_double_person: expense.lodgingDoublePerson,
+                      lodging_double_person_external: expense.lodgingDoublePersonExternal,
+                      lodging_total: expense.lodgingTotal,
+                      moving_cost_checked: expense.movingCostChecked,
+                      moving_cost_rate: expense.movingCostRate,
+                      created_at: new Date(),
+                      updated_at: new Date(),
+                    })
+                    .returning('id');
 
-                    // ค่าเบี้ยเลี้ยง
-                    has_meal_out: expense.hasMealOut,
-                    has_meal_in: expense.hasMealIn,
-                    meal_out_amount: expense.mealOutAmount,
-                    meal_in_amount: expense.mealInAmount,
-                    meal_out_count: expense.mealOutCount,
-                    meal_in_count: expense.mealInCount,
-
-                    allowance_out_checked: expense.allowanceOutChecked,
-                    allowance_out_rate: expense.allowanceOutRate,
-                    allowance_out_days: expense.allowanceOutDays,
-                    allowance_out_total: expense.allowanceOutTotal,
-
-                    allowance_in_checked: expense.allowanceInChecked,
-                    allowance_in_rate: expense.allowanceInRate,
-                    allowance_in_days: expense.allowanceInDays,
-                    allowance_in_total: expense.allowanceInTotal,
-
-                    // ค่าที่พัก
-                    lodging_fixed_checked: expense.lodgingFixedChecked,
-                    lodging_double_checked: expense.lodgingDoubleChecked,
-                    lodging_single_checked: expense.lodgingSingleChecked,
-                    lodging_nights: expense.lodgingNights,
-                    lodging_rate: expense.lodgingRate,
-                    lodging_double_nights: expense.lodgingDoubleNights,
-                    lodging_double_rate: expense.lodgingDoubleRate,
-                    lodging_single_nights: expense.lodgingSingleNights,
-                    lodging_single_rate: expense.lodgingSingleRate,
-                    lodging_double_person: expense.lodgingDoublePerson,
-                    lodging_double_person_external: expense.lodgingDoublePersonExternal,
-                    lodging_total: expense.lodgingTotal,
-
-                    // ค่าขนย้ายสิ่งของ
-                    moving_cost_checked: expense.movingCostChecked,
-                    moving_cost_rate: expense.movingCostRate,
-
-                    created_at: new Date(),
-                    updated_at: new Date()
-                  });
+                  // Process accommodation transport expenses
+                  if (Array.isArray(workLocation.accommodationTransportExpenses)) {
+                    for (const transportExpense of workLocation.accommodationTransportExpenses) {
+                      await trx('approval_accommodation_transport_expense')
+                        .insert({
+                          approval_id: id,
+                          approval_accommodation_expense_id: accommodationExpense.id,
+                          type: transportExpense.type,
+                          amount: transportExpense.amount,
+                          checked: transportExpense.checked,
+                          flight_route: transportExpense.flightRoute,
+                          created_at: new Date(),
+                          updated_at: new Date(),
+                        });
+                    }
+                  }
                 }
               }
             }

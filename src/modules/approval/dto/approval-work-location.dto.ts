@@ -3,6 +3,7 @@ import { IsBoolean, IsEnum, IsOptional, IsString, IsArray, ValidateNested, IsNum
 import { Type } from 'class-transformer';
 import { ApprovalDateRangeDto } from './approval-date-range.dto';
 import { ApprovalAccommodationExpenseDto } from './approval-accommodation-expense.dto';
+import { ApprovalAccommodationTransportExpenseDto } from './approval-accommodation-transport-expense.dto';
 
 export class ApprovalWorkLocationDto {
   @ApiProperty({
@@ -81,4 +82,15 @@ export class ApprovalWorkLocationDto {
   @ValidateNested({ each: true })
   @Type(() => ApprovalAccommodationExpenseDto)
   accommodationExpenses?: ApprovalAccommodationExpenseDto[];
+
+  @ApiProperty({
+    description: 'Accommodation transport expenses for this work location',
+    type: [ApprovalAccommodationTransportExpenseDto],
+    required: false,
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ApprovalAccommodationTransportExpenseDto)
+  accommodationTransportExpenses?: ApprovalAccommodationTransportExpenseDto[];
 } 
