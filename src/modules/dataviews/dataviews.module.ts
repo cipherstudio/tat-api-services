@@ -18,6 +18,7 @@ import { VBudgetCodeRepository } from './repositories/v-budget-code.repository';
 import { VTxOtRepository } from './repositories/v-tx-ot.repository';
 import { OpPosWorkRRepository } from './repositories/op-pos-work-r.repository';
 import { OpPositionTRepository } from './repositories/op-position-t.repository';
+import { PsPwJobRepository } from './repositories/ps-pw-job.repository';
 @Module({
   imports: [RedisCacheModule],
   controllers: [DataviewsController],
@@ -39,6 +40,7 @@ import { OpPositionTRepository } from './repositories/op-position-t.repository';
     ViewPosition4otRepository,
     VBudgetCodeRepository,
     VTxOtRepository,
+    PsPwJobRepository,
   ],
   exports: [DataviewsService],
 })
