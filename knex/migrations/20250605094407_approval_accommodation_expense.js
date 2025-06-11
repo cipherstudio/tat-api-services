@@ -8,6 +8,7 @@ exports.up = function(knex) {
     
     table.float('total_amount').nullable();
 
+    // ค่าเบี้ยเลี้ยง
     table.boolean('has_meal_out').defaultTo(false);
     table.boolean('has_meal_in').defaultTo(false);
     table.float('meal_out_amount').nullable();
@@ -25,6 +26,7 @@ exports.up = function(knex) {
     table.float('allowance_in_days').nullable();
     table.float('allowance_in_total').nullable();
     
+    // ค่าที่พัก
     table.boolean('lodging_fixed_checked').defaultTo(false);
     table.boolean('lodging_double_checked').defaultTo(false);
     table.boolean('lodging_single_checked').defaultTo(false);
@@ -38,16 +40,16 @@ exports.up = function(knex) {
     table.string('lodging_double_person_external').nullable();
     table.float('lodging_total').nullable();
 
-    // Transport properties
-    table.boolean('transport_checked').defaultTo(false);
-    table.float('transport_total').nullable();
+    // ค่าขนย้ายสิ่งของ
+    table.boolean('moving_cost_checked').defaultTo(false);
+    table.float('moving_cost_rate').nullable();
 
 
     table.timestamp('created_at').defaultTo(knex.fn.now());
     table.timestamp('updated_at').defaultTo(knex.fn.now());
 
     table.integer('staff_member_id').nullable();
-    table.integer('trip_entry_id').nullable();
+    table.integer('work_location_id').nullable();
 
     table.integer('approval_id').nullable();
   });

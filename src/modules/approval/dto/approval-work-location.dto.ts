@@ -2,26 +2,9 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsBoolean, IsEnum, IsOptional, IsString, IsArray, ValidateNested, IsNumber } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApprovalDateRangeDto } from './approval-date-range.dto';
+import { ApprovalAccommodationExpenseDto } from './approval-accommodation-expense.dto';
 
 export class ApprovalWorkLocationDto {
-  @ApiProperty({
-    description: 'ID of the staff member',
-    example: 1,
-    required: false,
-  })
-  @IsOptional()
-  @IsNumber()
-  staffMemberId?: number;
-
-  @ApiProperty({
-    description: 'ID of the approval',
-    example: 1,
-    required: false,
-  })
-  @IsOptional()
-  @IsNumber()
-  approvalId?: number;
-
   @ApiProperty({
     description: 'Location of the work',
     example: 'Bangkok',
@@ -86,5 +69,16 @@ export class ApprovalWorkLocationDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ApprovalDateRangeDto)
-  dateRanges?: ApprovalDateRangeDto[];
+  tripDateRanges?: ApprovalDateRangeDto[];
+
+  @ApiProperty({
+    description: 'Accommodation expenses for this work location',
+    type: [ApprovalAccommodationExpenseDto],
+    required: false,
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ApprovalAccommodationExpenseDto)
+  accommodationExpenses?: ApprovalAccommodationExpenseDto[];
 } 
