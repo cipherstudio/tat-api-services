@@ -67,11 +67,12 @@ export interface CountriesIncludeOptions extends BaseIncludeOptions {}
 export interface CountriesQueryOptions {
   page?: number;
   limit?: number;
-  orderBy?: 'id' | 'code' | 'nameEn' | 'nameTh' | 'createdAt' | 'updatedAt';
+  orderBy?: 'nameEn' | 'nameTh' | 'code' | 'id' | 'type' | 'percent_increase' | 'createdAt' | 'updatedAt';
   orderDir?: 'ASC' | 'DESC';
   nameEn?: string;
   nameTh?: string;
   code?: string;
+  type?: string;
   searchTerm?: string;
   createdAfter?: Date;
   createdBefore?: Date;

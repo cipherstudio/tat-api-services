@@ -13,8 +13,8 @@ export class CountriesQueryDto {
   limit?: number;
 
   @IsOptional()
-  @IsEnum(['nameEn', 'nameTh', 'code', 'id', 'createdAt', 'updatedAt'])
-  orderBy?: 'nameEn' | 'nameTh' | 'code' | 'id' | 'createdAt' | 'updatedAt';
+  @IsEnum(['nameEn', 'nameTh', 'code', 'id', 'type', 'percent_increase', 'createdAt', 'updatedAt'])
+  orderBy?: 'nameEn' | 'nameTh' | 'code' | 'id' | 'type' | 'percent_increase' | 'createdAt' | 'updatedAt';
 
   @IsOptional()
   @IsEnum(['ASC', 'DESC'])
@@ -31,6 +31,10 @@ export class CountriesQueryDto {
   @IsOptional()
   @IsString()
   code?: string;
+
+  @IsOptional()
+  @IsString()
+  type?: string;
 
   @IsOptional()
   @IsString()

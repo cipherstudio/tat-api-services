@@ -13,6 +13,12 @@ export class Countries {
   @ApiProperty({ description: 'The country name in Thai' })
   nameTh: string;
 
+  @ApiProperty({ description: 'The country type (A, B, or null)' })
+  type: string | null;
+
+  @ApiProperty({ description: 'The percentage increase for the country' })
+  percentIncrease: number;
+
   @ApiProperty({ description: 'The creation timestamp' })
   createdAt: Date;
 
@@ -26,6 +32,8 @@ export const countriesColumnMap = {
   code: 'code',
   name_en: 'nameEn',
   name_th: 'nameTh',
+  type: 'type',
+  percent_increase: 'percentIncrease',
   created_at: 'createdAt',
   updated_at: 'updatedAt',
 };
@@ -36,6 +44,8 @@ export const countriesReverseColumnMap = {
   code: 'code',
   nameEn: 'name_en',
   nameTh: 'name_th',
+  type: 'type',
+  percentIncrease: 'percent_increase',
   createdAt: 'created_at',
   updatedAt: 'updated_at',
 };

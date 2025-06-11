@@ -72,7 +72,8 @@ export class CountriesRepository extends KnexBaseRepository<Countries> {
         builder
           .whereRaw('LOWER("name_en") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
           .orWhereRaw('"name_th" LIKE ?', [`%${searchTerm}%`])
-          .orWhereRaw('LOWER("code") LIKE ?', [`%${searchTerm.toLowerCase()}%`]);
+          .orWhereRaw('LOWER("code") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
+          .orWhereRaw('LOWER("type") LIKE ?', [`%${searchTerm.toLowerCase()}%`]);
       });
     }
 
