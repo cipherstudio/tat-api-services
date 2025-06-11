@@ -37,12 +37,4 @@ export class CreatePerDiemRatesDto {
   @IsNumber()
   @IsOptional()
   maxPerDiem?: number;
-
-  @ApiProperty({ description: 'Meal deduction per meal' })
-  @IsNumber()
-  mealDeductionPerMeal: number;
-
-  @ApiProperty({ description: 'Is days editable' })
-  @IsBoolean()
-  isEditableDays: boolean;
 } 
