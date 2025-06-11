@@ -4,6 +4,7 @@ import { TransportationExpenseDto } from './transportation-expense.dto';
 import { OtherExpenseDto } from './other-expense.dto';
 import { ApprovalConditionDto } from './approval-condition.dto';
 import { ApprovalBudgetDto } from './approval-budget.dto';
+import { StaffMemberDto } from './update-approval.dto';
 
 export class ApprovalStatusHistoryDto {
   @ApiProperty({ description: 'Status ID' })
@@ -196,4 +197,11 @@ export class ApprovalDetailResponseDto implements Approval {
     required: false
   })
   budgets?: ApprovalBudgetDto[];
+
+  @ApiProperty({
+    description: 'Staff members for the approval',
+    type: [StaffMemberDto],
+    required: false
+  })
+  staffMembers?: StaffMemberDto[];
 } 

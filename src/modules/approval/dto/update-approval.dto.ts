@@ -8,6 +8,10 @@ import { OtherExpenseDto } from './other-expense.dto';
 import { ApprovalConditionDto } from './approval-condition.dto';
 import { ApprovalBudgetDto } from './approval-budget.dto';
 import { ApprovalAccommodationExpenseDto } from './approval-accommodation-expense.dto';
+import { ApprovalAccommodationTransportExpenseDto } from './approval-accommodation-transport-expense.dto';
+import { ApprovalAccommodationHolidayExpenseDto } from './approval-accommodation-holiday-expense.dto';
+import { ApprovalEntertainmentExpenseDto } from './approval-entertainment-expense.dto';
+import { ApprovalClothingExpenseDto } from './approval-clothing-expense.dto';
 
 
 /**
@@ -103,7 +107,7 @@ export class WorkLocationDto extends TripEntryDto {
   transportationExpenses: TransportationExpenseDto[];
 
   @ApiProperty({
-    description: 'รายการค่าใช้จ่ายที่พัก',
+    description: 'รายการค่าเบี้ยเลี้ยง ค่าที่พัก ค่าขนย้ายสิ่งของ',
     type: [ApprovalAccommodationExpenseDto],
     required: false
   })
@@ -112,6 +116,28 @@ export class WorkLocationDto extends TripEntryDto {
   @ValidateNested({ each: true })
   @Type(() => ApprovalAccommodationExpenseDto)
   accommodationExpenses?: ApprovalAccommodationExpenseDto[];
+
+  @ApiProperty({
+    description: 'รายการค่าพาหนะ',
+    type: [ApprovalAccommodationTransportExpenseDto],
+    required: false
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ApprovalAccommodationTransportExpenseDto)
+  accommodationTransportExpenses?: ApprovalAccommodationTransportExpenseDto[];
+
+  @ApiProperty({
+    description: 'รายการค่าวันหยุด',
+    type: [ApprovalAccommodationHolidayExpenseDto],
+    required: false
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ApprovalAccommodationHolidayExpenseDto)
+  accommodationHolidayExpenses?: ApprovalAccommodationHolidayExpenseDto[];
 
   @ApiProperty({
     description: 'Checked status',
@@ -181,6 +207,28 @@ export class StaffMemberDto {
   @ValidateNested({ each: true })
   @Type(() => WorkLocationDto)
   workLocations: WorkLocationDto[];
+
+  @ApiProperty({
+    description: 'ค่ารับรองตามสิทธิ์',
+    type: [ApprovalEntertainmentExpenseDto],
+    required: false
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ApprovalEntertainmentExpenseDto)
+  entertainmentExpenses?: ApprovalEntertainmentExpenseDto[];
+
+  @ApiProperty({
+    description: 'ค่าเครื่องแต่งกาย',
+    type: [ApprovalClothingExpenseDto],
+    required: false
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ApprovalClothingExpenseDto)
+  clothingExpenses?: ApprovalClothingExpenseDto[];
 }
 
 export class UpdateApprovalDto {
@@ -460,7 +508,43 @@ export class UpdateApprovalDto {
                 "movingCostChecked": true,
                 "movingCostRate": 300
               }
+            ],
+            "accommodationTransportExpenses": [
+              {
+                "type": "flight",
+                "amount": 5000,
+                "checked": true,
+                "flightRoute": "BKK-PHUKET"
+              }
+            ],
+            "accommodationHolidayExpenses": [
+              {
+                "date": "2024-03-20",
+                "thaiDate": "วันอังคารที่ 3 มิถุนายน พ.ศ. 2568",
+                "checked": true,
+                "time": "full",
+                "hours": "1",
+                "total": 750,
+                "note": "Public holiday"
+              }
             ]
+          }
+        ],
+        "entertainmentExpenses": [
+          {
+            "entertainmentShortChecked": true,
+            "entertainmentLongChecked": false,
+            "entertainmentAmount": 1000
+          }
+        ],
+        "clothingExpenses": [
+          {
+            "clothingFileChecked": true,
+            "clothingAmount": 1000,
+            "clothingReason": "Business trip",
+            "reportingDate": "2024-03-20",
+            "nextClaimDate": "2024-03-25",
+            "workEndDate": "2024-03-25"
           }
         ]
       }

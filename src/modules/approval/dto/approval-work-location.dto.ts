@@ -3,8 +3,28 @@ import { IsBoolean, IsEnum, IsOptional, IsString, IsArray, ValidateNested, IsNum
 import { Type } from 'class-transformer';
 import { ApprovalDateRangeDto } from './approval-date-range.dto';
 import { ApprovalAccommodationExpenseDto } from './approval-accommodation-expense.dto';
+import { ApprovalAccommodationTransportExpenseDto } from './approval-accommodation-transport-expense.dto';
+import { ApprovalAccommodationHolidayExpenseDto } from './approval-accommodation-holiday-expense.dto';
 
 export class ApprovalWorkLocationDto {
+  @ApiProperty({
+    description: 'ID of the staff member',
+    required: false,
+    example: 1
+  })
+  @IsOptional()
+  @IsNumber()
+  staffMemberId?: number;
+
+  @ApiProperty({
+    description: 'ID of the approval',
+    required: false,
+    example: 1
+  })
+  @IsOptional()
+  @IsNumber()
+  approvalId?: number;
+
   @ApiProperty({
     description: 'Location of the work',
     example: 'Bangkok',
@@ -81,4 +101,26 @@ export class ApprovalWorkLocationDto {
   @ValidateNested({ each: true })
   @Type(() => ApprovalAccommodationExpenseDto)
   accommodationExpenses?: ApprovalAccommodationExpenseDto[];
+
+  @ApiProperty({
+    description: 'Accommodation transport expenses for this work location',
+    type: [ApprovalAccommodationTransportExpenseDto],
+    required: false,
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ApprovalAccommodationTransportExpenseDto)
+  accommodationTransportExpenses?: ApprovalAccommodationTransportExpenseDto[];
+
+  @ApiProperty({
+    description: 'Accommodation holiday expenses for this work location',
+    type: [ApprovalAccommodationHolidayExpenseDto],
+    required: false,
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ApprovalAccommodationHolidayExpenseDto)
+  accommodationHolidayExpenses?: ApprovalAccommodationHolidayExpenseDto[];
 } 

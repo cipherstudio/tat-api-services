@@ -31,19 +31,30 @@ export class ApprovalService {
   ) {}
 
   private async generateIncrementId(): Promise<string> {
-    const year = new Date().getFullYear();
+    // Get current date
+    const now = new Date();
+    
+    // Convert to Buddhist year and get last 2 digits
+    const beYear = now.getFullYear() + 543;
+    const yearLastTwoDigits = beYear.toString().slice(-2);
+    
+    // Get current month and pad with leading zero
+    const currentMonth = (now.getMonth() + 1).toString().padStart(2, '0');
+    
+    // Find the last increment ID for current month
+    const prefix = `EX${yearLastTwoDigits}${currentMonth}`;
     const result = await this.knexService.knex('approval')
-      .where('increment_id', 'like', `${year}%`)
+      .where('increment_id', 'like', `${prefix}%`)
       .orderBy('increment_id', 'desc')
       .first();
 
     let sequence = 1;
     if (result?.increment_id) {
-      const lastSequence = parseInt(result.increment_id.slice(-4));
+      const lastSequence = parseInt(result.increment_id.slice(-5));
       sequence = lastSequence + 1;
     }
 
-    return `${year}${sequence.toString().padStart(4, '0')}`;
+    return `${prefix}${sequence.toString().padStart(5, '0')}`;
   }
 
   async create(createApprovalDto: CreateApprovalDto, userId: number): Promise<Approval> {
@@ -246,6 +257,107 @@ export class ApprovalService {
         'budget_code'
       );
 
+    // Get accommodation expenses
+    const accommodationExpenses = await this.knexService.knex('approval_accommodation_expense')
+      .where('approval_id', id)
+      .select(
+        'id',
+        'staff_member_id as staffId',
+        'work_location_id as workLocationId',
+        'total_amount as totalAmount',
+        'has_meal_out as hasMealOut',
+        'has_meal_in as hasMealIn',
+        'meal_out_amount as mealOutAmount',
+        'meal_in_amount as mealInAmount',
+        'meal_out_count as mealOutCount',
+        'meal_in_count as mealInCount',
+        'allowance_out_checked as allowanceOutChecked',
+        'allowance_out_rate as allowanceOutRate',
+        'allowance_out_days as allowanceOutDays',
+        'allowance_out_total as allowanceOutTotal',
+        'allowance_in_checked as allowanceInChecked',
+        'allowance_in_rate as allowanceInRate',
+        'allowance_in_days as allowanceInDays',
+        'allowance_in_total as allowanceInTotal',
+        'lodging_fixed_checked as lodgingFixedChecked',
+        'lodging_double_checked as lodgingDoubleChecked',
+        'lodging_single_checked as lodgingSingleChecked',
+        'lodging_nights as lodgingNights',
+        'lodging_rate as lodgingRate',
+        'lodging_double_nights as lodgingDoubleNights',
+        'lodging_double_rate as lodgingDoubleRate',
+        'lodging_single_nights as lodgingSingleNights',
+        'lodging_single_rate as lodgingSingleRate',
+        'lodging_double_person as lodgingDoublePerson',
+        'lodging_double_person_external as lodgingDoublePersonExternal',
+        'lodging_total as lodgingTotal',
+        'moving_cost_checked as movingCostChecked',
+        'moving_cost_rate as movingCostRate'
+      );
+
+    // Get accommodation transport expenses
+    const accommodationTransportExpenses = await this.knexService.knex('approval_accommodation_transport_expense')
+      .where('approval_id', id)
+      .select(
+        'id',
+        'approval_accommodation_expense_id as approvalAccommodationExpenseId',
+        'type',
+        'amount',
+        'checked',
+        'flight_route as flightRoute'
+      );
+
+    // Get accommodation holiday expenses
+    const accommodationHolidayExpenses = await this.knexService.knex('approval_accommodation_holiday_expense')
+      .where('approval_id', id)
+      .select(
+        'id',
+        'approval_accommodation_expense_id as approvalAccommodationExpenseId',
+        'date',
+        'thai_date as thaiDate',
+        'checked',
+        'time',
+        'hours',
+        'total',
+        'note'
+      );
+
+    // Get entertainment expenses
+    const entertainmentExpenses = await this.knexService.knex('approval_entertainment_expense')
+      .where('approval_id', id)
+      .select(
+        'id',
+        'staff_member_id as staffId',
+        'entertainment_short_checked as entertainmentShortChecked',
+        'entertainment_long_checked as entertainmentLongChecked',
+        'entertainment_amount as entertainmentAmount'
+      );
+
+    // Get clothing expenses
+    const clothingExpenses = await this.knexService.knex('approval_clothing_expense')
+      .where('approval_id', id)
+      .select(
+        'id',
+        'staff_member_id as staffId',
+        'employee_code as employeeCode',
+        'clothing_file_checked as clothingFileChecked',
+        'clothing_amount as clothingAmount',
+        'clothing_reason as clothingReason',
+        'reporting_date as reportingDate',
+        'next_claim_date as nextClaimDate',
+        'work_end_date as workEndDate'
+      );
+
+    // Get staff members
+    const staffMembers = await this.knexService.knex('approval_staff_members')
+      .where('approval_id', id)
+      .select('id', 'employee_code as employeeCode', 'type', 'name', 'role', 'position', 'right_equivalent as rightEquivalent', 'organization_position as organizationPosition');
+
+    // Get work locations for each staff member
+    const workLocations = await this.knexService.knex('approval_work_locations')
+      .where('approval_id', id)
+      .select('id', 'staff_member_id as staffMemberId', 'location', 'destination', 'nearby_provinces as nearbyProvinces', 'details', 'checked', 'destination_type as destinationType');
+
     // Transform transportation expenses to match DTO structure
     const transformedExpenses = transportationExpenses.map(expense => ({
       id: expense.id,
@@ -271,10 +383,52 @@ export class ApprovalService {
       totalAmount: expense.totalAmount
     }));
 
-    const currentStatus = statusHistory[0]?.status || 'ฉบับร่าง';
+    // Transform staff members to include their expenses
+    const transformedStaffMembers = staffMembers.map(staff => {
+      const staffWorkLocations = workLocations.filter(location => location.staffMemberId === staff.id);
+      const staffTransportationExpenses = transformedExpenses.filter(
+        expense => expense.staffId === staff.id
+      );
+      const staffAccommodationExpenses = accommodationExpenses.filter(
+        expense => expense.staffId === staff.id
+      );
+      const staffAccommodationTransportExpenses = accommodationTransportExpenses.filter(
+        expense => expense.staffId === staff.id
+      );
+      const staffAccommodationHolidayExpenses = accommodationHolidayExpenses.filter(
+        expense => expense.staffId === staff.id
+      );
+      const staffEntertainmentExpenses = entertainmentExpenses.filter(
+        expense => expense.staffId === staff.id
+      );
+      const staffClothingExpenses = clothingExpenses.filter(
+        expense => expense.staffId === staff.id
+      );
+
+      return {
+        ...staff,
+        workLocations: staffWorkLocations.map(location => ({
+          ...location,
+          transportationExpenses: staffTransportationExpenses.filter(
+            expense => expense.workLocationId === location.id
+          ),
+          accommodationExpenses: staffAccommodationExpenses.filter(
+            expense => expense.workLocationId === location.id
+          ),
+          accommodationTransportExpenses: staffAccommodationTransportExpenses.filter(
+            expense => expense.workLocationId === location.id
+          ),
+          accommodationHolidayExpenses: staffAccommodationHolidayExpenses.filter(
+            expense => expense.workLocationId === location.id
+          ),
+        })),
+        entertainmentExpenses: staffEntertainmentExpenses,
+        clothingExpenses: staffClothingExpenses,
+      };
+    });
 
     approvalDto.statusHistory = statusHistory;
-    approvalDto.currentStatus = currentStatus;
+    approvalDto.currentStatus = statusHistory[0]?.status || 'ฉบับร่าง';
     approvalDto.transportationExpenses = transformedExpenses;
     approvalDto.otherExpenses = otherExpenses;
     approvalDto.conditions = conditions;
@@ -282,6 +436,7 @@ export class ApprovalService {
     approvalDto.form3TotalOutbound = approval.form3_total_outbound;
     approvalDto.form3TotalInbound = approval.form3_total_inbound;
     approvalDto.form3TotalAmount = approval.form3_total_amount;
+    approvalDto.staffMembers = transformedStaffMembers;
 
     // Cache the result
     await this.cacheService.set(cacheKey, approvalDto, this.CACHE_TTL);
@@ -412,57 +567,62 @@ export class ApprovalService {
         await trx('approval_work_locations').where('approval_id', id).delete();
         await trx('approval_work_locations_date_ranges').where('approval_id', id).delete();
         await trx('approval_transportation_expense').where('approval_id', id).delete();
+        await trx('approval_accommodation_expense').where('approval_id', id).delete();
+        await trx('approval_accommodation_transport_expense').where('approval_id', id).delete();
+        await trx('approval_accommodation_holiday_expense').where('approval_id', id).delete();
+        await trx('approval_entertainment_expense').where('approval_id', id).delete();
+        //await trx('approval_clothing_expense').where('approval_id', id).delete();
         
         for (const staffMember of updateDto.staffMembers) {
-          // Insert staff member
-          const [insertedStaffMember] = await trx('approval_staff_members').insert({
-            approval_id: id,
-            employee_code: staffMember.employeeCode,
-            type: staffMember.type,
-            name: staffMember.name,
-            role: staffMember.role,
-            position: staffMember.position,
-            right_equivalent: staffMember.rightEquivalent,
-            organization_position: staffMember.organizationPosition,
-            created_at: new Date(),
-            updated_at: new Date()
-          }).returning('id');
+          const [insertedStaffMember] = await trx('approval_staff_members')
+            .insert({
+              approval_id: id,
+              employee_code: staffMember.employeeCode,
+              type: staffMember.type,
+              name: staffMember.name,
+              role: staffMember.role,
+              position: staffMember.position,
+              right_equivalent: staffMember.rightEquivalent,
+              organization_position: staffMember.organizationPosition,
+              created_at: new Date(),
+              updated_at: new Date(),
+            })
+            .returning('id');
 
-          // Process work locations for this staff member
-          if (staffMember.workLocations && Array.isArray(staffMember.workLocations)) {
+          // Process work locations
+          if (Array.isArray(staffMember.workLocations)) {
             for (const workLocation of staffMember.workLocations) {
-              // Insert work location
-              const [workLocationId] = await trx('approval_work_locations').insert({
-                approval_id: id,
-                staff_member_id: insertedStaffMember.id,
-                location: workLocation.location,
-                destination: workLocation.destination,
-                nearby_provinces: workLocation.nearbyProvinces,
-                details: workLocation.details,
-                destination_type: workLocation.destinationType,
-                checked: workLocation.checked,
-                created_at: new Date(),
-                updated_at: new Date()
-              }).returning('id');
+              const [workLocationId] = await trx('approval_work_locations')
+                .insert({
+                  approval_id: id,
+                  staff_member_id: insertedStaffMember.id,
+                  location: workLocation.location,
+                  destination: workLocation.destination,
+                  nearby_provinces: workLocation.nearbyProvinces,
+                  details: workLocation.details,
+                  checked: workLocation.checked,
+                  destination_type: workLocation.destinationType,
+                  created_at: new Date(),
+                  updated_at: new Date(),
+                })
+                .returning('id');
 
-              // Insert work location date ranges
-              if (workLocation.tripDateRanges && Array.isArray(workLocation.tripDateRanges)) {
-                for (const range of workLocation.tripDateRanges) {
-                  if (range && typeof range === 'object') {
-                    await trx('approval_work_locations_date_ranges').insert({
-                      approval_id: id,
-                      approval_work_locations_id: workLocationId.id,
-                      start_date: range.start,
-                      end_date: range.end,
-                      created_at: new Date(),
-                      updated_at: new Date()
-                    });
-                  }
+              // Process date ranges
+              if (Array.isArray(workLocation.tripDateRanges)) {
+                for (const dateRange of workLocation.tripDateRanges) {
+                  await trx('approval_work_locations_date_ranges').insert({
+                    approval_id: id,
+                    approval_work_locations_id: workLocationId.id,
+                    start_date: dateRange.start,
+                    end_date: dateRange.end,
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                  });
                 }
               }
 
-              // Process transportation expenses for this work location
-              if (workLocation.transportationExpenses && Array.isArray(workLocation.transportationExpenses)) {
+              // Process transportation expenses
+              if (Array.isArray(workLocation.transportationExpenses)) {
                 for (const expense of workLocation.transportationExpenses) {
                   await trx('approval_transportation_expense').insert({
                     approval_id: id,
@@ -483,64 +643,167 @@ export class ApprovalService {
                     inbound_total: expense.inbound?.total,
                     total_amount: expense.totalAmount,
                     created_at: new Date(),
-                    updated_at: new Date()
+                    updated_at: new Date(),
                   });
                 }
               }
 
-              // Process accommodation expenses for this work location
-              if (workLocation.accommodationExpenses && Array.isArray(workLocation.accommodationExpenses)) {
+              // Process accommodation expenses
+              if (Array.isArray(workLocation.accommodationExpenses)) {
                 for (const expense of workLocation.accommodationExpenses) {
-                  await trx('approval_accommodation_expense').insert({
+                  const [accommodationExpense] = await trx('approval_accommodation_expense')
+                    .insert({
+                      approval_id: id,
+                      staff_member_id: insertedStaffMember.id,
+                      work_location_id: workLocationId.id,
+                      total_amount: expense.totalAmount,
+                      has_meal_out: expense.hasMealOut,
+                      has_meal_in: expense.hasMealIn,
+                      meal_out_amount: expense.mealOutAmount,
+                      meal_in_amount: expense.mealInAmount,
+                      meal_out_count: expense.mealOutCount,
+                      meal_in_count: expense.mealInCount,
+                      allowance_out_checked: expense.allowanceOutChecked,
+                      allowance_out_rate: expense.allowanceOutRate,
+                      allowance_out_days: expense.allowanceOutDays,
+                      allowance_out_total: expense.allowanceOutTotal,
+                      allowance_in_checked: expense.allowanceInChecked,
+                      allowance_in_rate: expense.allowanceInRate,
+                      allowance_in_days: expense.allowanceInDays,
+                      allowance_in_total: expense.allowanceInTotal,
+                      lodging_fixed_checked: expense.lodgingFixedChecked,
+                      lodging_double_checked: expense.lodgingDoubleChecked,
+                      lodging_single_checked: expense.lodgingSingleChecked,
+                      lodging_nights: expense.lodgingNights,
+                      lodging_rate: expense.lodgingRate,
+                      lodging_double_nights: expense.lodgingDoubleNights,
+                      lodging_double_rate: expense.lodgingDoubleRate,
+                      lodging_single_nights: expense.lodgingSingleNights,
+                      lodging_single_rate: expense.lodgingSingleRate,
+                      lodging_double_person: expense.lodgingDoublePerson,
+                      lodging_double_person_external: expense.lodgingDoublePersonExternal,
+                      lodging_total: expense.lodgingTotal,
+                      moving_cost_checked: expense.movingCostChecked,
+                      moving_cost_rate: expense.movingCostRate,
+                      created_at: new Date(),
+                      updated_at: new Date(),
+                    })
+                    .returning('id');
+
+                  // Process accommodation transport expenses
+                  if (Array.isArray(workLocation.accommodationTransportExpenses)) {
+                    for (const transportExpense of workLocation.accommodationTransportExpenses) {
+                      await trx('approval_accommodation_transport_expense')
+                        .insert({
+                          approval_id: id,
+                          approval_accommodation_expense_id: accommodationExpense.id,
+                          type: transportExpense.type,
+                          amount: transportExpense.amount,
+                          checked: transportExpense.checked,
+                          flight_route: transportExpense.flightRoute,
+                          created_at: new Date(),
+                          updated_at: new Date(),
+                        });
+                    }
+                  }
+
+                  // Process accommodation holiday expenses
+                  if (Array.isArray(workLocation.accommodationHolidayExpenses)) {
+                    for (const holidayExpense of workLocation.accommodationHolidayExpenses) {
+                      await trx('approval_accommodation_holiday_expense')
+                        .insert({
+                          approval_id: id,
+                          approval_accommodation_expense_id: accommodationExpense.id,
+                          date: holidayExpense.date,
+                          thai_date: holidayExpense.thaiDate,
+                          checked: holidayExpense.checked,
+                          time: holidayExpense.time,
+                          hours: holidayExpense.hours,
+                          total: holidayExpense.total,
+                          note: holidayExpense.note,
+                          created_at: new Date(),
+                          updated_at: new Date(),
+                        });
+                    }
+                  }
+                }
+              }
+
+              // Process entertainment expenses
+              if (Array.isArray(staffMember.entertainmentExpenses)) {
+                for (const expense of staffMember.entertainmentExpenses) {
+                  await trx('approval_entertainment_expense').insert({
                     approval_id: id,
                     staff_member_id: insertedStaffMember.id,
-                    work_location_id: workLocationId.id,
-                    total_amount: expense.totalAmount,
-
-                    // ค่าเบี้ยเลี้ยง
-                    has_meal_out: expense.hasMealOut,
-                    has_meal_in: expense.hasMealIn,
-                    meal_out_amount: expense.mealOutAmount,
-                    meal_in_amount: expense.mealInAmount,
-                    meal_out_count: expense.mealOutCount,
-                    meal_in_count: expense.mealInCount,
-
-                    allowance_out_checked: expense.allowanceOutChecked,
-                    allowance_out_rate: expense.allowanceOutRate,
-                    allowance_out_days: expense.allowanceOutDays,
-                    allowance_out_total: expense.allowanceOutTotal,
-
-                    allowance_in_checked: expense.allowanceInChecked,
-                    allowance_in_rate: expense.allowanceInRate,
-                    allowance_in_days: expense.allowanceInDays,
-                    allowance_in_total: expense.allowanceInTotal,
-
-                    // ค่าที่พัก
-                    lodging_fixed_checked: expense.lodgingFixedChecked,
-                    lodging_double_checked: expense.lodgingDoubleChecked,
-                    lodging_single_checked: expense.lodgingSingleChecked,
-                    lodging_nights: expense.lodgingNights,
-                    lodging_rate: expense.lodgingRate,
-                    lodging_double_nights: expense.lodgingDoubleNights,
-                    lodging_double_rate: expense.lodgingDoubleRate,
-                    lodging_single_nights: expense.lodgingSingleNights,
-                    lodging_single_rate: expense.lodgingSingleRate,
-                    lodging_double_person: expense.lodgingDoublePerson,
-                    lodging_double_person_external: expense.lodgingDoublePersonExternal,
-                    lodging_total: expense.lodgingTotal,
-
-                    // ค่าขนย้ายสิ่งของ
-                    moving_cost_checked: expense.movingCostChecked,
-                    moving_cost_rate: expense.movingCostRate,
-
+                    entertainment_short_checked: expense.entertainmentShortChecked,
+                    entertainment_long_checked: expense.entertainmentLongChecked,
+                    entertainment_amount: expense.entertainmentAmount,
                     created_at: new Date(),
-                    updated_at: new Date()
+                    updated_at: new Date(),
                   });
+                }
+              }
+
+              // Process clothing expenses
+              if (Array.isArray(staffMember.clothingExpenses)) {
+                for (const expense of staffMember.clothingExpenses) {
+                  // Check if record exists
+                  const existingExpense = await trx('approval_clothing_expense')
+                    .where({
+                      approval_id: id,
+                      employee_code: staffMember.employeeCode
+                    })
+                    .first();
+
+                  if (existingExpense) {
+                    // Update existing record
+                    await trx('approval_clothing_expense')
+                      .where({
+                        approval_id: id,
+                        employee_code: staffMember.employeeCode
+                      })
+                      .update({
+                        clothing_file_checked: expense.clothingFileChecked,
+                        clothing_amount: expense.clothingAmount,
+                        clothing_reason: expense.clothingReason,
+                        reporting_date: expense.reportingDate,
+                        next_claim_date: expense.nextClaimDate,
+                        work_end_date: expense.workEndDate,
+                        updated_at: new Date()
+                      });
+                  } else {
+                    // Insert new record
+                    await trx('approval_clothing_expense').insert({
+                      approval_id: id,
+                      staff_member_id: insertedStaffMember.id,
+                      employee_code: staffMember.employeeCode,
+                      clothing_file_checked: expense.clothingFileChecked,
+                      clothing_amount: expense.clothingAmount,
+                      clothing_reason: expense.clothingReason,
+                      reporting_date: expense.reportingDate,
+                      next_claim_date: expense.nextClaimDate,
+                      work_end_date: expense.workEndDate,
+                      created_at: new Date(),
+                      updated_at: new Date()
+                    });
+                  }
                 }
               }
             }
           }
         }
+      }
+
+      // After processing all staff members, clean up old clothing expenses
+      if (updateDto.staffMembers && Array.isArray(updateDto.staffMembers)) {
+        // Get all employee codes from current staff members
+        const currentEmployeeCodes = updateDto.staffMembers.map(staff => staff.employeeCode);
+
+        // Delete clothing expenses for employee codes that are no longer in the staff members list
+        await trx('approval_clothing_expense')
+          .where('approval_id', id)
+          .whereNotIn('employee_code', currentEmployeeCodes)
+          .delete();
       }
 
       // Process other expenses
@@ -556,6 +819,8 @@ export class ApprovalService {
               position: expense.position,
               reason: expense.reason,
               acknowledged: expense.acknowledged,
+              created_at: new Date(),
+              updated_at: new Date(),
             });
           }
         }
