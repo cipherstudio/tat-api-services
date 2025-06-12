@@ -1,14 +1,14 @@
 const expensesOtherConditions = [
     // รองผู้ว่าการ และ C10
     {
-      expenses_other_id: 694,
+      expenses_other_id: 1294,
       position_code: '02', // รองผู้ว่าการ
       level_code: '10',
       scope: null,
       max_amount: 20000
     },
     {
-      expenses_other_id: 694,
+      expenses_other_id: 1294,
       position_code: null, // C10
       level_code: '10',
       scope: null,
@@ -17,28 +17,28 @@ const expensesOtherConditions = [
   
     // ผู้อำนวยการฝ่าย / สำนัก / ภูมิภาค / C9
     {
-      expenses_other_id: 694,
+      expenses_other_id: 1294,
       position_code: '05', // ผู้อำนวยการฝ่าย
       level_code: '09',
       scope: null,
       max_amount: 10000
     },
     {
-      expenses_other_id: 694,
+      expenses_other_id: 1294,
       position_code: '51', // ผู้อำนวยการสำนัก
       level_code: '09',
       scope: null,
       max_amount: 10000
     },
     {
-      expenses_other_id: 694,
+      expenses_other_id: 1294,
       position_code: '45', // ผู้อำนวยการภูมิภาค
       level_code: '09',
       scope: null,
       max_amount: 10000
     },
     {
-      expenses_other_id: 694,
+      expenses_other_id: 1294,
       position_code: null, // C9
       level_code: '09',
       scope: null,
@@ -47,14 +47,14 @@ const expensesOtherConditions = [
   
     // ผู้อำนวยการสำนักงาน ททท. ต่างประเทศ
     {
-      expenses_other_id: 694,
+      expenses_other_id: 1294,
       position_code: '14',
       level_code: '08',
       scope: 'international',
       max_amount: 8000
     },
     {
-      expenses_other_id: 694,
+      expenses_other_id: 1294,
       position_code: '14',
       level_code: '08',
       scope: 'domestic', // เดินทางมาปฏิบัติงานในไทย
@@ -63,14 +63,14 @@ const expensesOtherConditions = [
   
     // รองผู้อำนวยการสำนักงาน ททท. ต่างประเทศ
     {
-      expenses_other_id: 694,
+      expenses_other_id: 1294,
       position_code: '65',
       level_code: '07',
       scope: 'international',
       max_amount: 4000
     },
     {
-      expenses_other_id: 694,
+      expenses_other_id: 1294,
       position_code: '65',
       level_code: '07',
       scope: 'domestic', // เดินทางมาปฏิบัติงานในไทย
@@ -79,28 +79,28 @@ const expensesOtherConditions = [
   
     // ผอ.กอง/กลุ่ม/รองผอ.ฝ่าย/ภูมิภาค
     {
-      expenses_other_id: 694,
+      expenses_other_id: 1294,
       position_code: '07', // ผอ.กอง
       level_code: '08',
       scope: null,
       max_amount: 4000
     },
     {
-      expenses_other_id: 694,
+      expenses_other_id: 1294,
       position_code: '53', // ผอ.กลุ่ม
       level_code: '08',
       scope: null,
       max_amount: 4000
     },
     {
-      expenses_other_id: 694,
+      expenses_other_id: 1294,
       position_code: '60', // รองผอ.ฝ่าย
       level_code: '08',
       scope: null,
       max_amount: 4000
     },
     {
-      expenses_other_id: 694,
+      expenses_other_id: 1294,
       position_code: '62', // รองผอ.ภูมิภาค
       level_code: '08',
       scope: null,
@@ -109,7 +109,7 @@ const expensesOtherConditions = [
   
     // รองผู้อำนวยการสำนัก
     {
-      expenses_other_id: 694,
+      expenses_other_id: 1294,
       position_code: '65', // รองผอ.สำนัก
       level_code: '07',
       scope: null,

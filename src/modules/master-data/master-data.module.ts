@@ -17,6 +17,9 @@ import { OutsiderEquivalentService } from './services/outsider-equivalent.servic
 import { PerDiemRatesService } from './services/per-diem-rates.service';
 import { AccommodationRatesService } from './services/accommodation-rates.service';
 import { ExpensesOtherConditionsService } from './services/expenses-other-conditions.service';
+import { DomesticMovingAllowancesService } from './services/domestic-moving-allowances.service';
+import { InternationalMovingAllowancesService } from './services/international-moving-allowances.service';
+import { AttireAllowanceRatesService } from './services/attire-allowance-rates.service';
 
 // Import controllers
 import { CountriesController } from './controllers/countries.controller.js';
@@ -33,6 +36,9 @@ import { OutsiderEquivalentController } from './controllers/outsider-equivalent.
 import { PerDiemRatesController } from './controllers/per-diem-rates.controller';
 import { AccommodationRatesController } from './controllers/accommodation-rates.controller';
 import { ExpensesOtherConditionsController } from './controllers/expenses-other-conditions.controller';
+import { DomesticMovingAllowancesController } from './controllers/domestic-moving-allowances.controller';
+import { InternationalMovingAllowancesController } from './controllers/international-moving-allowances.controller';
+import { AttireAllowanceRatesController } from './controllers/attire-allowance-rates.controller';
 
 // Import repositories
 import { CountriesRepository } from './repositories/countries.repository.js';
@@ -49,6 +55,9 @@ import { OutsiderEquivalentRepository } from './repositories/outsider-equivalent
 import { PerDiemRatesRepository } from './repositories/per-diem-rates.repository';
 import { AccommodationRatesRepository } from './repositories/accommodation-rates.repository';
 import { ExpensesOtherConditionsRepository } from './repositories/expenses-other-conditions.repository';
+import { DomesticMovingAllowancesRepository } from './repositories/domestic-moving-allowances.repository';
+import { InternationalMovingAllowancesRepository } from './repositories/international-moving-allowances.repository';
+import { AttireAllowanceRatesRepository } from './repositories/attire-allowance-rates.repository';
 
 @Module({
   imports: [
@@ -69,6 +78,9 @@ import { ExpensesOtherConditionsRepository } from './repositories/expenses-other
     PerDiemRatesController,
     AccommodationRatesController,
     ExpensesOtherConditionsController,
+    DomesticMovingAllowancesController,
+    InternationalMovingAllowancesController,
+    AttireAllowanceRatesController,
   ],
   providers: [
     // Services
@@ -86,6 +98,9 @@ import { ExpensesOtherConditionsRepository } from './repositories/expenses-other
     PerDiemRatesService,
     AccommodationRatesService,
     ExpensesOtherConditionsService,
+    DomesticMovingAllowancesService,
+    InternationalMovingAllowancesService,
+    AttireAllowanceRatesService,
     // Repositories
     CountriesRepository,
     PlacesRepository,
@@ -101,6 +116,9 @@ import { ExpensesOtherConditionsRepository } from './repositories/expenses-other
     PerDiemRatesRepository,
     AccommodationRatesRepository,
     ExpensesOtherConditionsRepository,
+    DomesticMovingAllowancesRepository,
+    InternationalMovingAllowancesRepository,
+    AttireAllowanceRatesRepository,
     // Shared services
     RedisCacheService,
   ],
@@ -119,6 +137,9 @@ import { ExpensesOtherConditionsRepository } from './repositories/expenses-other
     PerDiemRatesService,
     AccommodationRatesService,
     ExpensesOtherConditionsService,
+    DomesticMovingAllowancesService,
+    InternationalMovingAllowancesService,
+    AttireAllowanceRatesService,
   ],
 })
 export class MasterDataModule {} 
