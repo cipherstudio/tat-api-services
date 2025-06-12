@@ -8,7 +8,7 @@ export class ApprovalDateRangeDto {
     example: '2024-03-20'
   })
   @IsDateString()
-  start: string;
+  start_date: string;
 
   @ApiProperty({ 
     description: 'End date of the range',
@@ -16,5 +16,5 @@ export class ApprovalDateRangeDto {
     example: '2024-03-25'
   })
   @IsDateString()
-  end: string;
+  end_date: string;
 } 
