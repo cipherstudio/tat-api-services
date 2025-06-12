@@ -334,7 +334,7 @@ export class UpdateApprovalDto {
   @ApiProperty({
     description: 'Number of travelers',
     required: false,
-    example: '2'
+    example: 'single'
   })
   @IsOptional()
   @IsString()
@@ -796,4 +796,49 @@ export class UpdateApprovalDto {
   @IsOptional()
   @IsBoolean()
   useSystemSignature?: boolean;
+
+  @ApiProperty({
+    description: 'รหัสไฟล์แนบ',
+    required: false,
+    example: 1
+  })
+  @IsOptional()
+  @IsNumber()
+  attachmentId?: number;
+
+  @ApiProperty({
+    description: 'เกินสิทธิ์ค่าที่พัก',
+    required: false,
+    example: true
+  })
+  @IsOptional()
+  @IsBoolean()
+  exceedLodgingRightsChecked?: boolean;
+
+  @ApiProperty({
+    description: 'เหตุผลที่เกินสิทธิ์ค่าที่พัก',
+    required: false,
+    example: 'เนื่องจากเป็นช่วงเทศกาล'
+  })
+  @IsOptional()
+  @IsString()
+  exceedLodgingRightsReason?: string;
+
+  @ApiProperty({
+    description: 'ยอดรวมฟอร์ม 4',
+    required: false,
+    example: 5000
+  })
+  @IsOptional()
+  @IsNumber()
+  form4TotalAmount?: number;
+
+  @ApiProperty({
+    description: 'ยอดรวมฟอร์ม 5',
+    required: false,
+    example: 3000
+  })
+  @IsOptional()
+  @IsNumber()
+  form5TotalAmount?: number;
 }
