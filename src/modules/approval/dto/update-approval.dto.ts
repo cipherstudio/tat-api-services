@@ -28,14 +28,14 @@ export class TripDateRangeDto {
     example: '2024-03-20'
   })
   @IsDateString()
-  start: string;
+  start_date: string;
 
   @ApiProperty({
     description: 'วันที่สิ้นสุด',
     example: '2024-03-25'
   })
   @IsDateString()
-  end: string;
+  end_date: string;
 }
 
 export class TripEntryDto {
@@ -159,7 +159,7 @@ export class StaffMemberDto {
 
   @ApiProperty({
     description: 'ประเภทพนักงาน',
-    example: 'Full-time'
+    example: 'employee'
   })
   @IsString()
   type: string;
@@ -382,12 +382,12 @@ export class UpdateApprovalDto {
     required: false,
     example: [
       {
-        start: '2024-03-20',
-        end: '2024-03-25'
+        start_date: '2024-03-20',
+        end_date: '2024-03-25'
       },
       {
-        start: '2024-04-01',
-        end: '2024-04-05'
+        start_date: '2024-04-01',
+        end_date: '2024-04-05'
       }
     ]
   })
@@ -417,6 +417,15 @@ export class UpdateApprovalDto {
   approvalContents?: ApprovalContentDto[];
 
   @ApiProperty({
+    description: 'รหัสไฟล์แนบ',
+    required: false,
+    example: 1
+  })
+  @IsOptional()
+  @IsNumber()
+  attachmentId?: number;
+
+  @ApiProperty({
     description: 'Trip entries for the approval',
     type: [TripEntryDto],
     required: false
@@ -434,7 +443,7 @@ export class UpdateApprovalDto {
     example: [
       {
         "employeeCode": "66019",
-        "type": "Full-time",
+        "type": "employee",
         "name": "John Doe",
         "role": "Developer",
         "position": "Senior Developer",
@@ -450,8 +459,8 @@ export class UpdateApprovalDto {
             "destinationType": "domestic",
             "tripDateRanges": [
               {
-                "start": "2024-03-20",
-                "end": "2024-03-25"
+                "start_date": "2024-03-20",
+                "end_date": "2024-03-25"
               }
             ],
             "transportationExpenses": [
@@ -602,6 +611,42 @@ export class UpdateApprovalDto {
   @IsOptional()
   @IsNumber()
   form3TotalAmount?: number;
+
+  @ApiProperty({
+    description: 'เกินสิทธิ์ค่าที่พัก',
+    required: false,
+    example: true
+  })
+  @IsOptional()
+  @IsBoolean()
+  exceedLodgingRightsChecked?: boolean;
+
+  @ApiProperty({
+    description: 'เหตุผลที่เกินสิทธิ์ค่าที่พัก',
+    required: false,
+    example: 'เนื่องจากเป็นช่วงเทศกาล'
+  })
+  @IsOptional()
+  @IsString()
+  exceedLodgingRightsReason?: string;
+
+  @ApiProperty({
+    description: 'ยอดรวมฟอร์ม 4',
+    required: false,
+    example: 5000
+  })
+  @IsOptional()
+  @IsNumber()
+  form4TotalAmount?: number;
+
+  @ApiProperty({
+    description: 'ยอดรวมฟอร์ม 5',
+    required: false,
+    example: 3000
+  })
+  @IsOptional()
+  @IsNumber()
+  form5TotalAmount?: number;
 
   @ApiProperty({
     description: 'Approval conditions',
@@ -797,48 +842,4 @@ export class UpdateApprovalDto {
   @IsBoolean()
   useSystemSignature?: boolean;
 
-  @ApiProperty({
-    description: 'รหัสไฟล์แนบ',
-    required: false,
-    example: 1
-  })
-  @IsOptional()
-  @IsNumber()
-  attachmentId?: number;
-
-  @ApiProperty({
-    description: 'เกินสิทธิ์ค่าที่พัก',
-    required: false,
-    example: true
-  })
-  @IsOptional()
-  @IsBoolean()
-  exceedLodgingRightsChecked?: boolean;
-
-  @ApiProperty({
-    description: 'เหตุผลที่เกินสิทธิ์ค่าที่พัก',
-    required: false,
-    example: 'เนื่องจากเป็นช่วงเทศกาล'
-  })
-  @IsOptional()
-  @IsString()
-  exceedLodgingRightsReason?: string;
-
-  @ApiProperty({
-    description: 'ยอดรวมฟอร์ม 4',
-    required: false,
-    example: 5000
-  })
-  @IsOptional()
-  @IsNumber()
-  form4TotalAmount?: number;
-
-  @ApiProperty({
-    description: 'ยอดรวมฟอร์ม 5',
-    required: false,
-    example: 3000
-  })
-  @IsOptional()
-  @IsNumber()
-  form5TotalAmount?: number;
 }

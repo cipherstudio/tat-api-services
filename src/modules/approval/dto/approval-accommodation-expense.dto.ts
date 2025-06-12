@@ -1,5 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsOptional, IsString, IsNumber } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, IsNumber, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ApprovalAccommodationTransportExpenseDto } from './approval-accommodation-transport-expense.dto';
 
 export class ApprovalAccommodationExpenseDto {
   @ApiProperty({
@@ -265,4 +267,15 @@ export class ApprovalAccommodationExpenseDto {
   @IsOptional()
   @IsNumber()
   movingCostRate?: number;
+
+  @ApiProperty({
+    description: 'Transport expenses for this accommodation',
+    type: [ApprovalAccommodationTransportExpenseDto],
+    required: false,
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ApprovalAccommodationTransportExpenseDto)
+  accommodationTransportExpenses?: ApprovalAccommodationTransportExpenseDto[];
 } 
