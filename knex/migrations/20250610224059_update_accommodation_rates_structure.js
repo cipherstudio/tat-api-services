@@ -28,6 +28,9 @@ exports.up = function(knex) {
             table.index('travel_type');
             table.index('rate_mode');
         });
+    }).then(() => {
+        // Run the existing seed after migration
+        return require('../seeds/12_accomodation_rates').seed(knex);
     });
 };
 

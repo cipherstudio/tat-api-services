@@ -3,7 +3,7 @@ const per_diem_rates = [
   // =============== DOMESTIC TRAVEL RULES ================
   // ======================================================
   {
-    "position_group": "ตำแหน่งบริหารพิเศษ",
+    "position_group": "คณะกรรมการ",
     "position_name": "ประธานกรรมการ, กรรมการ, ผู้ว่าการ, รองผู้ว่าการ",
     "level_code_start": null,
     "level_code_end": null,
@@ -33,7 +33,7 @@ const per_diem_rates = [
     "max_per_diem": 350
   },
   {
-    "position_group": "ตำแหน่งบริหารพิเศษ",
+    "position_group": "คณะกรรมการ",
     "position_name": "ประธานกรรมการ, กรรมการ, ผู้ว่าการ, รองผู้ว่าการ",
     "level_code_start": null,
     "level_code_end": null,
@@ -66,7 +66,7 @@ const per_diem_rates = [
   // ============== INTERNATIONAL TRAVEL RULES ============
   // ======================================================
   {
-    "position_group": "ตำแหน่งบริหารพิเศษ",
+    "position_group": "คณะกรรมการ",
     "position_name": "ประธานกรรมการ, กรรมการ, ผู้ว่าการ, รองผู้ว่าการ",
     "level_code_start": null,
     "level_code_end": null,
