@@ -171,6 +171,49 @@ export class ApprovalService {
     const approval = await this.knexService.knex('approval')
       .where('id', id)
       .whereNull('deleted_at')
+      .select(
+        'id',
+        'increment_id as incrementId',
+        'record_type as recordType',
+        'name',
+        'employee_code as employeeCode',
+        'travel_type as travelType',
+        'international_sub_option as internationalSubOption',
+        'approval_ref as approvalRef',
+        'work_start_date as workStartDate',
+        'work_end_date as workEndDate',
+        'start_country as startCountry',
+        'end_country as endCountry',
+        'remarks',
+        'num_travelers as numTravelers',
+        'document_no as documentNo',
+        'document_tel as documentTel',
+        'document_to as documentTo',
+        'document_title as documentTitle',
+        'attachment_id as attachmentId',
+        'form3_total_outbound as form3TotalOutbound',
+        'form3_total_inbound as form3TotalInbound',
+        'form3_total_amount as form3TotalAmount',
+        'exceed_lodging_rights_checked as exceedLodgingRightsChecked',
+        'exceed_lodging_rights_reason as exceedLodgingRightsReason',
+        'form4_total_amount as form4TotalAmount',
+        'form5_total_amount as form5TotalAmount',
+        'approval_date as approvalDate',
+        'staff',
+        'comments',
+        'final_staff as finalStaff',
+        'signer_date as signerDate',
+        'document_ending as documentEnding',
+        'document_ending_wording as documentEndingWording',
+        'signer_name as signerName',
+        'use_file_signature as useFileSignature',
+        'signature_attachment_id as signatureAttachmentId',
+        'use_system_signature as useSystemSignature',
+        'user_id as userId',
+        'created_at as createdAt',
+        'updated_at as updatedAt',
+        'deleted_at as deletedAt',
+      )
       .first();
 
     if (!approval) {
@@ -184,19 +227,8 @@ export class ApprovalService {
       urgencyLevel: approval.urgency_level ? JSON.parse(approval.urgency_level) : undefined,
       departments: approval.departments ? JSON.parse(approval.departments) : undefined,
       degrees: approval.degrees ? JSON.parse(approval.degrees) : undefined,
-      staff: approval.staff,
-      comments: approval.comments,
-      approvalDate: approval.approval_date,
       finalDepartments: approval.final_departments ? JSON.parse(approval.final_departments) : undefined,
       finalDegrees: approval.final_degrees ? JSON.parse(approval.final_degrees) : undefined,
-      finalStaff: approval.final_staff,
-      signerDate: approval.signer_date,
-      documentEnding: approval.document_ending,
-      documentEndingWording: approval.document_ending_wording,
-      signerName: approval.signer_name,
-      useFileSignature: approval.use_file_signature,
-      signatureAttachmentId: approval.signature_attachment_id,
-      useSystemSignature: approval.use_system_signature,
     };
 
     // Get status history
@@ -208,7 +240,7 @@ export class ApprovalService {
     // Get travel date ranges
     const travelDateRanges = await this.knexService.knex('approval_date_ranges')
       .where('approval_id', id)
-      .select('id', 'start_date', 'end_date');
+      .select('id', 'start_date as startDate', 'end_date as endDate');
 
     // Get approval contents
     const approvalContents = await this.knexService.knex('approval_contents')
@@ -231,7 +263,7 @@ export class ApprovalService {
     for (const tripEntry of tripEntries) {
       const tripDateRanges = await this.knexService.knex('approval_trip_date_ranges')
         .where('approval_trip_entries_id', tripEntry.id)
-        .select('id', 'start_date', 'end_date');
+        .select('id', 'start_date as startDate', 'end_date as endDate');
       tripEntry.tripDateRanges = tripDateRanges;
     }
 
@@ -269,7 +301,7 @@ export class ApprovalService {
         const workLocationTripDateRanges = await this.knexService.knex('approval_work_locations_date_ranges')
           .where('approval_work_locations_id', workLocation.id)
           .where('approval_id', id)
-          .select('id', 'start_date', 'end_date');
+          .select('id', 'start_date as startDate', 'end_date as endDate');
         workLocation.tripDateRanges = workLocationTripDateRanges;
       }
 
@@ -348,7 +380,7 @@ export class ApprovalService {
               'type',
               'amount',
               'checked',
-              'flight_route'
+              'flight_route as flightRoute'
             );
           accommodationExpense.accommodationTransportExpenses = accommodationTransportExpenses;
 
