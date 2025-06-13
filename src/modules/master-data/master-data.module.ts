@@ -20,6 +20,7 @@ import { ExpensesOtherConditionsService } from './services/expenses-other-condit
 import { DomesticMovingAllowancesService } from './services/domestic-moving-allowances.service';
 import { InternationalMovingAllowancesService } from './services/international-moving-allowances.service';
 import { AttireAllowanceRatesService } from './services/attire-allowance-rates.service';
+import { CurrencyService } from './services/currency.service';
 
 // Import controllers
 import { CountriesController } from './controllers/countries.controller.js';
@@ -39,6 +40,7 @@ import { ExpensesOtherConditionsController } from './controllers/expenses-other-
 import { DomesticMovingAllowancesController } from './controllers/domestic-moving-allowances.controller';
 import { InternationalMovingAllowancesController } from './controllers/international-moving-allowances.controller';
 import { AttireAllowanceRatesController } from './controllers/attire-allowance-rates.controller';
+import { CurrencyController } from './controllers/currency.controller';
 
 // Import repositories
 import { CountriesRepository } from './repositories/countries.repository.js';
@@ -58,11 +60,10 @@ import { ExpensesOtherConditionsRepository } from './repositories/expenses-other
 import { DomesticMovingAllowancesRepository } from './repositories/domestic-moving-allowances.repository';
 import { InternationalMovingAllowancesRepository } from './repositories/international-moving-allowances.repository';
 import { AttireAllowanceRatesRepository } from './repositories/attire-allowance-rates.repository';
+import { CurrencyRepository } from './repositories/currency.repository';
 
 @Module({
-  imports: [
-    RedisCacheModule,
-  ],
+  imports: [RedisCacheModule],
   controllers: [
     CountriesController,
     PlacesController,
@@ -81,6 +82,7 @@ import { AttireAllowanceRatesRepository } from './repositories/attire-allowance-
     DomesticMovingAllowancesController,
     InternationalMovingAllowancesController,
     AttireAllowanceRatesController,
+    CurrencyController,
   ],
   providers: [
     // Services
@@ -101,6 +103,7 @@ import { AttireAllowanceRatesRepository } from './repositories/attire-allowance-
     DomesticMovingAllowancesService,
     InternationalMovingAllowancesService,
     AttireAllowanceRatesService,
+    CurrencyService,
     // Repositories
     CountriesRepository,
     PlacesRepository,
@@ -119,6 +122,7 @@ import { AttireAllowanceRatesRepository } from './repositories/attire-allowance-
     DomesticMovingAllowancesRepository,
     InternationalMovingAllowancesRepository,
     AttireAllowanceRatesRepository,
+    CurrencyRepository,
     // Shared services
     RedisCacheService,
   ],
@@ -140,6 +144,7 @@ import { AttireAllowanceRatesRepository } from './repositories/attire-allowance-
     DomesticMovingAllowancesService,
     InternationalMovingAllowancesService,
     AttireAllowanceRatesService,
+    CurrencyService,
   ],
 })
-export class MasterDataModule {} 
+export class MasterDataModule {}
