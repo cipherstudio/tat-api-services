@@ -28,8 +28,8 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
 @ApiTags('Master Data')
 @Controller('master-data/currencies')
-@UseGuards(JwtAuthGuard)
-@ApiBearerAuth('JWT-auth')
+// @UseGuards(JwtAuthGuard)
+// @ApiBearerAuth('JWT-auth')
 export class CurrencyController {
   constructor(private readonly currencyService: CurrencyService) {}
 
