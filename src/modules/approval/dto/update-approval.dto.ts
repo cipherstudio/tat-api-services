@@ -85,6 +85,24 @@ export class TripEntryDto {
   destinationType?: string;
 
   @ApiProperty({
+    description: 'รหัสปลายทาง',
+    example: 1,
+    required: false
+  })
+  @IsOptional()
+  @IsNumber()
+  destinationId?: number;
+
+  @ApiProperty({
+    description: 'ชื่อตารางปลายทาง',
+    example: 'countries',
+    required: false
+  })
+  @IsOptional()
+  @IsString()
+  destinationTable?: string;
+
+  @ApiProperty({
     description: 'ช่วงวันที่เดินทาง',
     type: [TripDateRangeDto],
     required: false
@@ -457,6 +475,8 @@ export class UpdateApprovalDto {
             "details": "Business trip for conference",
             "checked": true,
             "destinationType": "domestic",
+            "destinationId": 1,
+            "destinationTable": "countries",
             "tripDateRanges": [
               {
                 "start_date": "2024-03-20",
