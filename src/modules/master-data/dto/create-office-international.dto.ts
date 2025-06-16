@@ -1,4 +1,4 @@
-import { IsString } from 'class-validator';
+import { IsString, IsNumber } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 /**
@@ -40,4 +40,28 @@ export class CreateOfficeInternationalDto {
   @ApiProperty({ description: 'The region of the office international' })
   @IsString()
   region: string;
+
+  /**
+   * The country ID of the office international
+   * @TypeProperty({
+   *   type: 'number',
+   *   isOptional: false,
+   *   description: 'The country ID of the office international'
+   * })
+   */
+  @ApiProperty({ description: 'The country ID of the office international' })
+  @IsNumber()
+  countryId: number;
+
+  /**
+   * The currency ID of the office international
+   * @TypeProperty({
+   *   type: 'number',
+   *   isOptional: false,
+   *   description: 'The currency ID of the office international'
+   * })
+   */
+  @ApiProperty({ description: 'The currency ID of the office international' })
+  @IsNumber()
+  currencyId: number;
 }
