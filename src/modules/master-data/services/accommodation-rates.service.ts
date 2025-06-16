@@ -35,6 +35,7 @@ export class AccommodationRatesService {
         positionGroupName: query.positionGroupName,
         rateMode: query.rateMode,
         travelType: query.travelType,
+        countryType: query.countryType,
       },
       query.orderBy,
       query.orderDir?.toLowerCase() as 'asc' | 'desc',

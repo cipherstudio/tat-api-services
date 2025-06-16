@@ -32,6 +32,11 @@ export class UpdateAccommodationRatesDto {
   @IsOptional()
   rateMode?: 'CHOICE' | 'ACTUAL_ONLY' | 'UNLIMITED';
 
+  @ApiProperty({ description: 'Country type (A/B)', required: false })
+  @IsEnum(['A', 'B'])
+  @IsOptional()
+  countryType?: 'A' | 'B';
+
   @ApiProperty({ description: 'Flat rate amount', required: false })
   @IsNumber()
   @IsOptional()
