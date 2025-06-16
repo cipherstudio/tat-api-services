@@ -31,13 +31,13 @@ export class TripDateRangeDto {
     description: 'วันที่เริ่มต้น',
     example: '2024-03-20'
   })
-  start: string;
+  start_date: string;
 
   @ApiProperty({
     description: 'วันที่สิ้นสุด',
     example: '2024-03-25'
   })
-  end: string;
+  end_date: string;
 }
 
 export class TripEntryDto {
@@ -75,6 +75,20 @@ export class TripEntryDto {
     required: false
   })
   destinationType?: string;
+
+  @ApiProperty({
+    description: 'รหัสปลายทาง',
+    example: 1,
+    required: false
+  })
+  destinationId?: number;
+
+  @ApiProperty({
+    description: 'ชื่อตารางปลายทาง',
+    example: 'countries',
+    required: false
+  })
+  destinationTable?: string;
 
   @ApiProperty({
     description: 'ช่วงวันที่เดินทาง',
@@ -182,6 +196,40 @@ export class StaffMemberDto {
     required: false
   })
   clothingExpenses?: ApprovalClothingExpenseDto[];
+}
+
+export class ApprovalTripEntryDto {
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty()
+  trip_id: number;
+
+  @ApiProperty()
+  destination_id: number;
+
+  @ApiProperty()
+  destination_table: string;
+
+  @ApiProperty()
+  trip_date: Date;
+}
+
+export class ApprovalWorkLocationDto {
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty()
+  work_location_id: number;
+
+  @ApiProperty()
+  destination_id: number;
+
+  @ApiProperty()
+  destination_table: string;
+
+  @ApiProperty()
+  work_location: WorkLocationDto;
 }
 
 export class ApprovalDetailResponseDto implements Approval {

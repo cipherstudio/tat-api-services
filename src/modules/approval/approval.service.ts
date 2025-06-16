@@ -256,7 +256,9 @@ export class ApprovalService {
         'destination',
         'nearby_provinces as nearbyProvinces',
         'details',
-        'destination_type as destinationType'
+        'destination_type as destinationType',
+        'destination_id as destinationId',
+        'destination_table as destinationTable',
       );
 
     // Get trip date ranges for each trip entry
@@ -293,7 +295,9 @@ export class ApprovalService {
           'nearby_provinces as nearbyProvinces',
           'details',
           'checked',
-          'destination_type as destinationType'
+          'destination_type as destinationType',
+          'destination_id as destinationId',
+          'destination_table as destinationTable'
         );
 
       // Get trip date ranges for each work location
@@ -581,6 +585,8 @@ export class ApprovalService {
               nearby_provinces: entry.nearbyProvinces,
               details: entry.details,
               destination_type: entry.destinationType,
+              destination_id: entry.destinationId,
+              destination_table: entry.destinationTable,
             }).returning('id');
 
             if (entry.tripDateRanges && Array.isArray(entry.tripDateRanges)) {
@@ -646,6 +652,8 @@ export class ApprovalService {
                   details: workLocation.details,
                   checked: workLocation.checked,
                   destination_type: workLocation.destinationType,
+                  destination_id: workLocation.destinationId,
+                  destination_table: workLocation.destinationTable,
                   created_at: new Date(),
                   updated_at: new Date(),
                 })
@@ -810,9 +818,9 @@ export class ApprovalService {
                         clothing_file_checked: expense.clothingFileChecked,
                         clothing_amount: expense.clothingAmount,
                         clothing_reason: expense.clothingReason,
-                        reporting_date: expense.reportingDate,
-                        next_claim_date: expense.nextClaimDate,
-                        work_end_date: expense.workEndDate,
+                        reporting_date: null, // ไม่ต้องส่ง มาจาก cron + manual save
+                        next_claim_date: expense.nextClaimDate, // ไม่ส่ง คำนวนจากหลังบ้าน
+                        work_end_date: expense.workEndDate, // ไม่ต้องส่ง เอามาจาก step 1
                         updated_at: new Date()
                       });
                   } else {
@@ -824,9 +832,9 @@ export class ApprovalService {
                       clothing_file_checked: expense.clothingFileChecked,
                       clothing_amount: expense.clothingAmount,
                       clothing_reason: expense.clothingReason,
-                      reporting_date: expense.reportingDate,
-                      next_claim_date: expense.nextClaimDate,
-                      work_end_date: expense.workEndDate,
+                      reporting_date: null, // ไม่ต้องส่ง มาจาก cron + manual save
+                      next_claim_date: expense.nextClaimDate, // ไม่ส่ง คำนวนจากหลังบ้าน
+                      work_end_date: expense.workEndDate, // ไม่ต้องส่ง เอามาจาก step 1
                       created_at: new Date(),
                       updated_at: new Date()
                     });

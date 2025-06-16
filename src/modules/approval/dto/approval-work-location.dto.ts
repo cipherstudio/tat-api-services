@@ -81,6 +81,20 @@ export class ApprovalWorkLocationDto {
   destinationType?: 'domestic' | 'international';
 
   @ApiProperty({
+    description: 'รหัสปลายทาง',
+    example: 1,
+    required: false
+  })
+  destinationId?: number;
+
+  @ApiProperty({
+    description: 'ชื่อตารางปลายทาง',
+    example: 'countries',
+    required: false
+  })
+  destinationTable?: string;
+
+  @ApiProperty({
     description: 'Date ranges for the work location',
     type: [ApprovalDateRangeDto],
     required: false,
