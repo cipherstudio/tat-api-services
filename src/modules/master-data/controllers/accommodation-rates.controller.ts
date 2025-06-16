@@ -96,6 +96,12 @@ export class AccommodationRatesController {
     description: 'Rate mode (CHOICE/ACTUAL_ONLY/UNLIMITED)',
   })
   @ApiQuery({
+    name: 'countryType',
+    type: String,
+    required: false,
+    description: 'Country type (A/B)',
+  })
+  @ApiQuery({
     name: 'searchTerm',
     type: String,
     required: false,
@@ -136,6 +142,7 @@ export class AccommodationRatesController {
     @Query('levelCodeEnd') levelCodeEnd?: string,
     @Query('positionGroupName') positionGroupName?: string,
     @Query('rateMode') rateMode?: 'CHOICE' | 'ACTUAL_ONLY' | 'UNLIMITED',
+    @Query('countryType') countryType?: 'A' | 'B',
     @Query('searchTerm') searchTerm?: string,
     @Query('createdAfter', new ValidationPipe({ transform: true })) createdAfter?: Date,
     @Query('createdBefore', new ValidationPipe({ transform: true })) createdBefore?: Date,
@@ -153,6 +160,7 @@ export class AccommodationRatesController {
       levelCodeEnd,
       positionGroupName,
       rateMode,
+      countryType,
       searchTerm,
       createdAfter,
       createdBefore,

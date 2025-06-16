@@ -22,6 +22,9 @@ export class AccommodationRates {
   @ApiProperty({ description: 'Rate mode (CHOICE/ACTUAL_ONLY/UNLIMITED)' })
   rateMode: 'CHOICE' | 'ACTUAL_ONLY' | 'UNLIMITED';
 
+  @ApiProperty({ description: 'Country type (A/B)', required: false })
+  countryType?: 'A' | 'B';
+
   @ApiProperty({ description: 'Flat rate amount', required: false })
   flatRateAmount?: number;
 
@@ -46,6 +49,7 @@ export const accommodationRatesColumnMap = {
   levelCodeEnd: 'level_code_end',
   positionGroupName: 'position_group_name',
   rateMode: 'rate_mode',
+  countryType: 'country_type',
   flatRateAmount: 'flat_rate_amount',
   singleRoomAmount: 'single_room_amount',
   doubleRoomPercentage: 'double_room_percentage',
@@ -61,6 +65,7 @@ export const accommodationRatesReverseColumnMap = {
   level_code_end: 'levelCodeEnd',
   position_group_name: 'positionGroupName',
   rate_mode: 'rateMode',
+  country_type: 'countryType',
   flat_rate_amount: 'flatRateAmount',
   single_room_amount: 'singleRoomAmount',
   double_room_percentage: 'doubleRoomPercentage',

@@ -28,7 +28,7 @@ exports.up = function(knex) {
             table.index('travel_type');
             table.index('rate_mode');
         });
-    });
+    })
 };
 
 /**

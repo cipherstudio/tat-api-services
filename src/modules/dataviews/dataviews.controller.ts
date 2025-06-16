@@ -20,6 +20,9 @@ import { QueryOpPosExecutiveRDto } from './dto/query-op-pos-executive-r.dto';
 import { QueryViewPosition4otDto } from './dto/query-view-position-4ot.dto';
 import { QueryVBudgetCodeDto } from './dto/query-v-budget-code.dto';
 import { QueryVTxOtDto } from './dto/query-v-tx-ot.dto';
+import { QueryPsPwJobDto } from './dto/query-ps-pw-job.dto';
+import { QueryOpLevelSalRDto } from './dto/query-op-level-sal-r.dto';
+import { OpLevelSalR } from './entities/op-level-sal-r.entity';
 import {
   ApiOperation,
   ApiQuery,
@@ -39,6 +42,8 @@ import { OpPosExecutiveRPaginate } from './entities/op-pos-executive-r.entity';
 import { ViewPosition4otPaginate } from './entities/view-position-4ot.entity';
 import { VBudgetCodePaginate } from './entities/v-budget-code.entity';
 import { VTxOtPaginate } from './entities/v-tx-ot.entity';
+import { PsPwJobPaginate } from './entities/ps-pw-job.entity';
+import { OpLevelSalRRepository, OpLevelSalRPaginate } from './repositories/op-level-sal-r.repository';
 
 @ApiTags('dataviews')
 @Controller('dataviews')
@@ -476,5 +481,70 @@ export class DataviewsController {
   })
   findVTxOtWithQuery(@Query() query: QueryVTxOtDto): Promise<VTxOtPaginate> {
     return this.dataviewsService.findVTxOtWithQuery(query);
+  }
+
+  @Version('1')
+  @Get('ps-pw-job')
+  @ApiOperation({
+    summary: 'ค้นหาข้อมูล PS_PW_JOB (วิวตำแหน่งงานบุคลากร)',
+    description:
+      'ค้นหาข้อมูลจากวิว PS_PW_JOB สามารถกรองตาม emplid (รหัสพนักงาน), deptid (รหัสแผนก), positionNbr (รหัสตำแหน่ง) และรองรับการแบ่งหน้า',
+  })
+  @ApiQuery({ name: 'emplid', required: false, description: 'รหัสพนักงาน' })
+  @ApiQuery({ name: 'deptid', required: false, description: 'รหัสแผนก' })
+  @ApiQuery({
+    name: 'positionNbr',
+    required: false,
+    description: 'รหัสตำแหน่ง',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'จำนวนรายการต่อหน้า',
+    type: Number,
+    example: 10,
+  })
+  @ApiQuery({
+    name: 'offset',
+    required: false,
+    description: 'ข้ามกี่รายการ',
+    type: Number,
+    example: 0,
+  })
+  findPsPwJobWithQuery(
+    @Query() query: QueryPsPwJobDto,
+  ): Promise<PsPwJobPaginate> {
+    return this.dataviewsService.findPsPwJobWithQuery(query);
+  }
+
+  @Version('1')
+  @Get('op-level-sal-r')
+  @ApiOperation({
+    summary: 'ค้นหาข้อมูล OP_LEVEL_SAL_R_TEMP ด้วยเงื่อนไข',
+    description:
+      'สามารถกรองข้อมูล OP_LEVEL_SAL_R_TEMP ตาม plvCode, limit, offset ได้',
+  })
+  @ApiQuery({
+    name: 'plvCode',
+    required: false,
+    description: 'PLV_CODE',
+    type: Number,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'จำนวนรายการต่อหน้า',
+    type: Number,
+    example: 10,
+  })
+  @ApiQuery({
+    name: 'offset',
+    required: false,
+    description: 'ข้ามกี่รายการ',
+    type: Number,
+    example: 0,
+  })
+  findOpLevelSalRWithQuery(@Query() query: QueryOpLevelSalRDto): Promise<OpLevelSalRPaginate> {
+    return this.dataviewsService.findOpLevelSalRWithQuery(query);
   }
 }
