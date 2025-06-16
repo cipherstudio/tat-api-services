@@ -7,6 +7,7 @@ const amphurs = require('../constants/amphurs');
 
 exports.seed = async function (knex) {
   await knex('expenses_bangkok_to_place').del();
+  await knex('office_domestic').del();
 
   // ลบ amphurs ก่อน provinces เพื่อไม่ให้เกิด foreign key constraint error
   await knex('amphurs').del();
