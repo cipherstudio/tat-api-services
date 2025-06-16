@@ -21,6 +21,7 @@ import { DomesticMovingAllowancesService } from './services/domestic-moving-allo
 import { InternationalMovingAllowancesService } from './services/international-moving-allowances.service';
 import { AttireAllowanceRatesService } from './services/attire-allowance-rates.service';
 import { CurrencyService } from './services/currency.service';
+import { HolidayWorkRatesService } from './services/holiday-work-rates.service';
 
 // Import controllers
 import { CountriesController } from './controllers/countries.controller.js';
@@ -41,6 +42,7 @@ import { DomesticMovingAllowancesController } from './controllers/domestic-movin
 import { InternationalMovingAllowancesController } from './controllers/international-moving-allowances.controller';
 import { AttireAllowanceRatesController } from './controllers/attire-allowance-rates.controller';
 import { CurrencyController } from './controllers/currency.controller';
+import { HolidayWorkRatesController } from './controllers/holiday-work-rates.controller';
 
 // Import repositories
 import { CountriesRepository } from './repositories/countries.repository.js';
@@ -61,6 +63,11 @@ import { DomesticMovingAllowancesRepository } from './repositories/domestic-movi
 import { InternationalMovingAllowancesRepository } from './repositories/international-moving-allowances.repository';
 import { AttireAllowanceRatesRepository } from './repositories/attire-allowance-rates.repository';
 import { CurrencyRepository } from './repositories/currency.repository';
+import { HolidayWorkRatesRepository } from './repositories/holiday-work-rates.repository';
+
+// Import entities
+import { HolidayWorkRate } from './entities/holiday-work-rates.entity';
+import { HolidayWorkHour } from './entities/holiday-work-hours.entity';
 
 @Module({
   imports: [RedisCacheModule],
@@ -83,6 +90,7 @@ import { CurrencyRepository } from './repositories/currency.repository';
     InternationalMovingAllowancesController,
     AttireAllowanceRatesController,
     CurrencyController,
+    HolidayWorkRatesController,
   ],
   providers: [
     // Services
@@ -104,6 +112,7 @@ import { CurrencyRepository } from './repositories/currency.repository';
     InternationalMovingAllowancesService,
     AttireAllowanceRatesService,
     CurrencyService,
+    HolidayWorkRatesService,
     // Repositories
     CountriesRepository,
     PlacesRepository,
@@ -123,8 +132,12 @@ import { CurrencyRepository } from './repositories/currency.repository';
     InternationalMovingAllowancesRepository,
     AttireAllowanceRatesRepository,
     CurrencyRepository,
+    HolidayWorkRatesRepository,
     // Shared services
     RedisCacheService,
+    HolidayWorkRate,
+    HolidayWorkHour,
+    HolidayWorkRatesRepository,
   ],
   exports: [
     CountriesService,
@@ -145,6 +158,7 @@ import { CurrencyRepository } from './repositories/currency.repository';
     InternationalMovingAllowancesService,
     AttireAllowanceRatesService,
     CurrencyService,
+    HolidayWorkRatesService,
   ],
 })
 export class MasterDataModule {}
