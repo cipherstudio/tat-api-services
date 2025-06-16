@@ -7,6 +7,7 @@ import {
   Param,
   Body,
   Query,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -118,7 +119,7 @@ export class EntertainmentAllowanceController {
   @ApiOperation({
     summary: 'Create entertainment allowance',
     description:
-      'สร้างข้อมูลสิทธิ์ค่าเลี้ยงรับรองใหม่ พร้อมระบุระดับตำแหน่ง (levels)',
+      'สร้างข้อมูลสิทธิ์ค่าเลี้ยงรับรองใหม่ พร้อมระบุระดับตำแหน่ง (levels) หาก level มีการใช้งานอยู่แล้วจะไม่สามารถสร้างซ้ำได้',
   })
   @ApiBody({
     type: CreateEntertainmentAllowanceDto,
@@ -165,14 +166,32 @@ export class EntertainmentAllowanceController {
       },
     },
   })
+  @ApiResponse({
+    status: 400,
+    description: 'Level already in use',
+    schema: {
+      example: {
+        success: false,
+        message: 'Level (positionLevel=9) is already in use by allowance_id=1',
+      },
+    },
+  })
   async create(@Body() dto: CreateEntertainmentAllowanceDto) {
-    return this.entertainmentAllowanceService.create(dto);
+    const result = await this.entertainmentAllowanceService.create(dto);
+    if (result && result.success === false) {
+      // Return 400 Bad Request with error message
+      throw new BadRequestException({
+        ...result,
+      });
+    }
+    return result;
   }
 
   @Put(':id')
   @ApiOperation({
     summary: 'Update entertainment allowance',
-    description: 'อัปเดตข้อมูลสิทธิ์ค่าเลี้ยงรับรองและระดับตำแหน่ง (levels)',
+    description:
+      'อัปเดตข้อมูลสิทธิ์ค่าเลี้ยงรับรองและระดับตำแหน่ง (levels) หาก level มีการใช้งานอยู่แล้วจะไม่สามารถอัปเดตซ้ำได้',
   })
   @ApiBody({
     type: UpdateEntertainmentAllowanceDto,
@@ -230,11 +249,30 @@ export class EntertainmentAllowanceController {
       },
     },
   })
+  @ApiResponse({
+    status: 400,
+    description: 'Level already in use',
+    schema: {
+      example: {
+        success: false,
+        message: 'Level (positionLevel=9) is already in use by allowance_id=1',
+      },
+    },
+  })
   async update(
     @Param('id') id: number,
     @Body() dto: UpdateEntertainmentAllowanceDto,
   ) {
-    return this.entertainmentAllowanceService.update(Number(id), dto);
+    const result = await this.entertainmentAllowanceService.update(
+      Number(id),
+      dto,
+    );
+    if (result && result.success === false) {
+      throw new BadRequestException({
+        ...result,
+      });
+    }
+    return result;
   }
 
   @Delete(':id')

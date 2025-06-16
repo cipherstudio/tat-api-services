@@ -154,6 +154,19 @@ export class EntertainmentAllowanceRepository extends KnexBaseRepository<Enterta
 
   async createWithLevels(dto: any) {
     const { levels, ...allowanceData } = dto;
+    // Check if any of the provided levels are already linked to any allowance
+    if (levels && levels.length > 0) {
+      const positionLevels = levels.map((l) => l.positionLevel);
+      const existing = await this.knex('entertainment_allowance_levels')
+        .whereIn('position_level', positionLevels)
+        .first();
+      if (existing) {
+        return {
+          success: false,
+          message: `Level (positionLevel=${existing.position_level}) is already in use by allowance_id=${existing.allowance_id}`,
+        };
+      }
+    }
     const [allowanceId] = await this.knex('entertainment_allowances').insert(
       allowanceData,
       ['id'],
@@ -168,6 +181,20 @@ export class EntertainmentAllowanceRepository extends KnexBaseRepository<Enterta
 
   async updateWithLevels(id: number, dto: any) {
     const { levels, ...allowanceData } = dto;
+    // Check if any of the provided levels are already linked to another allowance (excluding this one)
+    if (levels) {
+      const positionLevels = levels.map((l) => l.positionLevel);
+      const existing = await this.knex('entertainment_allowance_levels')
+        .whereIn('position_level', positionLevels)
+        .whereNot('allowance_id', id)
+        .first();
+      if (existing) {
+        return {
+          success: false,
+          message: `Level (positionLevel=${existing.position_level}) is already in use by allowance_id=${existing.allowance_id}`,
+        };
+      }
+    }
     await this.knex('entertainment_allowances')
       .where('id', id)
       .update(allowanceData);

@@ -23,11 +23,23 @@ export class EntertainmentAllowanceService {
   }
 
   async create(dto: CreateEntertainmentAllowanceDto) {
-    return this.entertainmentAllowanceRepository.createWithLevels(dto);
+    const result =
+      await this.entertainmentAllowanceRepository.createWithLevels(dto);
+    if (result && result.success === false) {
+      return result;
+    }
+    return result;
   }
 
   async update(id: number, dto: UpdateEntertainmentAllowanceDto) {
-    return this.entertainmentAllowanceRepository.updateWithLevels(id, dto);
+    const result = await this.entertainmentAllowanceRepository.updateWithLevels(
+      id,
+      dto,
+    );
+    if (result && result.success === false) {
+      return result;
+    }
+    return result;
   }
 
   async remove(id: number) {
