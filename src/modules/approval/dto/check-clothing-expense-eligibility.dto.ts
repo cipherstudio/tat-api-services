@@ -1,13 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsString } from 'class-validator';
+import { IsArray, IsNumber } from 'class-validator';
 
 export class CheckClothingExpenseEligibilityDto {
   @ApiProperty({
     description: 'List of employee codes to check',
-    example: ['EMP001', 'EMP002'],
-    type: [String],
+    example: [38801, 66019],
+    type: [Number],
   })
   @IsArray()
-  @IsString({ each: true })
-  employeeCodes: string[];
+  @IsNumber({}, { each: true })
+  employeeCodes: number[];
 } 
