@@ -23,6 +23,7 @@ import { AttireAllowanceRatesService } from './services/attire-allowance-rates.s
 import { CurrencyService } from './services/currency.service';
 import { HolidayWorkRatesService } from './services/holiday-work-rates.service';
 import { EntertainmentAllowanceService } from './services/entertainment-allowance.service';
+import { ApprovalClothingExpenseService } from './services/approval-clothing-expense.service';
 
 // Import controllers
 import { CountriesController } from './controllers/countries.controller.js';
@@ -45,6 +46,7 @@ import { AttireAllowanceRatesController } from './controllers/attire-allowance-r
 import { CurrencyController } from './controllers/currency.controller';
 import { HolidayWorkRatesController } from './controllers/holiday-work-rates.controller';
 import { EntertainmentAllowanceController } from './controllers/entertainment-allowance.controller';
+import { ApprovalClothingExpenseController } from './controllers/approval-clothing-expense.controller';
 
 // Import repositories
 import { CountriesRepository } from './repositories/countries.repository.js';
@@ -67,6 +69,7 @@ import { AttireAllowanceRatesRepository } from './repositories/attire-allowance-
 import { CurrencyRepository } from './repositories/currency.repository';
 import { HolidayWorkRatesRepository } from './repositories/holiday-work-rates.repository';
 import { EntertainmentAllowanceRepository } from './repositories/entertainment-allowance.repository';
+import { ApprovalClothingExpenseRepository } from './repositories/approval-clothing-expense.repository';
 
 // Import entities
 import { HolidayWorkRate } from './entities/holiday-work-rates.entity';
@@ -95,6 +98,7 @@ import { HolidayWorkHour } from './entities/holiday-work-hours.entity';
     CurrencyController,
     HolidayWorkRatesController,
     EntertainmentAllowanceController,
+    ApprovalClothingExpenseController,
   ],
   providers: [
     // Services
@@ -118,6 +122,7 @@ import { HolidayWorkHour } from './entities/holiday-work-hours.entity';
     CurrencyService,
     HolidayWorkRatesService,
     EntertainmentAllowanceService,
+    ApprovalClothingExpenseService,
     // Repositories
     CountriesRepository,
     PlacesRepository,
@@ -139,6 +144,7 @@ import { HolidayWorkHour } from './entities/holiday-work-hours.entity';
     CurrencyRepository,
     HolidayWorkRatesRepository,
     EntertainmentAllowanceRepository,
+    ApprovalClothingExpenseRepository,
     // Shared services
     RedisCacheService,
     HolidayWorkRate,
@@ -165,6 +171,7 @@ import { HolidayWorkHour } from './entities/holiday-work-hours.entity';
     AttireAllowanceRatesService,
     CurrencyService,
     HolidayWorkRatesService,
+    ApprovalClothingExpenseService,
   ],
 })
 export class MasterDataModule {}
