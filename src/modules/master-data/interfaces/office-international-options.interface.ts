@@ -35,6 +35,26 @@ export interface OfficeInternationalFilterOptions extends BaseFilterOptions {
   region?: string;
 
   /**
+   * Filter by country ID
+   * @TypeProperty({
+   *   type: 'number',
+   *   isOptional: true,
+   *   description: 'Filter by country ID'
+   * })
+   */
+  countryId?: number;
+
+  /**
+   * Filter by currency ID
+   * @TypeProperty({
+   *   type: 'number',
+   *   isOptional: true,
+   *   description: 'Filter by currency ID'
+   * })
+   */
+  currencyId?: number;
+
+  /**
    * Filter by creation date after
    * @TypeProperty({
    *   type: 'Date',
@@ -106,10 +126,12 @@ export interface OfficeInternationalIncludeOptions extends BaseIncludeOptions {}
 export interface OfficeInternationalQueryOptions {
   page?: number;
   limit?: number;
-  orderBy?: 'id' | 'name' | 'region' | 'createdAt' | 'updatedAt';
+  orderBy?: 'id' | 'name' | 'region' | 'countryId' | 'currencyId' | 'createdAt' | 'updatedAt';
   orderDir?: 'ASC' | 'DESC';
   name?: string;
   region?: string;
+  countryId?: number;
+  currencyId?: number;
   searchTerm?: string;
   createdAfter?: Date;
   createdBefore?: Date;

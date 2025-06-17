@@ -39,7 +39,9 @@ export class OfficeInternationalService {
       page = 1, 
       limit = 10, 
       name, 
-      region, 
+      region,
+      countryId,
+      currencyId,
       searchTerm,
       orderBy = 'created_at',
       orderDir = 'DESC',
@@ -57,6 +59,8 @@ export class OfficeInternationalService {
       `orderDir:${orderDir}`,
       name ? `name:${name}` : null,
       region ? `region:${region}` : null,
+      countryId ? `countryId:${countryId}` : null,
+      currencyId ? `currencyId:${currencyId}` : null,
       searchTerm ? `search:${searchTerm}` : null,
       createdAfter ? `createdAfter:${createdAfter.toISOString()}` : null,
       createdBefore ? `createdBefore:${createdBefore.toISOString()}` : null,
@@ -79,6 +83,14 @@ export class OfficeInternationalService {
 
     if (region) {
       conditions.region = region;
+    }
+
+    if (countryId) {
+      conditions.country_id = countryId;
+    }
+
+    if (currencyId) {
+      conditions.currency_id = currencyId;
     }
 
     if (createdAfter) {
