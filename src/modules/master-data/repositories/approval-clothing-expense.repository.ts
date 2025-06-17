@@ -22,6 +22,7 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
     delete filter.limit;
     delete filter.order_by;
     delete filter.direction;
+    delete filter.search;
 
     const dbFilter = await toSnakeCase(filter);
     const offset = (page - 1) * limit;
@@ -45,7 +46,7 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
 
     if (Object.keys(dbFilter).length > 0) {
       Object.entries(dbFilter).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
+        if (value !== undefined && value !== null && value !== '') {
           baseQuery.where(`ace.${key}`, value);
         }
       });

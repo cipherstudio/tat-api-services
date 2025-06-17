@@ -18,6 +18,11 @@ export class ApprovalClothingExpenseQueryDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
+  search?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
   order_by?: string;
 
   @ApiProperty({ required: false })
