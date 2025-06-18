@@ -6,6 +6,12 @@ const attire_destination_groups = [
     description: 'ประเทศที่ไม่มีสิทธิ์เบิกค่าเครื่องแต่งกายสำหรับการปฏิบัติงานชั่วคราว ยกเว้นกรณีจำเป็นหรือได้รับอนุมัติจากผู้ว่าการ'
   },
   {
+    group_code: 'PERM_A',
+    group_name: 'ประเภท ก.',
+    assignment_type: 'PERMANENT',
+    description: 'ประเทศประเภท ก สำหรับการปฏิบัติงานประจำ - อัตราเต็ม (ประเทศอื่นๆ ที่ไม่ได้จัดอยู่ในประเภทพิเศษ)'
+  },
+  {
     group_code: 'PERM_B',
     group_name: 'ประเภท ข.',
     assignment_type: 'PERMANENT',

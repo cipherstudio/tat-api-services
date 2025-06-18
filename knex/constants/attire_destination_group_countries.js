@@ -39,10 +39,8 @@ const permBCountries = [
   'บรูไน' // BRUNEI DARUSSALAM
 ];
 
-// สร้าง mapping array (เก็บเฉพาะประเทศที่เป็น exception)
 const attire_destination_group_countries = [];
 
-// เพิ่มประเทศกลุ่ม TEMP_EXEMPTED
 tempExemptedCountries.forEach(countryNameTh => {
   const countryId = findCountryIdByNameTh(countryNameTh);
   if (countryId) {
@@ -56,7 +54,6 @@ tempExemptedCountries.forEach(countryNameTh => {
   }
 });
 
-// เพิ่มประเทศกลุ่ม PERM_B
 permBCountries.forEach(countryNameTh => {
   const countryId = findCountryIdByNameTh(countryNameTh);
   if (countryId) {
@@ -69,10 +66,5 @@ permBCountries.forEach(countryNameTh => {
     console.warn(`ไม่พบประเทศ: ${countryNameTh} ในฐานข้อมูล countries`);
   }
 });
-
-// หมายเหตุ:
-// - ประเทศที่ไม่อยู่ในรายการนี้ = มีสิทธิ์เบิกสำหรับชั่วคราว (TEMP_ELIGIBLE)
-// - ประเทศที่ไม่อยู่ใน PERM_B = เป็นประเทศประเภท ก สำหรับประจำ (PERM_A)
-// - การจัดเก็บแบบนี้ช่วยลดข้อมูลซ้ำซ้อนและง่ายต่อการจัดการ
 
 module.exports = attire_destination_group_countries;

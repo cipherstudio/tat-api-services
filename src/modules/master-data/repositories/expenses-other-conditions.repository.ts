@@ -69,7 +69,10 @@ export class ExpensesOtherConditionsRepository extends KnexBaseRepository<Expens
     // Apply search term if provided
     if (searchTerm) {
       query.where((builder) => {
-        builder.whereRaw('LOWER("name") LIKE ?', [`%${searchTerm.toLowerCase()}%`]);
+        builder
+          .whereRaw('LOWER("position_name") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
+          .orWhereRaw('LOWER("position_code") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
+          .orWhereRaw('LOWER("level_code") LIKE ?', [`%${searchTerm.toLowerCase()}%`]);
       });
     }
 
