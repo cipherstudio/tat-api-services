@@ -57,6 +57,24 @@ export class ApprovalClothingExpenseDto {
   workEndDate?: string;
 
   @ApiProperty({
+    description: 'Approval Increment ID',
+    required: false,
+    example: 'EX680600003'
+  })
+  @IsOptional()
+  @IsString()
+  incrementId?: string;
+
+  @ApiProperty({
+    description: 'Destination country',
+    required: false,
+    example: 'Japan'
+  })
+  @IsOptional()
+  @IsString()
+  destinationCountry?: string;
+
+  @ApiProperty({
     description: 'ID of the staff member',
     required: false,
     example: 1

@@ -10,7 +10,7 @@ const privilege = [
     { id: 9, name: 'C5', is_committee_position: false, is_outsider_equivalent: true },
     { id: 10, name: 'C4', is_committee_position: false, is_outsider_equivalent: true },
     { id: 11, name: 'C3', is_committee_position: false, is_outsider_equivalent: true },
-    { id: 12, name: 'พนักงานและลูกจ้าง ททท.', is_committee_position: false, is_outsider_equivalent: false },
+    { id: 12, name: 'ลูกจ้าง ททท.', is_committee_position: false, is_outsider_equivalent: false },
 ];
 
 module.exports = privilege;
