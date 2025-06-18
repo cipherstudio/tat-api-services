@@ -571,9 +571,9 @@ export class UpdateApprovalDto {
             "clothingFileChecked": true,
             "clothingAmount": 1000,
             "clothingReason": "Business trip",
-            "reportingDate": "2024-03-20",
-            "nextClaimDate": "2024-03-25",
-            "workEndDate": "2024-03-25"
+            // "reportingDate": "2024-03-20",
+            // "nextClaimDate": "2024-03-25",
+            // "workEndDate": "2024-03-25"
           }
         ]
       }

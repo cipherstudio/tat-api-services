@@ -433,7 +433,9 @@ export class ApprovalService {
           'clothing_reason as clothingReason',
           'reporting_date as reportingDate',
           'next_claim_date as nextClaimDate',
-          'work_end_date as workEndDate'
+          'work_end_date as workEndDate',
+          'increment_id as incrementId',
+          'destination_country as destinationCountry'
         );
       staffMember.clothingExpenses = clothingExpenses;
     }
@@ -807,6 +809,102 @@ export class ApprovalService {
                     })
                     .first();
 
+                  // get first destination country
+                  const destinationCountry = updateDto.tripEntries.find(trip => trip.destinationTable === 'countries')?.destination;
+
+                  // get work end date
+                  let workEndDate = null;
+                  if (updateDto.travelType === 'temporary-international') {
+                    workEndDate = updateDto.workEndDate;
+                  }
+
+                  // get next claim date
+                  let nextClaimDate = null;
+                  let workStartDate = null;
+                  if (updateDto.travelType === 'international') {
+                    // get work start date from first start date of traveldateranges
+                    workStartDate = updateDto.travelDateRanges[0].start_date;
+                    const pwJob = await this.getPwJob(Number(staffMember.employeeCode));
+                    if (!pwJob) {
+                      nextClaimDate = this.calculateNextClaimDate(workStartDate);
+                    } else {
+                      const organize = await this.knexService.knex('OP_ORGANIZE_R_TEMP')
+                        .where('DEPTID', pwJob.DEPTID)
+                        .first();
+
+                      if (organize.POG_TYPE == 3) {  // ต่างประเทศ
+                        // หา ประเภท A B C ของ office internatinal จากใบเก่า
+                        const oldDestination = await this.knexService.knex('office_international')
+                          .where('pog_code', organize.POG_CODE)
+                          .join('countries', 'office_international.country_id', 'countries.id')
+                          .first();
+
+                        // หา ประเภท A B C ของ current destination employee
+                        const destination = updateDto.staffMembers.find(emp => emp.employeeCode === staffMember.employeeCode)?.workLocations.find(location => location.destinationTable === 'countries')?.[0];
+                        let currentDestination;
+                        if (destination.destinationTable === 'countries') {
+                          currentDestination = await this.knexService.knex('countries')
+                            .where('id', destination.destinationId)
+                            .first();
+                        } else if (destination.destinationTable === 'tatOffices') {
+                          currentDestination = await this.knexService.knex('tat_offices')
+                            .where('id', destination.destinationId)
+                            .join('countries', 'tat_offices.country_id', 'countries.id')
+                            .first();
+                        }
+
+                        if (currentDestination && oldDestination) {
+                          // ถ้าเป็นประเภท A B C ของ ใบเก่า และ ใบใหม่ ไม่เหมือนกัน
+                          if (currentDestination.type !== oldDestination.type) {
+                            nextClaimDate = this.calculateNextClaimDate(workStartDate);
+                          } else {
+                            // ถ้าประเภทเหมือนกัน
+                            // ให้เอา EFFDT จาก pwJob มาเช็คกับ checkEligibilityDto.workStartDate ว่าเกิน 2 ปี หรือยัง ถ้าเกินแล้ว, set isEligible true
+                            // @todo อาจต้องเปลี่ยนไปเช็ค วันรายงานตัวกับ ViewDutyformCommands (รอคอนเฟิม)
+                            const isOverTwoYears = this.isOverTwoYears(pwJob.EFFDT, workStartDate);
+                            if (isOverTwoYears) {
+                              // @todo หาวันรายงานตัว
+                              const reportingDateDummy = '2024-03-20';
+                              nextClaimDate = this.calculateNextClaimDate(reportingDateDummy);
+                            } else {
+                              nextClaimDate = null;
+                            }
+                          }
+                        } else {
+                          // @todo
+                        }
+                      } else { // ในประเทศ
+                        nextClaimDate = null;
+                      }
+                    }
+                  } else if (updateDto.travelType === 'temporary-international') {
+                    workStartDate = updateDto.workStartDate;
+                    const pwJob = await this.getPwJob(Number(staffMember.employeeCode));
+                    if (!pwJob) {
+                      nextClaimDate = this.calculateNextClaimDate(workStartDate);
+                    } else {
+                      // ถ้ามี pwJob
+                      // @todo ให้เช็คว่า เบิกครั้งก่อนประเภทไหน
+                      if (true) { // ex. ประจำ
+                        // @todo เช็คว่ามีวันรายงานตัวไหม
+                        if (true) { // ex.มีวันรายงานตัว
+                          // @todo get วันรายงานตัว
+                          const reportingDateDummy = '2024-03-20';
+                          nextClaimDate = this.calculateNextClaimDate(reportingDateDummy);
+                        } else { // ex.ไม่มีวันรายงานตัว
+                          nextClaimDate = this.calculateNextClaimDate(workStartDate);
+                        }
+                      } else { // ex. ชั่วคราว
+                        const isOverTwoYears = this.isOverTwoYears(pwJob.EFFDT, workStartDate);
+                        if (isOverTwoYears) {
+                          nextClaimDate = this.calculateNextClaimDate(workStartDate);
+                        } else {
+                          nextClaimDate = null;
+                        }
+                      }
+                    }
+                  }
+
                   if (existingExpense) {
                     // Update existing record
                     await trx('approval_clothing_expense')
@@ -819,10 +917,10 @@ export class ApprovalService {
                         clothing_amount: expense.clothingAmount,
                         clothing_reason: expense.clothingReason,
                         reporting_date: null, // ไม่ต้องส่ง มาจาก cron + manual save
-                        next_claim_date: expense.nextClaimDate, // ไม่ส่ง คำนวนจากหลังบ้าน
-                        work_end_date: expense.workEndDate, // ไม่ต้องส่ง เอามาจาก step 1
-                        increment_id: null, // ไม่ต้องส่ง เอามาจากหลังบ้าน
-                        destination_country: null, // ไม่ต้องส่ง เอามาจากหลังบ้าน
+                        next_claim_date: nextClaimDate,
+                        work_end_date: workEndDate, // ไม่ต้องส่ง เอามาจาก step 1
+                        increment_id: approval.incrementId,
+                        destination_country: destinationCountry ?? null,
                         updated_at: new Date()
                       });
                   } else {
@@ -835,10 +933,10 @@ export class ApprovalService {
                       clothing_amount: expense.clothingAmount,
                       clothing_reason: expense.clothingReason,
                       reporting_date: null, // ไม่ต้องส่ง มาจาก cron + manual save
-                      next_claim_date: expense.nextClaimDate, // ไม่ส่ง คำนวนจากหลังบ้าน
-                      work_end_date: expense.workEndDate, // ไม่ต้องส่ง เอามาจาก step 1
-                      increment_id: null, // ไม่ต้องส่ง เอามาจากหลังบ้าน
-                      destination_country: null, // ไม่ต้องส่ง เอามาจากหลังบ้าน
+                      next_claim_date: nextClaimDate,
+                      work_end_date: workEndDate, // ไม่ต้องส่ง เอามาจาก step 1
+                      increment_id: approval.incrementId,
+                      destination_country: destinationCountry ?? null,
                       created_at: new Date(),
                       updated_at: new Date()
                     });
@@ -1207,5 +1305,12 @@ export class ApprovalService {
     if (employeeResult) {
       employeeResult.isEligible = isEligible;
     }
+  }
+
+  private calculateNextClaimDate(workStartDate: string): string {
+    //  next_cliam_date = (workSartDate s  + 2 ปี + 1 วัน )
+    const workStartDateObj = new Date(workStartDate);
+    const nextClaimDate = new Date(workStartDateObj.getTime() + (2 * 365 * 24 * 60 * 60 * 1000) + (24 * 60 * 60 * 1000));
+    return nextClaimDate.toISOString().split('T')[0];
   }
 }
