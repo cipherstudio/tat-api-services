@@ -10,13 +10,18 @@ export class AttireAllowanceRatesRepository extends KnexBaseRepository<AttireAll
     super(knexService, 'attire_allowance_rates');
   }
 
-  async create(entity: Partial<AttireAllowanceRates>): Promise<AttireAllowanceRates> {
+  async create(
+    entity: Partial<AttireAllowanceRates>,
+  ): Promise<AttireAllowanceRates> {
     const dbEntity = await toSnakeCase(entity);
     const created = await super.create(dbEntity);
     return await toCamelCase<AttireAllowanceRates>(created);
   }
 
-  async update(id: number, entity: Partial<AttireAllowanceRates>): Promise<AttireAllowanceRates> {
+  async update(
+    id: number,
+    entity: Partial<AttireAllowanceRates>,
+  ): Promise<AttireAllowanceRates> {
     const dbEntity = await toSnakeCase(entity);
     const updated = await super.update(id, dbEntity);
     return await toCamelCase<AttireAllowanceRates>(updated);
@@ -24,12 +29,18 @@ export class AttireAllowanceRatesRepository extends KnexBaseRepository<AttireAll
 
   async findById(id: number): Promise<AttireAllowanceRates | undefined> {
     const dbEntity = await super.findById(id);
-    return dbEntity ? await toCamelCase<AttireAllowanceRates>(dbEntity) : undefined;
+    return dbEntity
+      ? await toCamelCase<AttireAllowanceRates>(dbEntity)
+      : undefined;
   }
 
-  async findOne(conditions: Record<string, any>): Promise<AttireAllowanceRates | undefined> {
+  async findOne(
+    conditions: Record<string, any>,
+  ): Promise<AttireAllowanceRates | undefined> {
     const dbEntity = await super.findOne(conditions);
-    return dbEntity ? await toCamelCase<AttireAllowanceRates>(dbEntity) : undefined;
+    return dbEntity
+      ? await toCamelCase<AttireAllowanceRates>(dbEntity)
+      : undefined;
   }
 
   async findWithPaginationAndSearch(
@@ -48,7 +59,11 @@ export class AttireAllowanceRatesRepository extends KnexBaseRepository<AttireAll
       Object.entries(dbConditions).forEach(([key, value]) => {
         if (value === null) {
           query.whereNull(key);
-        } else if (value !== undefined && key !== 'level_code_start' && key !== 'level_code_end') {
+        } else if (
+          value !== undefined &&
+          key !== 'level_code_start' &&
+          key !== 'level_code_end'
+        ) {
           query.where(key, value);
         }
       });
@@ -58,9 +73,15 @@ export class AttireAllowanceRatesRepository extends KnexBaseRepository<AttireAll
     if (searchTerm) {
       query.where((builder) => {
         builder
-          .whereRaw('LOWER("position_group_name") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
-          .orWhereRaw('LOWER("assignment_type") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
-          .orWhereRaw('LOWER("destination_type") LIKE ?', [`%${searchTerm.toLowerCase()}%`]);
+          .whereRaw('LOWER("position_group_name") LIKE ?', [
+            `%${searchTerm.toLowerCase()}%`,
+          ])
+          .orWhereRaw('LOWER("assignment_type") LIKE ?', [
+            `%${searchTerm.toLowerCase()}%`,
+          ])
+          .orWhereRaw('LOWER("destination_type") LIKE ?', [
+            `%${searchTerm.toLowerCase()}%`,
+          ]);
       });
     }
 
@@ -81,7 +102,9 @@ export class AttireAllowanceRatesRepository extends KnexBaseRepository<AttireAll
       .offset(offset);
 
     return {
-      data: await Promise.all(data.map(async (e) => await toCamelCase<AttireAllowanceRates>(e))),
+      data: await Promise.all(
+        data.map(async (e) => await toCamelCase<AttireAllowanceRates>(e)),
+      ),
       meta: {
         total,
         page,
@@ -97,7 +120,9 @@ export class AttireAllowanceRatesRepository extends KnexBaseRepository<AttireAll
       .where('level_code_end', '>=', level)
       .select('*');
 
-    return Promise.all(results.map(async (e) => await toCamelCase<AttireAllowanceRates>(e)));
+    return Promise.all(
+      results.map(async (e) => await toCamelCase<AttireAllowanceRates>(e)),
+    );
   }
 
   async findByAssignmentType(type: string): Promise<AttireAllowanceRates[]> {
@@ -105,7 +130,9 @@ export class AttireAllowanceRatesRepository extends KnexBaseRepository<AttireAll
       .where('assignment_type', type)
       .select('*');
 
-    return Promise.all(results.map(async (e) => await toCamelCase<AttireAllowanceRates>(e)));
+    return Promise.all(
+      results.map(async (e) => await toCamelCase<AttireAllowanceRates>(e)),
+    );
   }
 
   async findByDestinationType(type: string): Promise<AttireAllowanceRates[]> {
@@ -113,6 +140,8 @@ export class AttireAllowanceRatesRepository extends KnexBaseRepository<AttireAll
       .where('destination_type', type)
       .select('*');
 
-    return Promise.all(results.map(async (e) => await toCamelCase<AttireAllowanceRates>(e)));
+    return Promise.all(
+      results.map(async (e) => await toCamelCase<AttireAllowanceRates>(e)),
+    );
   }
-} 
+}

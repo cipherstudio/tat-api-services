@@ -6,7 +6,10 @@ export class AttireAllowanceRates {
   @IsNumber()
   id: number;
 
-  @ApiProperty({ description: 'Assignment type', enum: ['TEMPORARY', 'PERMANENT'] })
+  @ApiProperty({
+    description: 'Assignment type',
+    enum: ['TEMPORARY', 'PERMANENT'],
+  })
   @IsEnum(['TEMPORARY', 'PERMANENT'])
   assignmentType: 'TEMPORARY' | 'PERMANENT';
 
@@ -79,4 +82,4 @@ export const attireAllowanceRatesReverseColumnMap = {
   childRateThb: 'child_rate_thb',
   createdAt: 'created_at',
   updatedAt: 'updated_at',
-}; 
+};

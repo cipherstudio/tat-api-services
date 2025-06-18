@@ -26,7 +26,7 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
 
   async findWithQuery(query: QueryEmployeeDto): Promise<{
     data: Employee[];
-    meta: { total: number; limit: number; offset: number };
+    meta: { total: number; limit: number; offset: number; lastPage: number };
   }> {
     const conditions: Record<string, any> = {};
     if (query.code) conditions['CODE'] = query.code;
@@ -89,13 +89,14 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
         total,
         limit: query.limit ?? 10,
         offset: query.offset ?? 0,
+        lastPage: Math.ceil(total / (query.limit ?? 10)) - 1,
       },
     };
   }
 
   async findWithQueryWithPosition4ot(query: QueryEmployeeDto): Promise<{
     data: (Employee & { position4ot?: ViewPosition4ot })[];
-    meta: { total: number; limit: number; offset: number };
+    meta: { total: number; limit: number; offset: number; lastPage: number };
   }> {
     const employeesResult = await this.findWithQuery(query);
     const employees = employeesResult.data;
@@ -120,7 +121,15 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
     }));
     return {
       data,
-      meta: employeesResult.meta,
+      meta: {
+        total: employeesResult.meta.total,
+        limit: employeesResult.meta.limit,
+        offset: employeesResult.meta.offset,
+        lastPage:
+          Math.ceil(
+            employeesResult.meta.total / (employeesResult.meta.limit ?? 10),
+          ) - 1,
+      },
     };
   }
 
