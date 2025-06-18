@@ -25,6 +25,7 @@ import { HolidayWorkRatesService } from './services/holiday-work-rates.service';
 import { EntertainmentAllowanceService } from './services/entertainment-allowance.service';
 import { ApprovalClothingExpenseService } from './services/approval-clothing-expense.service';
 import { PrivilegeService } from './services/privilege.service.js';
+import { MasterdataLabelsService } from './services/masterdata-labels.service';
 
 // Import controllers
 import { CountriesController } from './controllers/countries.controller.js';
@@ -49,6 +50,7 @@ import { HolidayWorkRatesController } from './controllers/holiday-work-rates.con
 import { EntertainmentAllowanceController } from './controllers/entertainment-allowance.controller';
 import { ApprovalClothingExpenseController } from './controllers/approval-clothing-expense.controller';
 import { PrivilegeController } from './controllers/privilege.controller.js';
+import { MasterdataLabelsController } from './controllers/masterdata-labels.controller';
 
 // Import repositories
 import { CountriesRepository } from './repositories/countries.repository.js';
@@ -73,10 +75,12 @@ import { HolidayWorkRatesRepository } from './repositories/holiday-work-rates.re
 import { EntertainmentAllowanceRepository } from './repositories/entertainment-allowance.repository';
 import { ApprovalClothingExpenseRepository } from './repositories/approval-clothing-expense.repository';
 import { PrivilegeRepository } from './repositories/privilege.repository.js';
+import { MasterdataLabelsRepository } from './repositories/masterdata-labels.repository';
 
 // Import entities
 import { HolidayWorkRate } from './entities/holiday-work-rates.entity';
 import { HolidayWorkHour } from './entities/holiday-work-hours.entity';
+import { MasterdataLabel } from './entities/masterdata-labels.entity';
 
 @Module({
   imports: [RedisCacheModule],
@@ -103,6 +107,7 @@ import { HolidayWorkHour } from './entities/holiday-work-hours.entity';
     EntertainmentAllowanceController,
     ApprovalClothingExpenseController,
     PrivilegeController,
+    MasterdataLabelsController,
   ],
   providers: [
     // Services
@@ -128,6 +133,7 @@ import { HolidayWorkHour } from './entities/holiday-work-hours.entity';
     EntertainmentAllowanceService,
     ApprovalClothingExpenseService,
     PrivilegeService,
+    MasterdataLabelsService,
     // Repositories
     CountriesRepository,
     PlacesRepository,
@@ -151,11 +157,13 @@ import { HolidayWorkHour } from './entities/holiday-work-hours.entity';
     EntertainmentAllowanceRepository,
     ApprovalClothingExpenseRepository,
     PrivilegeRepository,
+    MasterdataLabelsRepository,
     // Shared services
     RedisCacheService,
     HolidayWorkRate,
     HolidayWorkHour,
     HolidayWorkRatesRepository,
+    MasterdataLabel,
   ],
   exports: [
     CountriesService,
@@ -179,6 +187,7 @@ import { HolidayWorkHour } from './entities/holiday-work-hours.entity';
     HolidayWorkRatesService,
     ApprovalClothingExpenseService,
     PrivilegeService,
+    MasterdataLabelsService,
   ],
 })
 export class MasterDataModule {}
