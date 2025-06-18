@@ -7,7 +7,7 @@ const attire_destination_groups = [
   },
   {
     group_code: 'PERM_B',
-    group_name: 'ประเทศประเภท ข (ประจำ)',
+    group_name: 'ประเภท ข.',
     assignment_type: 'PERMANENT',
     description: 'ประเทศที่กำหนดไว้เป็นประเภท ข สำหรับการปฏิบัติงานประจำ - มีอัตราต่ำกว่าประเทศประเภท ก'
   }
