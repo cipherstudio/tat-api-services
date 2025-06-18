@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, IsEnum } from 'class-validator';
+import { IsString, IsNumber, IsEnum, IsOptional } from 'class-validator';
 
 export class CreateAttireAllowanceRatesDto {
   @ApiProperty({ description: 'Assignment type', enum: ['TEMPORARY', 'PERMANENT'] })
@@ -15,16 +15,17 @@ export class CreateAttireAllowanceRatesDto {
   positionName: string;
 
   @ApiProperty({ description: 'Level code start' })
-  @IsNumber()
-  levelCodeStart: number;
+  @IsString()
+  levelCodeStart: string;
 
   @ApiProperty({ description: 'Level code end' })
-  @IsNumber()
-  levelCodeEnd: number;
+  @IsString()
+  levelCodeEnd: string;
 
-  @ApiProperty({ description: 'Destination type', enum: ['A', 'B'] })
-  @IsEnum(['A', 'B'])
-  destinationType: 'A' | 'B';
+  @ApiProperty({ description: 'Destination group code (null for default)', required: false })
+  @IsOptional()
+  @IsString()
+  destinationGroupCode?: string;
 
   @ApiProperty({ description: 'Rate in THB' })
   @IsNumber()

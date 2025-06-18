@@ -78,6 +78,12 @@ export class DomesticMovingAllowancesController {
     description: 'Rate in Thai Baht',
   })
   @ApiQuery({
+    name: 'searchTerm',
+    type: String,
+    required: false,
+    description: 'Search term for distance (will find records where the distance falls within the range)',
+  })
+  @ApiQuery({
     name: 'createdAfter',
     type: Date,
     required: false,
@@ -109,6 +115,7 @@ export class DomesticMovingAllowancesController {
     @Query('distanceStartKm', new ValidationPipe({ transform: true })) distanceStartKm?: number,
     @Query('distanceEndKm', new ValidationPipe({ transform: true })) distanceEndKm?: number,
     @Query('rateBaht', new ValidationPipe({ transform: true })) rateBaht?: number,
+    @Query('searchTerm') searchTerm?: string,
     @Query('createdAfter', new ValidationPipe({ transform: true })) createdAfter?: Date,
     @Query('createdBefore', new ValidationPipe({ transform: true })) createdBefore?: Date,
     @Query('updatedAfter', new ValidationPipe({ transform: true })) updatedAfter?: Date,
@@ -122,6 +129,7 @@ export class DomesticMovingAllowancesController {
       distanceStartKm: distanceStartKm ? Number(distanceStartKm) : undefined,
       distanceEndKm: distanceEndKm ? Number(distanceEndKm) : undefined,
       rateBaht: rateBaht ? Number(rateBaht) : undefined,
+      searchTerm,
       createdAfter,
       createdBefore,
       updatedAfter,

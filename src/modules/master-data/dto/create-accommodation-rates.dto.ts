@@ -10,13 +10,15 @@ export class CreateAccommodationRatesDto {
   @IsString()
   positionName: string;
 
-  @ApiProperty({ description: 'Level code start' })
+  @ApiProperty({ description: 'Level code start', required: false })
   @IsString()
-  levelCodeStart: string;
+  @IsOptional()
+  levelCodeStart?: string;
 
-  @ApiProperty({ description: 'Level code end' })
+  @ApiProperty({ description: 'Level code end', required: false })
   @IsString()
-  levelCodeEnd: string;
+  @IsOptional()
+  levelCodeEnd?: string;
 
   @ApiProperty({ description: 'Position group name' })
   @IsString()
