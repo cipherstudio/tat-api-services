@@ -40,6 +40,7 @@ export class OfficeInternationalService {
       limit = 10, 
       name, 
       region,
+      pogCode,
       countryId,
       currencyId,
       searchTerm,
@@ -59,6 +60,7 @@ export class OfficeInternationalService {
       `orderDir:${orderDir}`,
       name ? `name:${name}` : null,
       region ? `region:${region}` : null,
+      pogCode ? `pogCode:${pogCode}` : null,
       countryId ? `countryId:${countryId}` : null,
       currencyId ? `currencyId:${currencyId}` : null,
       searchTerm ? `search:${searchTerm}` : null,
@@ -83,6 +85,10 @@ export class OfficeInternationalService {
 
     if (region) {
       conditions.region = region;
+    }
+
+    if (pogCode) {
+      conditions.pog_code = pogCode;
     }
 
     if (countryId) {

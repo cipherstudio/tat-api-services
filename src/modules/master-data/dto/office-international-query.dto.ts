@@ -13,8 +13,8 @@ export class OfficeInternationalQueryDto {
   limit?: number;
 
   @IsOptional()
-  @IsEnum(['name', 'region', 'id', 'countryId', 'currencyId', 'createdAt', 'updatedAt'])
-  orderBy?: 'name' | 'region' | 'id' | 'countryId' | 'currencyId' | 'createdAt' | 'updatedAt';
+  @IsEnum(['name', 'region', 'pogCode', 'id', 'countryId', 'currencyId', 'createdAt', 'updatedAt'])
+  orderBy?: 'name' | 'region' | 'id' | 'countryId' | 'currencyId' | 'pogCode' | 'createdAt' | 'updatedAt';
 
   @IsOptional()
   @IsEnum(['ASC', 'DESC'])
@@ -27,6 +27,10 @@ export class OfficeInternationalQueryDto {
   @IsOptional()
   @IsString()
   region?: string;
+
+  @IsOptional()
+  @IsString()
+  pogCode?: string;
 
   @IsOptional()
   @Type(() => Number)
