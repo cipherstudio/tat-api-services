@@ -31,7 +31,7 @@ const officeInternational = [
   { id: 25, name: 'สำนักงานกรุงโรม', region: 'ยุโรป', country_id: 110, currency_id: 10, pog_code: '810500' },
   { id: 26, name: 'สำนักงานสตอกโฮล์ม', region: 'ยุโรป', country_id: 197, currency_id: 6, pog_code: '810600' },
   { id: 27, name: 'สำนักงานมอสโก', region: 'ยุโรป', country_id: 191, currency_id: 2, pog_code: '810700' },
-  { id: 28, name: 'สำนักงานกรุงปราก', region: 'ยุโรป', country_id: 56, currency_id: 11, pog_code: '810900' },
+  { id: 28, name: 'สำนักงานกรุงปราก', region: 'ยุโรป', country_id: 56, currency_id: 10, pog_code: '810900' },
   { id: 29, name: 'สำนักงานโทรอนโต', region: 'ยุโรป', country_id: 38, currency_id: 12, pog_code: '' },
 
   // Oceania
