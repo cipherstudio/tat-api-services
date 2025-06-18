@@ -32,13 +32,13 @@ export class CreateApprovalClothingExpenseDto {
   @IsString()
   work_end_date?: string;
 
-  @ApiProperty({
-    description: 'Approval accommodation expense ID',
-    required: false,
-  })
-  @IsOptional()
-  @IsNumber()
-  approval_accommodation_expense_id?: number;
+  // @ApiProperty({
+  //   description: 'Approval accommodation expense ID',
+  //   required: false,
+  // })
+  // @IsOptional()
+  // @IsNumber()
+  // approval_accommodation_expense_id?: number;
 
   @ApiProperty({ description: 'Staff member ID', required: false })
   @IsOptional()

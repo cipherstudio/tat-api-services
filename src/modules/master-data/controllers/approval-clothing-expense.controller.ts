@@ -108,7 +108,7 @@ export class ApprovalClothingExpenseController {
           reporting_date: '2024-01-01',
           next_claim_date: '2024-02-01',
           work_end_date: '2024-03-01',
-          approval_accommodation_expense_id: 1,
+          //approval_accommodation_expense_id: 1,
           staff_member_id: 1,
           approval_id: 1,
           employee_code: 12345,

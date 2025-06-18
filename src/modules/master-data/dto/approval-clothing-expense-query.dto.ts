@@ -60,10 +60,10 @@ export class ApprovalClothingExpenseQueryDto {
   @IsString()
   work_end_date?: string;
 
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsNumber()
-  approval_accommodation_expense_id?: number;
+  // @ApiProperty({ required: false })
+  // @IsOptional()
+  // @IsNumber()
+  // approval_accommodation_expense_id?: number;
 
   @ApiProperty({ required: false })
   @IsOptional()
