@@ -10,11 +10,11 @@ export class AccommodationRates {
   @ApiProperty({ description: 'Position name' })
   positionName: string;
 
-  @ApiProperty({ description: 'Level code start' })
-  levelCodeStart: string;
+  @ApiProperty({ description: 'Level code start', required: false })
+  levelCodeStart?: string;
 
-  @ApiProperty({ description: 'Level code end' })
-  levelCodeEnd: string;
+  @ApiProperty({ description: 'Level code end', required: false })
+  levelCodeEnd?: string;
 
   @ApiProperty({ description: 'Position group name' })
   positionGroupName: string;

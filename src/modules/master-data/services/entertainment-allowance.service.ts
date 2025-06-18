@@ -46,7 +46,7 @@ export class EntertainmentAllowanceService {
     return this.entertainmentAllowanceRepository.deleteWithLevels(id);
   }
 
-  async getWithLevel(level: number) {
-    return this.entertainmentAllowanceRepository.getWithLevel(level);
+  async getWithPrivilege(privilegeId: number) {
+    return this.entertainmentAllowanceRepository.getWithPrivilege(privilegeId);
   }
 }

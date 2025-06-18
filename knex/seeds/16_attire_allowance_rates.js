@@ -7,5 +7,5 @@ const attire_allowance_rates = require('../constants/attire_allowance_rates');
 exports.seed = async function(knex) {
   // Deletes ALL existing entries
   await knex('attire_allowance_rates').del();
-  await knex('attire_allowance_rates').insert(attire_allowance_rates[0]);
+  await knex('attire_allowance_rates').insert(attire_allowance_rates);
 };

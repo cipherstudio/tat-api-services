@@ -30,12 +30,12 @@ export class EntertainmentAllowanceController {
 
   @Get()
   @ApiOperation({
-    summary: 'Get all entertainment allowances (with pagination)',
+    summary: 'Get all entertainment allowances',
     description:
-      'ดึงข้อมูลสิทธิ์ค่าเลี้ยงรับรองทั้งหมด พร้อมข้อมูลระดับตำแหน่ง (levels) และรองรับการแบ่งหน้า',
+      'ดึงข้อมูลสิทธิ์ค่าเลี้ยงรับรองทั้งหมด สามารถกรองข้อมูลด้วย query parameters ได้',
   })
   @ApiOkResponse({
-    description: 'List of entertainment allowances with pagination meta',
+    description: 'List of entertainment allowances',
     schema: {
       example: {
         data: [
@@ -48,25 +48,16 @@ export class EntertainmentAllowanceController {
             amount: 3000,
             createdAt: '2024-06-16T00:00:00.000Z',
             updatedAt: '2024-06-16T00:00:00.000Z',
-            levels: [
-              {
-                id: 1,
-                allowanceId: 1,
-                positionLevel: 9,
-                createdAt: '2024-06-16T00:00:00.000Z',
-                updatedAt: '2024-06-16T00:00:00.000Z',
-              },
-              {
-                id: 2,
-                allowanceId: 1,
-                positionLevel: 10,
-                createdAt: '2024-06-16T00:00:00.000Z',
-                updatedAt: '2024-06-16T00:00:00.000Z',
-              },
-            ],
           },
         ],
-        meta: { total: 1, page: 1, limit: 10, lastPage: 1 },
+        meta: {
+          total: 1,
+          lastPage: 1,
+          currentPage: 1,
+          perPage: 10,
+          prev: null,
+          next: null,
+        },
       },
     },
   })
@@ -78,7 +69,7 @@ export class EntertainmentAllowanceController {
   @ApiOperation({
     summary: 'Get entertainment allowance by id',
     description:
-      'ดึงข้อมูลสิทธิ์ค่าเลี้ยงรับรองตาม id พร้อมข้อมูลระดับตำแหน่ง (levels)',
+      'ดึงข้อมูลสิทธิ์ค่าเลี้ยงรับรองตาม id พร้อมข้อมูลสิทธิ์ที่ได้รับ (levels)',
   })
   @ApiOkResponse({
     description: 'Entertainment allowance with the specified id',
@@ -96,14 +87,16 @@ export class EntertainmentAllowanceController {
           {
             id: 1,
             allowanceId: 1,
-            positionLevel: 9,
+            privilegeId: 1,
+            privilegeName: 'ประธานกรรมการ',
             createdAt: '2024-06-16T00:00:00.000Z',
             updatedAt: '2024-06-16T00:00:00.000Z',
           },
           {
             id: 2,
             allowanceId: 1,
-            positionLevel: 10,
+            privilegeId: 2,
+            privilegeName: 'กรรมการ',
             createdAt: '2024-06-16T00:00:00.000Z',
             updatedAt: '2024-06-16T00:00:00.000Z',
           },
@@ -119,7 +112,7 @@ export class EntertainmentAllowanceController {
   @ApiOperation({
     summary: 'Create entertainment allowance',
     description:
-      'สร้างข้อมูลสิทธิ์ค่าเลี้ยงรับรองใหม่ พร้อมระบุระดับตำแหน่ง (levels) หาก level มีการใช้งานอยู่แล้วจะไม่สามารถสร้างซ้ำได้',
+      'สร้างข้อมูลสิทธิ์ค่าเลี้ยงรับรองใหม่ พร้อมระบุสิทธิ์ที่ได้รับ (levels) หากสิทธิ์มีการใช้งานอยู่แล้วจะไม่สามารถสร้างซ้ำได้',
   })
   @ApiBody({
     type: CreateEntertainmentAllowanceDto,
@@ -130,7 +123,7 @@ export class EntertainmentAllowanceController {
           minDays: 0,
           maxDays: 15,
           amount: 2000,
-          levels: [{ positionLevel: 3 }, { positionLevel: 4 }],
+          levels: [{ privilegeId: 3 }, { privilegeId: 4 }],
         },
       },
     },
@@ -151,14 +144,16 @@ export class EntertainmentAllowanceController {
           {
             id: 3,
             allowanceId: 2,
-            positionLevel: 3,
+            privilegeId: 3,
+            privilegeName: 'ผู้อำนวยการ',
             createdAt: '2024-06-16T00:00:00.000Z',
             updatedAt: '2024-06-16T00:00:00.000Z',
           },
           {
             id: 4,
             allowanceId: 2,
-            positionLevel: 4,
+            privilegeId: 4,
+            privilegeName: 'รองผู้อำนวยการ',
             createdAt: '2024-06-16T00:00:00.000Z',
             updatedAt: '2024-06-16T00:00:00.000Z',
           },
@@ -168,18 +163,18 @@ export class EntertainmentAllowanceController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Level already in use',
+    description: 'Privilege already in use',
     schema: {
       example: {
         success: false,
-        message: 'Level (positionLevel=9) is already in use by allowance_id=1',
+        message:
+          'Privilege (privilegeId=1) is already in use by allowance_id=1',
       },
     },
   })
   async create(@Body() dto: CreateEntertainmentAllowanceDto) {
     const result = await this.entertainmentAllowanceService.create(dto);
     if (result && result.success === false) {
-      // Return 400 Bad Request with error message
       throw new BadRequestException({
         ...result,
       });
@@ -286,15 +281,15 @@ export class EntertainmentAllowanceController {
     return this.entertainmentAllowanceService.remove(Number(id));
   }
 
-  @Get('by-level/:level')
+  @Get('by-privilege/:privilegeId')
   @ApiOperation({
-    summary: 'Get entertainment allowances by position level',
+    summary: 'Get entertainment allowances by privilege ID',
     description:
-      'ดึงข้อมูลสิทธิ์ค่าเลี้ยงรับรองทั้งหมดที่มีระดับตำแหน่ง (positionLevel) ที่ระบุ พร้อมข้อมูล levels',
+      'ดึงข้อมูลสิทธิ์ค่าเลี้ยงรับรองทั้งหมดที่มีสิทธิ์ (privilegeId) ที่ระบุ พร้อมข้อมูล levels',
   })
   @ApiOkResponse({
     description:
-      'List of entertainment allowances with the specified position level',
+      'List of entertainment allowances with the specified privilege',
     schema: {
       example: [
         {
@@ -310,14 +305,16 @@ export class EntertainmentAllowanceController {
             {
               id: 1,
               allowanceId: 1,
-              positionLevel: 9,
+              privilegeId: 1,
+              privilegeName: 'ประธานกรรมการ',
               createdAt: '2024-06-16T00:00:00.000Z',
               updatedAt: '2024-06-16T00:00:00.000Z',
             },
             {
               id: 2,
               allowanceId: 1,
-              positionLevel: 10,
+              privilegeId: 2,
+              privilegeName: 'กรรมการ',
               createdAt: '2024-06-16T00:00:00.000Z',
               updatedAt: '2024-06-16T00:00:00.000Z',
             },
@@ -326,7 +323,9 @@ export class EntertainmentAllowanceController {
       ],
     },
   })
-  async getWithLevel(@Param('level') level: number) {
-    return this.entertainmentAllowanceService.getWithLevel(Number(level));
+  async getWithPrivilege(@Param('privilegeId') privilegeId: number) {
+    return this.entertainmentAllowanceService.getWithPrivilege(
+      Number(privilegeId),
+    );
   }
 }

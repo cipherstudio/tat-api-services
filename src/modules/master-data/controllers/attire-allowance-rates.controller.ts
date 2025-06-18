@@ -20,84 +20,21 @@ export class AttireAllowanceRatesController {
   @Get()
   @ApiOperation({ summary: 'Get all attire allowance rates with pagination and filters' })
   @ApiResponse({ status: 200, description: 'Return all attire allowance rates.', type: [AttireAllowanceRates] })
-  @ApiQuery({
-    name: 'page',
-    type: Number,
-    required: false,
-    description: 'Page number',
-  })
-  @ApiQuery({
-    name: 'limit',
-    type: Number,
-    required: false,
-    description: 'Number of items per page',
-  })
-  @ApiQuery({
-    name: 'orderBy',
-    type: String,
-    required: false,
-    description: 'Field to order by',
-  })
-  @ApiQuery({
-    name: 'orderDir',
-    type: String,
-    required: false,
-    description: 'Order direction',
-  })
-  @ApiQuery({
-    name: 'assignmentType',
-    type: String,
-    required: false,
-    description: 'Assignment type',
-  })
-  @ApiQuery({
-    name: 'destinationType',
-    type: String,
-    required: false,
-    description: 'Destination type',
-  })
-  @ApiQuery({
-    name: 'searchTerm',
-    type: String,
-    required: false,
-    description: 'Search term',
-  })
-  @ApiQuery({
-    name: 'createdAfter',
-    type: Date,
-    required: false,
-    description: 'Created after',
-  })
-  @ApiQuery({
-    name: 'createdBefore',
-    type: Date,
-    required: false,
-    description: 'Created before',
-  })
-  @ApiQuery({
-    name: 'updatedAfter',
-    type: Date,
-    required: false,
-    description: 'Updated after',
-  })
-  @ApiQuery({
-    name: 'updatedBefore',
-    type: Date,
-    required: false,
-    description: 'Updated before',
-  })
+  @ApiQuery({ name: 'page', type: Number, required: false, description: 'Page number' })
+  @ApiQuery({ name: 'limit', type: Number, required: false, description: 'Number of items per page' })
+  @ApiQuery({ name: 'orderBy', type: String, required: false, description: 'Field to order by' })
+  @ApiQuery({ name: 'orderDir', type: String, required: false, description: 'Order direction' })
+  @ApiQuery({ name: 'assignmentType', type: String, required: false, description: 'Assignment type' })
+  @ApiQuery({ name: 'destinationGroupCode', type: String, required: false, description: 'Destination group code' })
+  @ApiQuery({ name: 'searchTerm', type: String, required: false, description: 'Search term' })
   findAll(
     @Query('page', new ValidationPipe({ transform: true })) page?: number,
     @Query('limit', new ValidationPipe({ transform: true })) limit?: number,
     @Query('orderBy') orderBy?: AttireAllowanceRatesQueryDto['orderBy'],
     @Query('orderDir') orderDir?: 'asc' | 'desc',
     @Query('assignmentType') assignmentType?: 'TEMPORARY' | 'PERMANENT',
-    @Query('destinationType') destinationType?: 'A' | 'B',
+    @Query('destinationGroupCode') destinationGroupCode?: string,
     @Query('searchTerm') searchTerm?: string,
-    @Query('createdAfter', new ValidationPipe({ transform: true })) createdAfter?: Date,
-    @Query('createdBefore', new ValidationPipe({ transform: true })) createdBefore?: Date,
-    @Query('updatedAfter', new ValidationPipe({ transform: true })) updatedAfter?: Date,
-    @Query('updatedBefore', new ValidationPipe({ transform: true })) updatedBefore?: Date,
   ) {
     const queryOptions: AttireAllowanceRatesQueryDto = {
       page,
@@ -105,12 +42,8 @@ export class AttireAllowanceRatesController {
       orderBy,
       orderDir,
       assignmentType,
-      destinationType,
+      destinationGroupCode,
       searchTerm,
-      createdAfter,
-      createdBefore,
-      updatedAfter,
-      updatedBefore,
     };
 
     return this.attireAllowanceRatesService.findAll(queryOptions);
@@ -126,14 +59,9 @@ export class AttireAllowanceRatesController {
     return this.attireAllowanceRatesService.findByAssignmentType(type);
   }
 
-  @Get('destination-type/:type')
-  findByDestinationType(@Param('type') type: string): Promise<AttireAllowanceRates[]> {
-    return this.attireAllowanceRatesService.findByDestinationType(type);
-  }
-
-  @Get('level/:level')
-  findByLevelRange(@Param('level', ParseIntPipe) level: number): Promise<AttireAllowanceRates[]> {
-    return this.attireAllowanceRatesService.findByLevelRange(level);
+  @Get('destination-group-code/:code')
+  findByDestinationGroupCode(@Param('code') code: string): Promise<AttireAllowanceRates[]> {
+    return this.attireAllowanceRatesService.findByDestinationGroupCode(code);
   }
 
   @Patch(':id')

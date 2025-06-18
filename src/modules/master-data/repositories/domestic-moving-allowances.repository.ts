@@ -96,12 +96,24 @@ export class DomesticMovingAllowancesRepository extends KnexBaseRepository<Domes
 
     // Apply search term if provided
     if (searchTerm) {
-      query.where((builder) => {
-        builder
-          .whereRaw('LOWER("distance_start_km") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
-          .orWhereRaw('LOWER("distance_end_km") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
-          .orWhereRaw('LOWER("rate_baht") LIKE ?', [`%${searchTerm.toLowerCase()}%`]);
-      });
+      // ตรวจสอบว่า searchTerm เป็นตัวเลขหรือไม่
+      const searchDistance = parseFloat(searchTerm);
+      
+      if (!isNaN(searchDistance)) {
+        // ถ้าเป็นตัวเลข ให้ค้นหาระยะทางที่อยู่ในช่วง
+        query.where((builder) => {
+          builder.where('distance_start_km', '<=', searchDistance)
+                 .where('distance_end_km', '>=', searchDistance);
+        });
+      } else {
+        // ถ้าไม่ใช่ตัวเลข ให้ค้นหาแบบ text ใน distance และ rate fields
+        query.where((builder) => {
+          builder
+            .whereRaw('LOWER(CAST("distance_start_km" AS TEXT)) LIKE ?', [`%${searchTerm.toLowerCase()}%`])
+            .orWhereRaw('LOWER(CAST("distance_end_km" AS TEXT)) LIKE ?', [`%${searchTerm.toLowerCase()}%`])
+            .orWhereRaw('LOWER(CAST("rate_baht" AS TEXT)) LIKE ?', [`%${searchTerm.toLowerCase()}%`]);
+        });
+      }
     }
 
     const offset = (page - 1) * limit;
@@ -132,15 +144,19 @@ export class DomesticMovingAllowancesRepository extends KnexBaseRepository<Domes
   }
 
   async findByDistanceRange(distance: number): Promise<DomesticMovingAllowances | undefined> {
-    return this.findOne({
-      distance_start_km: { $lte: distance },
-      distance_end_km: { $gte: distance }
-    });
+    const dbEntity = await this.knexService.knex(this.tableName)
+      .where('distance_start_km', '<=', distance)
+      .where('distance_end_km', '>=', distance)
+      .first();
+    
+    return dbEntity ? await toCamelCase<DomesticMovingAllowances>(dbEntity) : undefined;
   }
 
   async findByRateRange(minRate: number, maxRate: number): Promise<DomesticMovingAllowances[]> {
-    return this.find({
-      rate_baht: { $gte: minRate, $lte: maxRate }
-    });
+    const dbEntities = await this.knexService.knex(this.tableName)
+      .where('rate_baht', '>=', minRate)
+      .where('rate_baht', '<=', maxRate);
+    
+    return Promise.all(dbEntities.map(async (e) => await toCamelCase<DomesticMovingAllowances>(e)));
   }
 } 

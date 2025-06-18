@@ -84,6 +84,12 @@ export class InternationalMovingAllowancesController {
     description: 'Deputy director salary',
   })
   @ApiQuery({
+    name: 'searchTerm',
+    type: String,
+    required: false,
+    description: 'Search term for office name, currency, or salary',
+  })
+  @ApiQuery({
     name: 'createdAfter',
     type: Date,
     required: false,
@@ -116,6 +122,7 @@ export class InternationalMovingAllowancesController {
     @Query('currency') currency?: string,
     @Query('directorSalary', new ValidationPipe({ transform: true })) directorSalary?: number,
     @Query('deputyDirectorSalary', new ValidationPipe({ transform: true })) deputyDirectorSalary?: number,
+    @Query('searchTerm') searchTerm?: string,
     @Query('createdAfter', new ValidationPipe({ transform: true })) createdAfter?: Date,
     @Query('createdBefore', new ValidationPipe({ transform: true })) createdBefore?: Date,
     @Query('updatedAfter', new ValidationPipe({ transform: true })) updatedAfter?: Date,
@@ -130,6 +137,7 @@ export class InternationalMovingAllowancesController {
       currency,
       directorSalary,
       deputyDirectorSalary,
+      searchTerm,
       createdAfter,
       createdBefore,
       updatedAfter,

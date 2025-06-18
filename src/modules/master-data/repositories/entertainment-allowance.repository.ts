@@ -18,7 +18,7 @@ export class EntertainmentAllowanceRepository extends KnexBaseRepository<Enterta
       minDays,
       maxDays,
       amount,
-      level,
+      privilegeId,
     } = query;
     const filter: any = {};
     if (title) filter.title = title;
@@ -28,17 +28,17 @@ export class EntertainmentAllowanceRepository extends KnexBaseRepository<Enterta
     const dbFilter = await toSnakeCase(filter);
     const offset = (page - 1) * limit;
 
-    // 1. ดึง id จาก entertainment_allowances (ถ้ามี level ให้ join กับ levels ก่อน)
+    // 1. ดึง id จาก entertainment_allowances (ถ้ามี privilegeId ให้ join กับ levels ก่อน)
     let idQuery = this.knex('entertainment_allowances');
     if (Object.keys(dbFilter).length > 0) idQuery = idQuery.where(dbFilter);
-    if (level !== undefined) {
+    if (privilegeId !== undefined) {
       idQuery = idQuery
         .join(
           'entertainment_allowance_levels',
           'entertainment_allowances.id',
           'entertainment_allowance_levels.allowance_id',
         )
-        .where('entertainment_allowance_levels.position_level', level)
+        .where('entertainment_allowance_levels.privilege_id', privilegeId)
         .distinct('entertainment_allowances.id');
     }
     const countResult = await idQuery
@@ -58,19 +58,26 @@ export class EntertainmentAllowanceRepository extends KnexBaseRepository<Enterta
         meta: { total, page, limit, lastPage: Math.ceil(total / limit) },
       };
     }
-    // 2. join กับ levels แล้ว whereIn ตาม idRows
+    // 2. join กับ levels และ privilege แล้ว whereIn ตาม idRows
     const rows = await this.knex('entertainment_allowances')
       .leftJoin(
         'entertainment_allowance_levels',
         'entertainment_allowances.id',
         'entertainment_allowance_levels.allowance_id',
       )
+      .leftJoin(
+        'privilege',
+        'entertainment_allowance_levels.privilege_id',
+        'privilege.id',
+      )
       .select(
         'entertainment_allowances.*',
         'entertainment_allowance_levels.id as level_id',
-        'entertainment_allowance_levels.position_level',
+        'entertainment_allowance_levels.privilege_id',
+        'entertainment_allowance_levels.privilege_name',
         'entertainment_allowance_levels.created_at as level_created_at',
         'entertainment_allowance_levels.updated_at as level_updated_at',
+        'privilege.name as privilege_name_from_table',
       )
       .whereIn('entertainment_allowances.id', idRows)
       .orderBy('entertainment_allowances.id', 'asc');
@@ -93,7 +100,8 @@ export class EntertainmentAllowanceRepository extends KnexBaseRepository<Enterta
         map.get(allowanceId).levels.push({
           id: row.level_id,
           allowanceId: row.id,
-          positionLevel: row.position_level,
+          privilegeId: row.privilege_id,
+          privilegeName: row.privilege_name_from_table || row.privilege_name,
           createdAt: row.level_created_at,
           updatedAt: row.level_updated_at,
         });
@@ -113,12 +121,19 @@ export class EntertainmentAllowanceRepository extends KnexBaseRepository<Enterta
         'entertainment_allowances.id',
         'entertainment_allowance_levels.allowance_id',
       )
+      .leftJoin(
+        'privilege',
+        'entertainment_allowance_levels.privilege_id',
+        'privilege.id',
+      )
       .select(
         'entertainment_allowances.*',
         'entertainment_allowance_levels.id as level_id',
-        'entertainment_allowance_levels.position_level',
+        'entertainment_allowance_levels.privilege_id',
+        'entertainment_allowance_levels.privilege_name',
         'entertainment_allowance_levels.created_at as level_created_at',
         'entertainment_allowance_levels.updated_at as level_updated_at',
+        'privilege.name as privilege_name_from_table',
       );
     if (Object.keys(filter).length > 0) {
       knexQuery = knexQuery.where(filter);
@@ -143,7 +158,8 @@ export class EntertainmentAllowanceRepository extends KnexBaseRepository<Enterta
         map.get(allowanceId).levels.push({
           id: row.level_id,
           allowanceId: row.id,
-          positionLevel: row.position_level,
+          privilegeId: row.privilege_id,
+          privilegeName: row.privilege_name_from_table || row.privilege_name,
           createdAt: row.level_created_at,
           updatedAt: row.level_updated_at,
         });
@@ -154,16 +170,16 @@ export class EntertainmentAllowanceRepository extends KnexBaseRepository<Enterta
 
   async createWithLevels(dto: any) {
     const { levels, ...allowanceData } = dto;
-    // Check if any of the provided levels are already linked to any allowance
+    // Check if any of the provided privileges are already linked to any allowance
     if (levels && levels.length > 0) {
-      const positionLevels = levels.map((l) => l.positionLevel);
+      const privilegeIds = levels.map((l) => l.privilegeId);
       const existing = await this.knex('entertainment_allowance_levels')
-        .whereIn('position_level', positionLevels)
+        .whereIn('privilege_id', privilegeIds)
         .first();
       if (existing) {
         return {
           success: false,
-          message: `Level (positionLevel=${existing.position_level}) is already in use by allowance_id=${existing.allowance_id}`,
+          message: `Privilege (privilegeId=${existing.privilege_id}) is already in use by allowance_id=${existing.allowance_id}`,
         };
       }
     }
@@ -173,7 +189,21 @@ export class EntertainmentAllowanceRepository extends KnexBaseRepository<Enterta
     );
     const id = typeof allowanceId === 'object' ? allowanceId.id : allowanceId;
     if (levels && levels.length > 0) {
-      const rows = levels.map((l) => ({ ...l, allowance_id: id }));
+      // Get privilege names from privilege table
+      const privileges = await this.knex('privilege')
+        .whereIn(
+          'id',
+          levels.map((l) => l.privilegeId),
+        )
+        .select('id', 'name');
+
+      const privilegeMap = new Map(privileges.map((p) => [p.id, p.name]));
+
+      const rows = levels.map((l) => ({
+        allowance_id: id,
+        privilege_id: l.privilegeId,
+        privilege_name: privilegeMap.get(l.privilegeId),
+      }));
       await this.knex('entertainment_allowance_levels').insert(rows);
     }
     return this.findWithLevels({ id }).then((r) => r[0] || null);
@@ -181,17 +211,17 @@ export class EntertainmentAllowanceRepository extends KnexBaseRepository<Enterta
 
   async updateWithLevels(id: number, dto: any) {
     const { levels, ...allowanceData } = dto;
-    // Check if any of the provided levels are already linked to another allowance (excluding this one)
+    // Check if any of the provided privileges are already linked to another allowance (excluding this one)
     if (levels) {
-      const positionLevels = levels.map((l) => l.positionLevel);
+      const privilegeIds = levels.map((l) => l.privilegeId);
       const existing = await this.knex('entertainment_allowance_levels')
-        .whereIn('position_level', positionLevels)
+        .whereIn('privilege_id', privilegeIds)
         .whereNot('allowance_id', id)
         .first();
       if (existing) {
         return {
           success: false,
-          message: `Level (positionLevel=${existing.position_level}) is already in use by allowance_id=${existing.allowance_id}`,
+          message: `Privilege (privilegeId=${existing.privilege_id}) is already in use by allowance_id=${existing.allowance_id}`,
         };
       }
     }
@@ -203,7 +233,21 @@ export class EntertainmentAllowanceRepository extends KnexBaseRepository<Enterta
         .where('allowance_id', id)
         .del();
       if (levels.length > 0) {
-        const rows = levels.map((l) => ({ ...l, allowance_id: id }));
+        // Get privilege names from privilege table
+        const privileges = await this.knex('privilege')
+          .whereIn(
+            'id',
+            levels.map((l) => l.privilegeId),
+          )
+          .select('id', 'name');
+
+        const privilegeMap = new Map(privileges.map((p) => [p.id, p.name]));
+
+        const rows = levels.map((l) => ({
+          allowance_id: id,
+          privilege_id: l.privilegeId,
+          privilege_name: privilegeMap.get(l.privilegeId),
+        }));
         await this.knex('entertainment_allowance_levels').insert(rows);
       }
     }
@@ -217,23 +261,31 @@ export class EntertainmentAllowanceRepository extends KnexBaseRepository<Enterta
     await this.knex('entertainment_allowances').where('id', id).del();
   }
 
-  async getWithLevel(level: number) {
-    // Join allowances and levels, filter by positionLevel, group by allowance
+  async getWithPrivilege(privilegeId: number) {
+    // Join allowances and levels, filter by privilegeId, group by allowance
     const rows = await this.knex('entertainment_allowances')
       .join(
         'entertainment_allowance_levels',
         'entertainment_allowances.id',
         'entertainment_allowance_levels.allowance_id',
       )
+      .leftJoin(
+        'privilege',
+        'entertainment_allowance_levels.privilege_id',
+        'privilege.id',
+      )
       .select(
         'entertainment_allowances.*',
         'entertainment_allowance_levels.id as level_id',
-        'entertainment_allowance_levels.position_level',
+        'entertainment_allowance_levels.privilege_id',
+        'entertainment_allowance_levels.privilege_name',
         'entertainment_allowance_levels.created_at as level_created_at',
         'entertainment_allowance_levels.updated_at as level_updated_at',
+        'privilege.name as privilege_name_from_table',
       )
-      .where('entertainment_allowance_levels.position_level', level)
+      .where('entertainment_allowance_levels.privilege_id', privilegeId)
       .orderBy('entertainment_allowances.id', 'asc');
+
     // Group by allowance
     const map = new Map();
     for (const row of rows) {
@@ -254,7 +306,8 @@ export class EntertainmentAllowanceRepository extends KnexBaseRepository<Enterta
         map.get(allowanceId).levels.push({
           id: row.level_id,
           allowanceId: row.id,
-          positionLevel: row.position_level,
+          privilegeId: row.privilege_id,
+          privilegeName: row.privilege_name_from_table || row.privilege_name,
           createdAt: row.level_created_at,
           updatedAt: row.level_updated_at,
         });

@@ -5,14 +5,13 @@ import {
   IsArray,
   ValidateNested,
   Min,
-  IsOptional,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateEntertainmentAllowanceLevelDto {
-  @ApiProperty({ description: 'รหัสระดับตำแหน่ง' })
+  @ApiProperty({ description: 'รหัสสิทธิ์' })
   @IsNumber()
-  positionLevel: number;
+  privilegeId: number;
 }
 
 export class CreateEntertainmentAllowanceDto {
@@ -35,7 +34,7 @@ export class CreateEntertainmentAllowanceDto {
   amount: number;
 
   @ApiProperty({
-    description: 'ระดับตำแหน่งที่ได้รับสิทธิ์',
+    description: 'สิทธิ์ที่ได้รับ',
     type: [CreateEntertainmentAllowanceLevelDto],
   })
   @IsArray()
