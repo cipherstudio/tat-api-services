@@ -19,6 +19,7 @@ import { MasterdataLabelsService } from '../services/masterdata-labels.service';
 import { CreateMasterdataLabelsDto } from '../dto/create-masterdata-labels.dto';
 import { MasterdataLabelsQueryDto } from '../dto/masterdata-labels-query.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { UpdateMasterdataLabelsDto } from '../dto/update-masterdata-labels.dto';
 
 @ApiTags('Master Data')
 @Controller('master-data/labels')
@@ -144,7 +145,7 @@ export class MasterdataLabelsController {
   @Put(':id')
   @ApiOperation({ summary: 'Update masterdata label' })
   @ApiBody({
-    type: CreateMasterdataLabelsDto,
+    type: UpdateMasterdataLabelsDto,
     examples: {
       example1: {
         value: {
@@ -179,7 +180,7 @@ export class MasterdataLabelsController {
   })
   async update(
     @Param('id') id: number,
-    @Body() dto: Partial<CreateMasterdataLabelsDto>,
+    @Body() dto: UpdateMasterdataLabelsDto,
   ) {
     return this.masterdataLabelsService.update(id, dto);
   }

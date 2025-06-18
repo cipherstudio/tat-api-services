@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { KnexBaseRepository } from '../../../common/repositories/knex-base.repository';
 import { KnexService } from '../../../database/knex-service/knex.service';
 import { MasterdataLabel } from '../entities/masterdata-labels.entity';
@@ -114,11 +118,42 @@ export class MasterdataLabelsRepository extends KnexBaseRepository<MasterdataLab
     id: number,
     data: Partial<MasterdataLabel>,
   ): Promise<MasterdataLabel> {
-    const snakeCaseData = toSnakeCase(data);
+    // ตรวจสอบว่ามีข้อมูลที่จะอัพเดตหรือไม่
+    if (!data || Object.keys(data).length === 0) {
+      throw new BadRequestException('Update data is empty');
+    }
+
+    // ตรวจสอบว่า record ที่จะอัพเดตมีอยู่จริงหรือไม่
+    const exists = await this.knex(this.tableName).where('id', id).first();
+
+    if (!exists) {
+      throw new NotFoundException(`Masterdata label with id ${id} not found`);
+    }
+
+    // แปลงข้อมูลเป็น snake_case
+    const snakeCaseData = await toSnakeCase(data);
+
+    // ทำการอัพเดต
     const [result] = await this.knex(this.tableName)
       .where('id', id)
-      .update(snakeCaseData)
-      .returning('*');
+      .update({
+        ...snakeCaseData,
+        updated_at: new Date(), // อัพเดต updated_at ทุกครั้ง
+      })
+      .returning([
+        'id',
+        'table_name',
+        'table_description',
+        'document_reference',
+        'document_name',
+        'document_date',
+        'document_url',
+        'updated_by',
+        'created_at',
+        'updated_at',
+      ]);
+
+    // แปลงผลลัพธ์เป็น camelCase
     return toCamelCase(result);
   }
 }

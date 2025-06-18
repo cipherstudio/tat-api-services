@@ -144,6 +144,20 @@ exports.up = function (knex) {
       document_reference: 'MASTER-020',
       updated_by: 'system',
     },
+    {
+      table_name: 'expenses_vehicle',
+      table_description: 'ค่าพาหนะรับจ้าง',
+      document_name: 'ค่าพาหนะรับจ้าง',
+      document_reference: 'MASTER-021',
+      updated_by: 'system',
+    },
+    {
+      table_name: 'privilege',
+      table_description: 'รายการสิทธิ์',
+      document_name: 'รายการสิทธิ์',
+      document_reference: 'MASTER-022',
+      updated_by: 'system',
+    },
   ];
 
   return knex('masterdata_labels').insert(tables);

@@ -20,6 +20,11 @@ export class MasterdataLabelsQueryDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
+  table_description?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
   updated_by?: string;
 
   @ApiProperty({ required: false })
@@ -29,4 +34,9 @@ export class MasterdataLabelsQueryDto {
   @ApiProperty({ required: false })
   @IsOptional()
   limit?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  search?: string;
 }

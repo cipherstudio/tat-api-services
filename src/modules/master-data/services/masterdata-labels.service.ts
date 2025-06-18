@@ -3,6 +3,7 @@ import { MasterdataLabelsRepository } from '../repositories/masterdata-labels.re
 import { CreateMasterdataLabelsDto } from '../dto/create-masterdata-labels.dto';
 import { MasterdataLabelsQueryDto } from '../dto/masterdata-labels-query.dto';
 import { MasterdataLabel } from '../entities/masterdata-labels.entity';
+import { UpdateMasterdataLabelsDto } from '../dto/update-masterdata-labels.dto';
 
 @Injectable()
 export class MasterdataLabelsService {
@@ -42,18 +43,11 @@ export class MasterdataLabelsService {
 
   async update(
     id: number,
-    dto: Partial<CreateMasterdataLabelsDto>,
+    dto: UpdateMasterdataLabelsDto,
   ): Promise<MasterdataLabel> {
-    const entity: Partial<MasterdataLabel> = {};
-
-    if (dto.table_name) entity.tableName = dto.table_name;
-    if (dto.table_description) entity.tableDescription = dto.table_description;
-    if (dto.document_reference)
-      entity.documentReference = dto.document_reference;
-    if (dto.document_name) entity.documentName = dto.document_name;
-    if (dto.document_date) entity.documentDate = new Date(dto.document_date);
-    if (dto.document_url) entity.documentUrl = dto.document_url;
-    if (dto.updated_by) entity.updatedBy = dto.updated_by;
+    const entity: Partial<MasterdataLabel> = {
+      documentName: dto.documentName,
+    };
 
     return this.masterdataLabelsRepository.update(id, entity);
   }
