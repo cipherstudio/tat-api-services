@@ -33,30 +33,60 @@ export class MasterdataLabelsRepository extends KnexBaseRepository<MasterdataLab
 
     const offset = (page - 1) * limit;
 
-    const baseQuery = this.knex(this.tableName);
-    if (Object.keys(dbFilter).length > 0) baseQuery.where(dbFilter);
+    try {
+      // Count total records
+      const countResult = await this.knex(this.tableName)
+        .where(dbFilter)
+        .count('* as count')
+        .first();
+      const total = Number(countResult?.count || 0);
 
-    const countResult = await baseQuery.clone().count('* as count').first();
-    const total = Number(countResult?.count || 0);
+      // Get paginated data
+      const rows = await this.knex(this.tableName)
+        .where(dbFilter)
+        .orderBy(orderBy, direction)
+        .offset(offset)
+        .limit(limit)
+        .select([
+          'id',
+          'table_name',
+          'table_description',
+          'document_reference',
+          'document_name',
+          'document_date',
+          'document_url',
+          'updated_by',
+          'created_at',
+          'updated_at',
+        ]);
 
-    const data = await baseQuery
-      .clone()
-      .orderBy(orderBy, direction)
-      .limit(limit)
-      .offset(offset);
+      // Transform data to camelCase
+      const data = rows.map((row) => ({
+        id: row.id,
+        tableName: row.table_name,
+        tableDescription: row.table_description,
+        documentReference: row.document_reference,
+        documentName: row.document_name,
+        documentDate: row.document_date,
+        documentUrl: row.document_url,
+        updatedBy: row.updated_by,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }));
 
-    // แปลงผลลัพธ์เป็น camelCase
-    const transformedData = data.map((item: any) => toCamelCase(item));
-
-    return {
-      data: transformedData,
-      meta: {
-        total,
-        page,
-        limit,
-        lastPage: Math.ceil(total / limit),
-      },
-    };
+      return {
+        data,
+        meta: {
+          total,
+          page,
+          limit,
+          lastPage: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      console.error('Error in findWithPaginationAndSearch:', error);
+      throw error;
+    }
   }
 
   async getWithTableName(tableName: string): Promise<MasterdataLabel | null> {
