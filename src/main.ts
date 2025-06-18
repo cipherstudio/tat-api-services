@@ -26,19 +26,20 @@ async function bootstrap() {
   const knexConfig = knexModule.default;
   const knexInstance = knex(knexConfig[environment]);
 
-  try {
-    console.log('Running Knex migrations...');
-    await knexInstance.migrate.latest();
-    console.log('Migrations completed successfully');
+  // TODO: Uncomment this when we want to run migrations and seeds
+  // try {
+  //   console.log('Running Knex migrations...');
+  //   await knexInstance.migrate.latest();
+  //   console.log('Migrations completed successfully');
 
-    // Run Knex seeds after migrations
-    console.log('Running Knex seeds...');
-    await knexInstance.seed.run();
-    console.log('Seeds completed successfully');
-  } catch (error) {
-    console.error('Error running migrations or seeds:', error);
-    // Don't exit - we can still start the app even if migrations or seeds fail
-  }
+  //   // Run Knex seeds after migrations
+  //   console.log('Running Knex seeds...');
+  //   await knexInstance.seed.run();
+  //   console.log('Seeds completed successfully');
+  // } catch (error) {
+  //   console.error('Error running migrations or seeds:', error);
+  //   // Don't exit - we can still start the app even if migrations or seeds fail
+  // }
 
   const app = await NestFactory.create(AppModule);
 
