@@ -126,10 +126,11 @@ export interface OfficeInternationalIncludeOptions extends BaseIncludeOptions {}
 export interface OfficeInternationalQueryOptions {
   page?: number;
   limit?: number;
-  orderBy?: 'id' | 'name' | 'region' | 'countryId' | 'currencyId' | 'createdAt' | 'updatedAt';
+  orderBy?: 'id' | 'name' | 'region' | 'pogCode' | 'countryId' | 'currencyId' | 'createdAt' | 'updatedAt';
   orderDir?: 'ASC' | 'DESC';
   name?: string;
   region?: string;
+  pogCode?: string;
   countryId?: number;
   currencyId?: number;
   searchTerm?: string;

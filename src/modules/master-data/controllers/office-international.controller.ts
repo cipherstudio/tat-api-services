@@ -68,6 +68,12 @@ export class OfficeInternationalController {
     description: 'Region',
   })
   @ApiQuery({
+    name: 'pogCode',
+    type: String,
+    required: false,
+    description: 'POG Code',
+  })
+  @ApiQuery({
     name: 'searchTerm',
     type: String,
     required: false,
@@ -104,6 +110,7 @@ export class OfficeInternationalController {
     @Query('orderDir') orderDir?: 'ASC' | 'DESC',
     @Query('name') name?: string,
     @Query('region') region?: string,
+    @Query('pogCode') pogCode?: string,
     @Query('searchTerm') searchTerm?: string,
     @Query('createdAfter', new ValidationPipe({ transform: true })) createdAfter?: Date,
     @Query('createdBefore', new ValidationPipe({ transform: true })) createdBefore?: Date,
@@ -117,6 +124,7 @@ export class OfficeInternationalController {
       orderDir,
       name,
       region,
+      pogCode,
       searchTerm,
       createdAfter,
       createdBefore,

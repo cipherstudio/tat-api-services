@@ -42,6 +42,18 @@ export class CreateOfficeInternationalDto {
   region: string;
 
   /**
+   * The POG code of the office international
+   * @TypeProperty({
+   *   type: 'string',
+   *   isOptional: false,
+   *   description: 'The POG code of the office international'
+   * })
+   */
+  @ApiProperty({ description: 'The POG code of the office international' })
+  @IsString()
+  pogCode: string;
+
+  /**
    * The country ID of the office international
    * @TypeProperty({
    *   type: 'number',

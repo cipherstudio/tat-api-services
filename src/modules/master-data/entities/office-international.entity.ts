@@ -12,6 +12,9 @@ export class OfficeInternational {
   @ApiProperty({ description: 'The region of the office international' })
   region: string;
 
+  @ApiProperty({ description: 'The POG code of the office international' })
+  pogCode: string;
+
   @ApiProperty({ description: 'The country ID of the office international' })
   countryId: number;
 
@@ -36,6 +39,7 @@ export const officeInternationalColumnMap = {
   id: 'id',
   name: 'name',
   region: 'region',
+  pog_code: 'pogCode',
   country_id: 'countryId',
   currency_id: 'currencyId',
   created_at: 'createdAt',
@@ -47,6 +51,7 @@ export const officeInternationalReverseColumnMap = {
   id: 'id',
   name: 'name',
   region: 'region',
+  pogCode: 'pog_code',
   countryId: 'country_id',
   currencyId: 'currency_id',
   createdAt: 'created_at',
