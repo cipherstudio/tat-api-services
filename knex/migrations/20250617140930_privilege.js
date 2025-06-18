@@ -2,8 +2,8 @@
  * @param { import("knex").Knex } knex
  * @returns { Promise<void> }
  */
-exports.up = function(knex) {
-  return knex.schema.createTable('privilege', function(table) {
+exports.up = function (knex) {
+  return knex.schema.createTable('privilege', function (table) {
     table.increments('id').primary();
     table.string('name');
     table.boolean('is_committee_position');
@@ -17,6 +17,6 @@ exports.up = function(knex) {
  * @param { import("knex").Knex } knex
  * @returns { Promise<void> }
  */
-exports.down = function(knex) {
+exports.down = function (knex) {
   return knex.schema.dropTable('privilege');
 };

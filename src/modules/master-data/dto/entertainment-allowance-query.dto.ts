@@ -38,9 +38,9 @@ export class EntertainmentAllowanceQueryDto {
   @IsNumber()
   amount?: number;
 
-  @ApiProperty({ description: 'Filter by position level', required: false })
+  @ApiProperty({ description: 'Filter by privilege ID', required: false })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  level?: number;
+  privilegeId?: number;
 }

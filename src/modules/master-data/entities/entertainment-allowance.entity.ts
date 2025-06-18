@@ -22,7 +22,7 @@ export class EntertainmentAllowance {
   @ApiProperty({ description: 'Updated at timestamp' })
   updatedAt: Date;
 
-  @ApiProperty({ description: 'ระดับตำแหน่งที่ได้รับสิทธิ์' })
+  @ApiProperty({ description: 'สิทธิ์ที่ได้รับ' })
   levels?: EntertainmentAllowanceLevel[];
 }
 
@@ -33,8 +33,11 @@ export class EntertainmentAllowanceLevel {
   @ApiProperty({ description: 'FK: entertainment_allowances.id' })
   allowanceId: number;
 
-  @ApiProperty({ description: 'รหัสระดับตำแหน่ง' })
-  positionLevel: number;
+  @ApiProperty({ description: 'รหัสสิทธิ์' })
+  privilegeId: number;
+
+  @ApiProperty({ description: 'ชื่อสิทธิ์' })
+  privilegeName: string;
 
   @ApiProperty({ description: 'Created at timestamp' })
   createdAt: Date;
@@ -66,7 +69,8 @@ export const entertainmentAllowanceReverseColumnMap = {
 export const entertainmentAllowanceLevelColumnMap = {
   id: 'id',
   allowanceId: 'allowance_id',
-  positionLevel: 'position_level',
+  privilegeId: 'privilege_id',
+  privilegeName: 'privilege_name',
   createdAt: 'created_at',
   updatedAt: 'updated_at',
 };
@@ -74,7 +78,8 @@ export const entertainmentAllowanceLevelColumnMap = {
 export const entertainmentAllowanceLevelReverseColumnMap = {
   id: 'id',
   allowance_id: 'allowanceId',
-  position_level: 'positionLevel',
+  privilege_id: 'privilegeId',
+  privilege_name: 'privilegeName',
   created_at: 'createdAt',
   updated_at: 'updatedAt',
 };
