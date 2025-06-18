@@ -6,10 +6,6 @@ export class CreateAttireAllowanceRatesDto {
   @IsEnum(['TEMPORARY', 'PERMANENT'])
   assignmentType: 'TEMPORARY' | 'PERMANENT';
 
-  @ApiProperty({ description: 'Position group name' })
-  @IsString()
-  positionGroupName: string;
-
   @ApiProperty({ description: 'Position names (comma separated)' })
   @IsString()
   positionName: string;

@@ -39,10 +39,6 @@ export class AttireAllowanceRates {
   @IsEnum(['TEMPORARY', 'PERMANENT'])
   assignmentType: 'TEMPORARY' | 'PERMANENT';
 
-  @ApiProperty({ description: 'Position group name' })
-  @IsString()
-  positionGroupName: string;
-
   @ApiProperty({ description: 'Position names (comma separated)' })
   @IsString()
   positionName: string;
@@ -89,7 +85,6 @@ export class AttireAllowanceRates {
 export const attireAllowanceRatesColumnMap = {
   id: 'id',
   assignment_type: 'assignmentType',
-  position_group_name: 'positionGroupName',
   position_name: 'positionName',
   level_code_start: 'levelCodeStart',
   level_code_end: 'levelCodeEnd',
@@ -105,7 +100,6 @@ export const attireAllowanceRatesColumnMap = {
 export const attireAllowanceRatesReverseColumnMap = {
   id: 'id',
   assignmentType: 'assignment_type',
-  positionGroupName: 'position_group_name',
   positionName: 'position_name',
   levelCodeStart: 'level_code_start',
   levelCodeEnd: 'level_code_end',

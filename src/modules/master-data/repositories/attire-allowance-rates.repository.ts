@@ -49,7 +49,6 @@ export class AttireAllowanceRatesRepository extends KnexBaseRepository<AttireAll
     const allowanceRate = await toCamelCase<AttireAllowanceRates>({
       id: result.id,
       assignment_type: result.assignment_type,
-      position_group_name: result.position_group_name,
       position_name: result.position_name,
       level_code_start: result.level_code_start,
       level_code_end: result.level_code_end,
@@ -104,7 +103,6 @@ export class AttireAllowanceRatesRepository extends KnexBaseRepository<AttireAll
     const allowanceRate = await toCamelCase<AttireAllowanceRates>({
       id: result.id,
       assignment_type: result.assignment_type,
-      position_group_name: result.position_group_name,
       position_name: result.position_name,
       level_code_start: result.level_code_start,
       level_code_end: result.level_code_end,
@@ -161,10 +159,7 @@ export class AttireAllowanceRatesRepository extends KnexBaseRepository<AttireAll
     if (searchTerm) {
       query.where((builder) => {
         builder
-          .whereRaw('LOWER(aar."position_group_name") LIKE ?', [
-            `%${searchTerm.toLowerCase()}%`,
-          ])
-          .orWhereRaw('LOWER(aar."assignment_type") LIKE ?', [
+          .whereRaw('LOWER(aar."assignment_type") LIKE ?', [
             `%${searchTerm.toLowerCase()}%`,
           ])
           .orWhereRaw('LOWER(aar."destination_group_code") LIKE ?', [
@@ -206,7 +201,6 @@ export class AttireAllowanceRatesRepository extends KnexBaseRepository<AttireAll
         const allowanceRate = await toCamelCase<AttireAllowanceRates>({
           id: result.id,
           assignment_type: result.assignment_type,
-          position_group_name: result.position_group_name,
           position_name: result.position_name,
           level_code_start: result.level_code_start,
           level_code_end: result.level_code_end,
@@ -262,7 +256,6 @@ export class AttireAllowanceRatesRepository extends KnexBaseRepository<AttireAll
         const allowanceRate = await toCamelCase<AttireAllowanceRates>({
           id: result.id,
           assignment_type: result.assignment_type,
-          position_group_name: result.position_group_name,
           position_name: result.position_name,
           level_code_start: result.level_code_start,
           level_code_end: result.level_code_end,
@@ -308,7 +301,6 @@ export class AttireAllowanceRatesRepository extends KnexBaseRepository<AttireAll
         const allowanceRate = await toCamelCase<AttireAllowanceRates>({
           id: result.id,
           assignment_type: result.assignment_type,
-          position_group_name: result.position_group_name,
           position_name: result.position_name,
           level_code_start: result.level_code_start,
           level_code_end: result.level_code_end,
