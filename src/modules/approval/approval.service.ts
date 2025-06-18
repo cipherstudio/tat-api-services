@@ -821,6 +821,8 @@ export class ApprovalService {
                         reporting_date: null, // ไม่ต้องส่ง มาจาก cron + manual save
                         next_claim_date: expense.nextClaimDate, // ไม่ส่ง คำนวนจากหลังบ้าน
                         work_end_date: expense.workEndDate, // ไม่ต้องส่ง เอามาจาก step 1
+                        increment_id: null, // ไม่ต้องส่ง เอามาจากหลังบ้าน
+                        destination_country: null, // ไม่ต้องส่ง เอามาจากหลังบ้าน
                         updated_at: new Date()
                       });
                   } else {
@@ -835,6 +837,8 @@ export class ApprovalService {
                       reporting_date: null, // ไม่ต้องส่ง มาจาก cron + manual save
                       next_claim_date: expense.nextClaimDate, // ไม่ส่ง คำนวนจากหลังบ้าน
                       work_end_date: expense.workEndDate, // ไม่ต้องส่ง เอามาจาก step 1
+                      increment_id: null, // ไม่ต้องส่ง เอามาจากหลังบ้าน
+                      destination_country: null, // ไม่ต้องส่ง เอามาจากหลังบ้าน
                       created_at: new Date(),
                       updated_at: new Date()
                     });
@@ -1048,27 +1052,160 @@ export class ApprovalService {
   async checkClothingExpenseEligibility(
     checkEligibilityDto: CheckClothingExpenseEligibilityDto,
   ): Promise<ClothingExpenseEligibilityResponseDto[]> {
-    const currentDate = new Date();
 
-    // Get all clothing expense records for the given employee codes
-    const clothingExpenses = await this.knexService.knex('approval_clothing_expense')
-      .whereIn('employee_code', checkEligibilityDto.employeeCodes)
-      .select('employee_code', 'next_claim_date');
+    const employeeCodes = checkEligibilityDto.employees.map(emp => emp.employeeCode);
 
-    // Create a map of employee codes to their next claim dates
-    const employeeNextClaimDates = new Map(
-      clothingExpenses.map(expense => [expense.employee_code, expense.next_claim_date])
-    );
+    // set default result isEligible false
+    const result = employeeCodes.map(employeeCode => ({
+      employeeCode,
+      isEligible: false,
+    }));
 
-    // Check eligibility for each employee code
-    return checkEligibilityDto.employeeCodes.map(employeeCode => {
-      const nextClaimDate = employeeNextClaimDates.get(employeeCode);
-      const isEligible = !nextClaimDate || new Date(nextClaimDate) < currentDate;
+    if (!['international', 'temporary-international'].includes(checkEligibilityDto.travelType)) {
+      // return all employee codes with isEligible false
+      return result;
+    }
 
-      return {
-        employeeCode,
-        isEligible,
-      };
-    });
+    if (checkEligibilityDto.travelType === 'international') {
+      await this.processInternationalEligibility(checkEligibilityDto, result);
+    } else if (checkEligibilityDto.travelType === 'temporary-international') {
+      await this.processTemporaryInternationalEligibility(checkEligibilityDto, result);
+    } else {
+      // ถ้าเป็นประเภทอื่นๆ, set isEligible false
+      result.forEach(r => r.isEligible = false);
+    }
+
+    return result;
+  }
+
+  private async processInternationalEligibility(
+    checkEligibilityDto: CheckClothingExpenseEligibilityDto,
+    result: ClothingExpenseEligibilityResponseDto[]
+  ): Promise<void> {
+    for (const employeeCode of result.map(r => r.employeeCode)) {
+      const pwJob = await this.getPwJob(employeeCode);
+
+      // ถ้าไม่เจอข้อมูลการเบิกล่าสุด, set isEligible true
+      if (!pwJob) {
+        this.updateEligibility(result, employeeCode, true);
+      } else {
+        await this.processPwJobForInternational(pwJob, checkEligibilityDto, result, employeeCode);
+      }
+    }
+  }
+
+  private async processTemporaryInternationalEligibility(
+    checkEligibilityDto: CheckClothingExpenseEligibilityDto,
+    result: ClothingExpenseEligibilityResponseDto[]
+  ): Promise<void> {
+    for (const employeeCode of result.map(r => r.employeeCode)) {
+      const pwJob = await this.getPwJob(employeeCode);
+
+      // ถ้าไม่เจอข้อมูลการเบิกล่าสุด, set isEligible true
+      if (!pwJob) {
+        this.updateEligibility(result, employeeCode, true);
+      } else {
+        await this.processPwJobForTemporaryInternational(pwJob, checkEligibilityDto, result, employeeCode);
+      }
+    }
+  }
+
+  private async getPwJob(employeeCode: number) {
+    return await this.knexService.knex('PS_PW_JOB_TEMP')
+      .where('EMPLID', employeeCode)
+      .andWhere('ACTION', 'XFR')
+      .andWhere('ACTION_REASON', '008')
+      .first();
+  }
+
+  private async processPwJobForInternational(
+    pwJob: any,
+    checkEligibilityDto: CheckClothingExpenseEligibilityDto,
+    result: ClothingExpenseEligibilityResponseDto[],
+    employeeCode: number
+  ): Promise<void> {
+    // เอา pwJob.DEPTID ไปเช็ค table OP_ORGANIZE_R_TEMP ว่าเป็นหน่วยงานต่างประเทศไหม
+    const organize = await this.knexService.knex('OP_ORGANIZE_R_TEMP')
+      .where('DEPTID', pwJob.DEPTID)
+      .first();
+
+    if (organize.POG_TYPE == 3) { // POG_TYPE 2 = ในประเทศ / 3 = ต่างประเทศ
+      // ถ้าเป็นหน่วยงานต่างประเทศ
+      // เอา organize.POG_CODE ไปเช็ค table office_international ว่าเป็นสำนักงาน นั้นเป็น ประเภทไหน
+
+      // หา ประเภท A B C ของ office internatinal จากใบเก่า
+      const oldDestination = await this.knexService.knex('office_international')
+        .where('pog_code', organize.POG_CODE)
+        .join('countries', 'office_international.country_id', 'countries.id')
+        .first();
+
+      // หา ประเภท A B C ของ current destination employee
+      const destination = checkEligibilityDto.employees.find(emp => emp.employeeCode === employeeCode);
+      let currentDestination;
+      if (destination.destinationTable === 'countries') {
+        currentDestination = await this.knexService.knex('countries')
+          .where('id', destination.destinationId)
+          .first();
+      } else if (destination.destinationTable === 'tatOffices') {
+        currentDestination = await this.knexService.knex('tat_offices')
+          .where('id', destination.destinationId)
+          .join('countries', 'tat_offices.country_id', 'countries.id')
+          .first();
+      }
+
+      if (currentDestination && oldDestination) {
+        // ถ้าเป็นประเภท A B C ของ ใบเก่า และ ใบใหม่ ไม่เหมือนกัน, set isEligible true
+        if (currentDestination.type !== oldDestination.type) {
+          this.updateEligibility(result, employeeCode, true);
+        } else {
+          // ถ้าประเภทเหมือนกัน
+          // ให้เอา EFFDT จาก pwJob มาเช็คกับ checkEligibilityDto.workStartDate ว่าเกิน 2 ปี หรือยัง ถ้าเกินแล้ว, set isEligible true
+          // @todo อาจต้องเปลี่ยนไปเช็ค วันรายงานตัวกับ ViewDutyformCommands (รอคอนเฟิม)
+          const isOverTwoYears = this.isOverTwoYears(pwJob.EFFDT, checkEligibilityDto.workStartDate);
+          this.updateEligibility(result, employeeCode, isOverTwoYears);
+        }
+      } else {
+        this.updateEligibility(result, employeeCode, true);
+      }
+
+    } else {
+      // @todo ถ้าเป็น type อื่นๆ
+    }
+  }
+
+  private async processPwJobForTemporaryInternational(
+    pwJob: any,
+    checkEligibilityDto: CheckClothingExpenseEligibilityDto,
+    result: ClothingExpenseEligibilityResponseDto[],
+    employeeCode: number
+  ): Promise<void> {
+    // @todo ต้องเช็คว่า ครั้งก่อนเบิกประเภทไหน
+    if (true) { // ex ครั้งก่อนเป็นประจำ, set isEligible true
+      this.updateEligibility(result, employeeCode, true);
+    } else { // ex ครั้งก่อนเป็นชั่วคราว
+      // ให้เอา EFFDT จาก pwJob มาเช็คกับ checkEligibilityDto.workStartDate ว่าเกิน 2 ปี หรือยัง ถ้าเกินแล้ว, set isEligible true
+      // @todo อาจต้องเปลี่ยนไปเช็ค วันรายงานตัวกับ ViewDutyformCommands (รอคอนเฟิม)
+      const isOverTwoYears = this.isOverTwoYears(pwJob.EFFDT, checkEligibilityDto.workStartDate);
+      this.updateEligibility(result, employeeCode, isOverTwoYears);
+    }
+  }
+
+  private isOverTwoYears(effdt: string, workStartDate: string): boolean {
+    const effdtDate = new Date(effdt);
+    const workStartDateObj = new Date(workStartDate);
+    const diffTime = Math.abs(effdtDate.getTime() - workStartDateObj.getTime());
+    const diffYears = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 365));
+    return diffYears > 2;
+  }
+
+  private updateEligibility(
+    result: ClothingExpenseEligibilityResponseDto[],
+    employeeCode: number,
+    isEligible: boolean
+  ): void {
+    const employeeResult = result.find(r => r.employeeCode === employeeCode);
+    if (employeeResult) {
+      employeeResult.isEligible = isEligible;
+    }
   }
 }
