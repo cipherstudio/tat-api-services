@@ -8,7 +8,7 @@ export class ApprovalClothingExpense {
   work_end_date: string;
   created_at: Date;
   updated_at: Date;
-  approval_accommodation_expense_id: number;
+  //approval_accommodation_expense_id: number;
   staff_member_id: number;
   approval_id: number;
   employee_code: number;
