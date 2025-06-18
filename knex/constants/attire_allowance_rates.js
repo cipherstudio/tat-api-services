@@ -1,86 +1,93 @@
 const attire_allowance_rates = [
-    [
-        {
-            "assignment_type": "TEMPORARY",
-            "position_name": "รองผู้ว่าการ, ที่ปรึกษา, ผู้อำนวยการฝ่าย, ผู้อ่านวยการภูมิภาค, ผู้อำนวยการสำนัก, ผู้อำนวยการกอง, ผู้อำนวยการกลุ่ม, ผู้ช่วยผู้อำนวยการฝ่าย, ผู้ช่วยผู้อำนวยการภูมิภาค, ผู้ช่วยผู้อำนวยการสำนัก, หัวหน้า, หัวหน้างาน, ผู้ช่วยผู้อำนวยการกลุ่ม, ผู้ช่วยผู้อำนวยการกอง, รองผู้อำนวยการกลุ่ม, ผู้ช่วยผู้อำนวยการสำนักงาน ททท., C6, C7, C8, C9, C10, C11, ประธานกรรมการ, กรรมการ, ผู้ว่าการ ททท.",
-            "level_code_start": "6",
-            "level_code_end": "11",
-            "destination_type": "A",
-            "rate_thb": 9000,
-            "spouse_rate_thb": 0,
-            "child_rate_thb": 0,
-          },
-          {
-            "assignment_type": "TEMPORARY",
-            "position_name": "C5, C4, C3, C2, C1",
-            "level_code_start": "1",
-            "level_code_end": "5",
-            "destination_type": "A",
-            "rate_thb": 7500,
-            "spouse_rate_thb": 0,
-            "child_rate_thb": 0,
-          },
-          {
-            "assignment_type": "PERMANENT",
-            "position_name": "ประธานคณะกรรมการ ททท., ผู้ว่าการ, รองผู้ว่าการ, ที่ปรึกษา, C10, C11",
-            "level_code_start": "10",
-            "level_code_end": "11",
-            "destination_type": "B",
-            "rate_thb": 40000,
-            "spouse_rate_thb": 30000,
-            "child_rate_thb": 15000,
-          },
-          {
-            "assignment_type": "PERMANENT",
-            "position_name": "ประธานคณะกรรมการ ททท., ผู้ว่าการ, รองผู้ว่าการ, ที่ปรึกษา, C10, C11",
-            "level_code_start": "10",
-            "level_code_end": "11",
-            "destination_type": "A",
-            "rate_thb": 60000,
-            "spouse_rate_thb": 40000,
-            "child_rate_thb": 18000,
-          },
-          {
-            "assignment_type": "PERMANENT",
-            "position_name": "C5, C4, C3, C2, C1",
-            "level_code_start": "1",
-            "level_code_end": "5",
-            "destination_type": "B",
-            "rate_thb": 30000,
-            "spouse_rate_thb": 18000,
-            "child_rate_thb": 9000,
-          },
-          {
-            "assignment_type": "PERMANENT",
-            "position_name": "ที่ปรึกษา, ผู้อำนวยการฝ่าย, ผู้อำนวยการภูมิภาค, ผู้อำนวยการสำนัก, ผู้อำนวยการกอง, ผู้อำนวยการกลุ่ม, ผู้ช่วยผู้อำนวยการฝ่าย, ผู้ช่วยผู้อ่านวยการภูมิภาค, ผู้ช่วยผู้อำนวยการสำนัก, หัวหน้างาน, ผู้ช่วยผู้อำนวยการกลุ่ม, ผู้ช่วยผู้อำนวยการกอง, ผู้อำนวยการสำนักงาน ททท. ผู้ช่วยผู้อ่านวยการสำนักงาน ททท., C6, C7 ,C8, C9,",
-            "level_code_start": "6",
-            "level_code_end": "9",
-            "destination_type": "A",
-            "rate_thb": 45000,
-            "spouse_rate_thb": 30000,
-            "child_rate_thb": 15000,
-          },
-          {
-            "assignment_type": "PERMANENT",
-            "position_name": "C5, C4, C3, C2, C1",
-            "level_code_start": "1",
-            "level_code_end": "5",
-            "destination_type": "A",
-            "rate_thb": 40000,
-            "spouse_rate_thb": 25000,
-            "child_rate_thb": 14000,
-          },
-          {
-            "assignment_type": "PERMANENT",
-            "position_name": "ผู้อ่านวยการฝ่าย, ผู้อำนวยการภูมิภาค, ผู้อ่านวยการสำนัก, ผู้อำนวยการกอง, ผู้อำนวยการกลุ่ม, ผู้ช่วยผู้อำนวยการฝ่าย, ผู้ช่วยผู้อำนวยการภูมิภาค, ผู้ช่วยผู้อำนวยการสำนัก, หัวหน้างาน, ผู้ช่วยผู้อ่านวยการกลุ่ม, ผู้ช่วยผู้อำนวยการกอง, ผู้อ่านวยการสำนักงาน ททท., ผู้ช่วยผู้อ่านวยการสำนักงาน ททท., C6, C7, C8, C9",
-            "level_code_start": "6",
-            "level_code_end": "9",
-            "destination_type": "B",
-            "rate_thb": 35000,
-            "spouse_rate_thb": 20000,
-            "child_rate_thb": 10000,
-          }
-      ]
-    ]
+    // ===== การเดินทางปฏิบัติงานชั่วคราวในต่างประเทศ =====
+    // หมายเหตุ: ประเทศใน TEMP_EXEMPTED จะไม่มีอัตราเลย (ไม่มีสิทธิ์เบิก)
+    // อัตราด้านล่างใช้สำหรับประเทศอื่นๆ ที่ไม่อยู่ใน TEMP_EXEMPTED (default)
+    {
+      "assignment_type": "TEMPORARY",
+      "position_name": "พนักงานระดับ 6 ขึ้นไป",
+      "level_code_start": '6',
+      "level_code_end": '11',
+      "destination_group_code": null, // default สำหรับประเทศที่ไม่อยู่ใน TEMP_EXEMPTED
+      "rate_thb": 3000.00,
+      "spouse_rate_thb": 0,
+      "child_rate_thb": 0
+    },
+    {
+      "assignment_type": "TEMPORARY",
+      "position_name": "พนักงานระดับ 5 ลงมา หรือลูกจ้าง",
+      "level_code_start": '1',
+      "level_code_end": '5',
+      "destination_group_code": null, // default สำหรับประเทศที่ไม่อยู่ใน TEMP_EXEMPTED
+      "rate_thb": 1500.00,
+      "spouse_rate_thb": 0,
+      "child_rate_thb": 0
+    },
+
+    // ===== การเดินทางปฏิบัติงานประจำในต่างประเทศ =====
+    
+    // ประเทศประเภท ก (default สำหรับประเทศที่ไม่อยู่ใน PERM_B)
+    {
+      "assignment_type": "PERMANENT",
+      "position_name": "พนักงานระดับ 10 ขึ้นไป",
+      "level_code_start": '10',
+      "level_code_end": '11',
+      "destination_group_code": null, // default สำหรับประเทศที่ไม่อยู่ใน PERM_B
+      "rate_thb": 60000.00,
+      "spouse_rate_thb": 40000.00,
+      "child_rate_thb": 18000.00
+    },
+    {
+      "assignment_type": "PERMANENT",
+      "position_name": "พนักงานระดับ 6-9",
+      "level_code_start": '6',
+      "level_code_end": '9',
+      "destination_group_code": null, // default สำหรับประเทศที่ไม่อยู่ใน PERM_B
+      "rate_thb": 45000.00,
+      "spouse_rate_thb": 30000.00,
+      "child_rate_thb": 15000.00
+    },
+    {
+      "assignment_type": "PERMANENT",
+      "position_name": "พนักงานระดับ 5 ลงมา",
+      "level_code_start": '1',
+      "level_code_end": '5',
+      "destination_group_code": null, // default สำหรับประเทศที่ไม่อยู่ใน PERM_B
+      "rate_thb": 40000.00,
+      "spouse_rate_thb": 25000.00,
+      "child_rate_thb": 14000.00
+    },
+
+    // ประเทศประเภท ข (exception case - ระบุเฉพาะประเทศใน PERM_B)
+    {
+      "assignment_type": "PERMANENT",
+      "position_name": "พนักงานระดับ 10 ขึ้นไป",
+      "level_code_start": '10',
+      "level_code_end": '11',
+      "destination_group_code": "PERM_B",
+      "rate_thb": 40000.00,
+      "spouse_rate_thb": 30000.00,
+      "child_rate_thb": 15000.00
+    },
+    {
+      "assignment_type": "PERMANENT",
+      "position_name": "พนักงานระดับ 6-9",
+      "level_code_start": '6',
+      "level_code_end": '9',
+      "destination_group_code": "PERM_B",
+      "rate_thb": 35000.00,
+      "spouse_rate_thb": 20000.00,
+      "child_rate_thb": 10000.00
+    },
+    {
+      "assignment_type": "PERMANENT",
+      "position_name": "พนักงานระดับ 5 ลงมา",
+      "level_code_start": '1',
+      "level_code_end": '5',
+      "destination_group_code": "PERM_B",
+      "rate_thb": 30000.00,
+      "spouse_rate_thb": 18000.00,
+      "child_rate_thb": 9000.00
+    }
+];
 
 module.exports = attire_allowance_rates;

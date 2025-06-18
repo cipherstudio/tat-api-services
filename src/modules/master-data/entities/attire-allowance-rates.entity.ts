@@ -1,5 +1,31 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, IsEnum } from 'class-validator';
+import { IsString, IsNumber, IsEnum, IsOptional, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class AttireDestinationGroupInfo {
+  @ApiProperty({ description: 'Group ID' })
+  @IsNumber()
+  id: number;
+
+  @ApiProperty({ description: 'Group code' })
+  @IsString()
+  groupCode: string;
+
+  @ApiProperty({ description: 'Group name' })
+  @IsString()
+  groupName: string;
+
+  @ApiProperty({
+    description: 'Assignment type',
+    enum: ['TEMPORARY', 'PERMANENT'],
+  })
+  @IsEnum(['TEMPORARY', 'PERMANENT'])
+  assignmentType: 'TEMPORARY' | 'PERMANENT';
+
+  @ApiProperty({ description: 'Description', required: false })
+  @IsString()
+  description?: string;
+}
 
 export class AttireAllowanceRates {
   @ApiProperty({ description: 'ID' })
@@ -13,25 +39,28 @@ export class AttireAllowanceRates {
   @IsEnum(['TEMPORARY', 'PERMANENT'])
   assignmentType: 'TEMPORARY' | 'PERMANENT';
 
-  @ApiProperty({ description: 'Position group name' })
-  @IsString()
-  positionGroupName: string;
-
   @ApiProperty({ description: 'Position names (comma separated)' })
   @IsString()
   positionName: string;
 
   @ApiProperty({ description: 'Level code start' })
   @IsNumber()
-  levelCodeStart: number;
+  levelCodeStart: string;
 
   @ApiProperty({ description: 'Level code end' })
   @IsNumber()
-  levelCodeEnd: number;
+  levelCodeEnd: string;
 
-  @ApiProperty({ description: 'Destination type', enum: ['A', 'B'] })
-  @IsEnum(['A', 'B'])
-  destinationType: 'A' | 'B';
+  @ApiProperty({ description: 'Destination group code (null for default)', required: false })
+  @IsOptional()
+  @IsString()
+  destinationGroupCode?: string;
+
+  @ApiProperty({ description: 'Destination group information', required: false })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => AttireDestinationGroupInfo)
+  destinationGroup?: AttireDestinationGroupInfo;
 
   @ApiProperty({ description: 'Rate in THB' })
   @IsNumber()
@@ -56,11 +85,10 @@ export class AttireAllowanceRates {
 export const attireAllowanceRatesColumnMap = {
   id: 'id',
   assignment_type: 'assignmentType',
-  position_group_name: 'positionGroupName',
   position_name: 'positionName',
   level_code_start: 'levelCodeStart',
   level_code_end: 'levelCodeEnd',
-  destination_type: 'destinationType',
+  destination_group_code: 'destinationGroupCode',
   rate_thb: 'rateThb',
   spouse_rate_thb: 'spouseRateThb',
   child_rate_thb: 'childRateThb',
@@ -72,11 +100,10 @@ export const attireAllowanceRatesColumnMap = {
 export const attireAllowanceRatesReverseColumnMap = {
   id: 'id',
   assignmentType: 'assignment_type',
-  positionGroupName: 'position_group_name',
   positionName: 'position_name',
   levelCodeStart: 'level_code_start',
   levelCodeEnd: 'level_code_end',
-  destinationType: 'destination_type',
+  destinationGroupCode: 'destination_group_code',
   rateThb: 'rate_thb',
   spouseRateThb: 'spouse_rate_thb',
   childRateThb: 'child_rate_thb',

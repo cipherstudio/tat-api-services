@@ -48,6 +48,11 @@ export class InternationalMovingAllowancesQueryDto {
   deputyDirectorSalary?: number;
 
   @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  searchTerm?: string;
+
+  @ApiProperty({ required: false })
   @IsDate()
   @IsOptional()
   @Type(() => Date)

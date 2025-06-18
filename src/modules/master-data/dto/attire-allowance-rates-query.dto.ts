@@ -32,8 +32,8 @@ export class AttireAllowanceRatesQueryDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsEnum(['A', 'B'])
-  destinationType?: 'A' | 'B';
+  @IsString()
+  destinationGroupCode?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

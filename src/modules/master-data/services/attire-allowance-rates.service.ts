@@ -85,12 +85,8 @@ export class AttireAllowanceRatesService {
     return this.attireAllowanceRatesRepository.findByAssignmentType(assignmentType);
   }
 
-  async findByDestinationType(destinationType: string): Promise<AttireAllowanceRates[]> {
-    return this.attireAllowanceRatesRepository.findByDestinationType(destinationType);
-  }
-
-  async findByLevelRange(level: number): Promise<AttireAllowanceRates[]> {
-    return this.attireAllowanceRatesRepository.findByLevelRange(level);
+  async findByDestinationGroupCode(destinationGroupCode: string): Promise<AttireAllowanceRates[]> {
+    return this.attireAllowanceRatesRepository.findByDestinationGroupCode(destinationGroupCode);
   }
 
   async create(createDto: CreateAttireAllowanceRatesDto): Promise<AttireAllowanceRates> {

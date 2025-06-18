@@ -43,6 +43,11 @@ export class DomesticMovingAllowancesQueryDto {
   @Type(() => Number)
   rateBaht?: number;
 
+  @ApiProperty({ required: false, description: 'Search term for distance (will find records where the distance falls within the range)' })
+  @IsString()
+  @IsOptional()
+  searchTerm?: string;
+
   @ApiProperty({ required: false })
   @IsDate()
   @IsOptional()
