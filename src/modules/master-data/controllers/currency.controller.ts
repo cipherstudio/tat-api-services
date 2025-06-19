@@ -3,7 +3,7 @@ import {
   Get,
   Post,
   Body,
-  Patch,
+  Put,
   Param,
   Delete,
   ParseIntPipe,
@@ -139,7 +139,7 @@ export class CurrencyController {
     return this.currencyService.findById(id);
   }
 
-  @Patch(':id')
+  @Put(':id')
   @ApiOperation({
     summary: 'แก้ไขข้อมูลสกุลเงิน',
     description: 'แก้ไขข้อมูลสกุลเงินตามรหัส (id)',
