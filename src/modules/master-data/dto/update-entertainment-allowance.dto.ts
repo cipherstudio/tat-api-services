@@ -3,15 +3,10 @@ import {
   CreateEntertainmentAllowanceDto,
   CreateEntertainmentAllowanceLevelDto,
 } from './create-entertainment-allowance.dto';
-import { IsNumber, IsOptional, ValidateNested } from 'class-validator';
+import { IsOptional, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class UpdateEntertainmentAllowanceLevelDto extends CreateEntertainmentAllowanceLevelDto {
-  @ApiProperty({ description: 'ID ของระดับ (ถ้ามี)', required: false })
-  @IsOptional()
-  @IsNumber()
-  id?: number;
-}
+export class UpdateEntertainmentAllowanceLevelDto extends CreateEntertainmentAllowanceLevelDto {}
 
 export class UpdateEntertainmentAllowanceDto extends PartialType(
   CreateEntertainmentAllowanceDto,
