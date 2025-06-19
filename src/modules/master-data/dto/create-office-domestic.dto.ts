@@ -1,4 +1,4 @@
-import { IsString, IsBoolean, IsOptional } from 'class-validator';
+import { IsString, IsBoolean, IsOptional, IsNumber } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 /**
@@ -42,6 +42,21 @@ export class CreateOfficeDomesticDto {
   region: string;
 
   /**
+   * The province ID of the office domestic
+   * @TypeProperty({
+   *   type: 'number',
+   *   isOptional: false,
+   *   description: 'The province ID of the office domestic',
+   *   validations: {
+   *     isNumber: true
+   *   }
+   * })
+   */
+  @ApiProperty({ description: 'The province ID of the office domestic' })
+  @IsNumber()
+  provinceId: number;
+
+  /**
    * Whether this is a head office
    * @TypeProperty({
    *   type: 'boolean',
@@ -52,8 +67,11 @@ export class CreateOfficeDomesticDto {
    *   }
    * })
    */
-  @ApiProperty({ description: 'Whether this is a head office', required: false })
+  @ApiProperty({
+    description: 'Whether this is a head office',
+    required: false,
+  })
   @IsBoolean()
   @IsOptional()
   isHeadOffice?: boolean;
-} 
+}

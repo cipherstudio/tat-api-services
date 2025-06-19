@@ -2,7 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { OfficeDomestic } from '../entities/office-domestic.entity.js';
 import { KnexBaseRepository } from '../../../common/repositories/knex-base.repository.js';
 import { KnexService } from '../../../database/knex-service/knex.service.js';
-import { toCamelCase, toSnakeCase } from '../../../common/utils/case-mapping.js';
+import {
+  toCamelCase,
+  toSnakeCase,
+} from '../../../common/utils/case-mapping.js';
 import { Provinces } from '../entities/provinces.entity.js';
 
 @Injectable()
@@ -24,18 +27,22 @@ export class OfficeDomesticRepository extends KnexBaseRepository<OfficeDomestic>
     };
 
     // แยกข้อมูล province
-    const provinceData = result.province_id_mapped ? {
-      id: result.province_id_mapped,
-      name_th: result.province_name_th,
-      name_en: result.province_name_en,
-      is_perimeter: result.province_is_perimeter,
-      created_at: result.province_created_at,
-      updated_at: result.province_updated_at,
-    } : null;
+    const provinceData = result.province_id_mapped
+      ? {
+          id: result.province_id_mapped,
+          name_th: result.province_name_th,
+          name_en: result.province_name_en,
+          is_perimeter: result.province_is_perimeter,
+          created_at: result.province_created_at,
+          updated_at: result.province_updated_at,
+        }
+      : null;
 
     // แปลงเป็น camelCase
     const mappedOffice = await toCamelCase<Partial<OfficeDomestic>>(officeData);
-    const mappedProvince = provinceData ? await toCamelCase<Provinces>(provinceData) : undefined;
+    const mappedProvince = provinceData
+      ? await toCamelCase<Provinces>(provinceData)
+      : undefined;
 
     return {
       ...mappedOffice,
@@ -49,7 +56,10 @@ export class OfficeDomesticRepository extends KnexBaseRepository<OfficeDomestic>
     return await toCamelCase<OfficeDomestic>(created);
   }
 
-  async update(id: number, entity: Partial<OfficeDomestic>): Promise<OfficeDomestic> {
+  async update(
+    id: number,
+    entity: Partial<OfficeDomestic>,
+  ): Promise<OfficeDomestic> {
     const dbEntity = await toSnakeCase(entity);
     const updated = await super.update(id, dbEntity);
     return await toCamelCase<OfficeDomestic>(updated);
@@ -71,7 +81,7 @@ export class OfficeDomesticRepository extends KnexBaseRepository<OfficeDomestic>
         'provinces.name_en as province_name_en',
         'provinces.is_perimeter as province_is_perimeter',
         'provinces.created_at as province_created_at',
-        'provinces.updated_at as province_updated_at'
+        'provinces.updated_at as province_updated_at',
       )
       .leftJoin('provinces', 'office_domestic.province_id', 'provinces.id')
       .where('office_domestic.id', id)
@@ -80,7 +90,9 @@ export class OfficeDomesticRepository extends KnexBaseRepository<OfficeDomestic>
     return dbEntity ? this.mapResult(dbEntity) : undefined;
   }
 
-  async findOne(conditions: Record<string, any>): Promise<OfficeDomestic | undefined> {
+  async findOne(
+    conditions: Record<string, any>,
+  ): Promise<OfficeDomestic | undefined> {
     const dbEntity = await this.knexService
       .knex('office_domestic')
       .select(
@@ -96,7 +108,7 @@ export class OfficeDomesticRepository extends KnexBaseRepository<OfficeDomestic>
         'provinces.name_en as province_name_en',
         'provinces.is_perimeter as province_is_perimeter',
         'provinces.created_at as province_created_at',
-        'provinces.updated_at as province_updated_at'
+        'provinces.updated_at as province_updated_at',
       )
       .leftJoin('provinces', 'office_domestic.province_id', 'provinces.id')
       .where(conditions)
@@ -121,12 +133,12 @@ export class OfficeDomesticRepository extends KnexBaseRepository<OfficeDomestic>
         'provinces.name_en as province_name_en',
         'provinces.is_perimeter as province_is_perimeter',
         'provinces.created_at as province_created_at',
-        'provinces.updated_at as province_updated_at'
+        'provinces.updated_at as province_updated_at',
       )
       .leftJoin('provinces', 'office_domestic.province_id', 'provinces.id')
       .where(conditions);
 
-    return Promise.all(dbEntities.map(row => this.mapResult(row)));
+    return Promise.all(dbEntities.map((row) => this.mapResult(row)));
   }
 
   async findWithPagination(
@@ -142,7 +154,8 @@ export class OfficeDomesticRepository extends KnexBaseRepository<OfficeDomestic>
     const { searchTerm, ...otherConditions } = conditions;
 
     // Create base query builder for data
-    const baseQuery = this.knexService.knex('office_domestic')
+    const baseQuery = this.knexService
+      .knex('office_domestic')
       .select(
         'office_domestic.id',
         'office_domestic.name',
@@ -156,15 +169,18 @@ export class OfficeDomesticRepository extends KnexBaseRepository<OfficeDomestic>
         'provinces.name_en as province_name_en',
         'provinces.is_perimeter as province_is_perimeter',
         'provinces.created_at as province_created_at',
-        'provinces.updated_at as province_updated_at'
+        'provinces.updated_at as province_updated_at',
       )
       .leftJoin('provinces', 'office_domestic.province_id', 'provinces.id');
 
     // Add search condition if searchTerm exists
     if (searchTerm) {
-      baseQuery.where(function() {
-        this.whereRaw('LOWER("office_domestic"."name") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
-          .orWhereRaw('LOWER("office_domestic"."region") LIKE ?', [`%${searchTerm.toLowerCase()}%`]);
+      baseQuery.where(function () {
+        this.whereRaw('LOWER("office_domestic"."name") LIKE ?', [
+          `%${searchTerm.toLowerCase()}%`,
+        ]).orWhereRaw('LOWER("office_domestic"."region") LIKE ?', [
+          `%${searchTerm.toLowerCase()}%`,
+        ]);
       });
     }
 
@@ -174,12 +190,16 @@ export class OfficeDomesticRepository extends KnexBaseRepository<OfficeDomestic>
     }
 
     // Create separate count query
-    const countQuery = this.knexService.knex('office_domestic')
+    const countQuery = this.knexService
+      .knex('office_domestic')
       .count('* as total')
-      .where(function() {
+      .where(function () {
         if (searchTerm) {
-          this.whereRaw('LOWER("office_domestic"."name") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
-            .orWhereRaw('LOWER("office_domestic"."region") LIKE ?', [`%${searchTerm.toLowerCase()}%`]);
+          this.whereRaw('LOWER("office_domestic"."name") LIKE ?', [
+            `%${searchTerm.toLowerCase()}%`,
+          ]).orWhereRaw('LOWER("office_domestic"."region") LIKE ?', [
+            `%${searchTerm.toLowerCase()}%`,
+          ]);
         }
         if (Object.keys(otherConditions).length > 0) {
           this.where(otherConditions);
@@ -187,7 +207,8 @@ export class OfficeDomesticRepository extends KnexBaseRepository<OfficeDomestic>
       });
 
     // Get paginated data
-    const dataQuery = baseQuery.clone()
+    const dataQuery = baseQuery
+      .clone()
       .orderBy(`office_domestic.${orderBy}`, direction)
       .limit(limit)
       .offset(offset);
@@ -196,7 +217,7 @@ export class OfficeDomesticRepository extends KnexBaseRepository<OfficeDomestic>
     const total = Number(countResult?.[0]?.total || 0);
 
     return {
-      data: await Promise.all(data.map(row => this.mapResult(row))),
+      data: await Promise.all(data.map((row) => this.mapResult(row))),
       meta: {
         total,
         page,
@@ -214,7 +235,8 @@ export class OfficeDomesticRepository extends KnexBaseRepository<OfficeDomestic>
     searchTerm?: string,
   ) {
     // Create base query builder for data
-    const baseQuery = this.knexService.knex('office_domestic')
+    const baseQuery = this.knexService
+      .knex('office_domestic')
       .select(
         'office_domestic.id',
         'office_domestic.name',
@@ -228,12 +250,13 @@ export class OfficeDomesticRepository extends KnexBaseRepository<OfficeDomestic>
         'provinces.name_en as province_name_en',
         'provinces.is_perimeter as province_is_perimeter',
         'provinces.created_at as province_created_at',
-        'provinces.updated_at as province_updated_at'
+        'provinces.updated_at as province_updated_at',
       )
       .leftJoin('provinces', 'office_domestic.province_id', 'provinces.id');
 
     // Create count query
-    const countQuery = this.knexService.knex('office_domestic')
+    const countQuery = this.knexService
+      .knex('office_domestic')
       .count('* as count')
       .leftJoin('provinces', 'office_domestic.province_id', 'provinces.id');
 
@@ -245,9 +268,14 @@ export class OfficeDomesticRepository extends KnexBaseRepository<OfficeDomestic>
 
     // Apply search term if provided
     if (searchTerm) {
-      const searchCondition = function(builder) {
-        builder.whereRaw('LOWER("office_domestic"."name") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
-          .orWhereRaw('LOWER("office_domestic"."region") LIKE ?', [`%${searchTerm.toLowerCase()}%`]);
+      const searchCondition = function (builder) {
+        builder
+          .whereRaw('LOWER("office_domestic"."name") LIKE ?', [
+            `%${searchTerm.toLowerCase()}%`,
+          ])
+          .orWhereRaw('LOWER("office_domestic"."region") LIKE ?', [
+            `%${searchTerm.toLowerCase()}%`,
+          ]);
       };
       baseQuery.where(searchCondition);
       countQuery.where(searchCondition);
@@ -266,7 +294,7 @@ export class OfficeDomesticRepository extends KnexBaseRepository<OfficeDomestic>
       .offset(offset);
 
     return {
-      data: await Promise.all(data.map(row => this.mapResult(row))),
+      data: await Promise.all(data.map((row) => this.mapResult(row))),
       meta: {
         total,
         page,
@@ -275,4 +303,4 @@ export class OfficeDomesticRepository extends KnexBaseRepository<OfficeDomestic>
       },
     };
   }
-} 
+}
