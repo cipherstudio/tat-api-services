@@ -77,8 +77,8 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
       countQuery.andWhere('SALARY', '>=', query.minSalary);
     if (query.maxSalary !== undefined)
       countQuery.andWhere('SALARY', '<=', query.maxSalary);
-    const countResult = await countQuery.count('* as count').first();
-    const total = Number(countResult?.count || 0);
+    const countResult = await this.knex('OP_MASTER_T').count('* as count');
+    const total = Number(countResult[0]?.count || 0);
 
     const dbEntities = await builder.select();
     const data = await Promise.all(
@@ -90,7 +90,7 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
         total,
         limit: query.limit ?? 10,
         offset: query.offset ?? 0,
-        lastPage: Math.ceil(total / (query.limit ?? 10)) - 1,
+        lastPage: total === 0 ? 0 : Math.ceil(total / (query.limit ?? 10)) - 1,
       },
     };
   }
@@ -99,7 +99,7 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
     data: (Employee & ViewPosition4ot & OpLevelSalR)[];
     meta: { total: number; limit: number; offset: number; lastPage: number };
   }> {
-    let builder = this.knex('OP_MASTER_T')
+    let baseBuilder = this.knex('OP_MASTER_T')
       .leftJoin('OP_LEVEL_SAL_R', (builder) => {
         builder.on(
           'OP_LEVEL_SAL_R.PLV_CODE',
@@ -116,43 +116,69 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
       })
       .leftJoin('EMPLOYEE', 'OP_MASTER_T.PMT_CODE', 'EMPLOYEE.CODE');
 
+    // Apply filters
     if (query.code) {
-      builder = builder.whereRaw('RTRIM("PMT_CODE") = ?', [query.code]);
+      baseBuilder = baseBuilder.whereRaw('RTRIM("PMT_CODE") = ?', [query.code]);
     }
-
     if (query.name) {
-      builder = builder.where('EMPLOYEE.NAME', query.name);
+      baseBuilder = baseBuilder.where('EMPLOYEE.NAME', query.name);
     }
-
     if (query.searchTerm) {
-      builder = builder.where('EMPLOYEE.NAME', 'like', `%${query.searchTerm}%`);
+      baseBuilder = baseBuilder.where(
+        'EMPLOYEE.NAME',
+        'like',
+        `%${query.searchTerm}%`,
+      );
     }
-
-    if (query.sex) builder = builder.where('EMPLOYEE.SEX', query.sex);
+    if (query.sex) baseBuilder = baseBuilder.where('EMPLOYEE.SEX', query.sex);
     if (query.province)
-      builder = builder.where('EMPLOYEE.PROVINCE', query.province);
+      baseBuilder = baseBuilder.where('EMPLOYEE.PROVINCE', query.province);
     if (query.department)
-      builder = builder.where('EMPLOYEE.DEPARTMENT', query.department);
+      baseBuilder = baseBuilder.where('EMPLOYEE.DEPARTMENT', query.department);
     if (query.position)
-      builder = builder.where('EMPLOYEE.POSITION', query.position);
-
+      baseBuilder = baseBuilder.where('EMPLOYEE.POSITION', query.position);
     if (query.minSalary !== undefined)
-      builder = builder.andWhere('EMPLOYEE.SALARY', '>=', query.minSalary);
+      baseBuilder = baseBuilder.andWhere(
+        'EMPLOYEE.SALARY',
+        '>=',
+        query.minSalary,
+      );
     if (query.maxSalary !== undefined)
-      builder = builder.andWhere('EMPLOYEE.SALARY', '<=', query.maxSalary);
+      baseBuilder = baseBuilder.andWhere(
+        'EMPLOYEE.SALARY',
+        '<=',
+        query.maxSalary,
+      );
 
-    const countQuery = builder.clone();
-    countQuery.select(this.knex.raw('count(*) as count'));
-    countQuery.limit(0).offset(0);
-    const countResult = await countQuery.first();
+    // Count total distinct records
+    const countQuery = baseBuilder.clone();
+    const countResult = await countQuery
+      .countDistinct('OP_MASTER_T.PMT_CODE as count')
+      .first();
     const total = Number(countResult?.count || 0);
 
-    if (query.limit !== undefined) builder = builder.limit(query.limit);
-    if (query.offset !== undefined) builder = builder.offset(query.offset);
+    // Main query with ROW_NUMBER for deduplication
+    const subquery = baseBuilder
+      .clone()
+      .select([
+        'OP_MASTER_T.*',
+        'OP_LEVEL_SAL_R.*',
+        'VIEW_POSITION_4OT.*',
+        'EMPLOYEE.*',
+        this.knex.raw(
+          'row_number() over (partition by "OP_MASTER_T"."PMT_CODE" order by "OP_MASTER_T"."PMT_CODE" asc) as "rn"',
+        ),
+      ])
+      .as('sub');
 
-    const dbEntities = await builder.select();
+    const finalQuery = this.knex(subquery)
+      .where('rn', 1)
+      .limit(query.limit ?? 10)
+      .offset(query.offset ?? 0);
+
+    const dbEntities = await finalQuery;
     const data = await Promise.all(
-      dbEntities.map(async (e) => await toCamelCase<Employee>(e)),
+      dbEntities.map(async (e) => await toCamelCase<any>(e)),
     );
 
     return {
@@ -161,7 +187,7 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
         total,
         limit: query.limit ?? 10,
         offset: query.offset ?? 0,
-        lastPage: Math.ceil(total / (query.limit ?? 10)) - 1,
+        lastPage: total === 0 ? 0 : Math.ceil(total / (query.limit ?? 10)) - 1,
       },
     };
   }

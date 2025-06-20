@@ -1,4 +1,4 @@
-import { Inject } from '@nestjs/common';
+import { Inject, NotFoundException } from '@nestjs/common';
 import { Knex } from 'knex';
 import { KnexService } from '../../database/knex-service/knex.service';
 import { toCamelCase, toSnakeCase } from '../utils/case-mapping';
@@ -29,7 +29,9 @@ export class KnexBaseRepository<T> {
       orderBy,
       direction,
     );
-    return dbRow ? await toCamelCase<T>(dbRow) : undefined;
+
+    if (!dbRow) throw new NotFoundException('Record not found');
+    return await toCamelCase<T>(dbRow);
   }
 
   async findOne(
