@@ -710,22 +710,20 @@ export class UpdateApprovalDto {
   @ApiProperty({
     description: 'ชั้นความลับ',
     required: false,
-    example: ['ลับมาก', 'ลับที่สุด']
+    example: 'ลับที่สุด'
   })
   @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  confidentialityLevel?: string[];
+  @IsString()
+  confidentialityLevel?: string;
 
   @ApiProperty({
     description: 'ความด่วน',
     required: false,
-    example: ['ด่วน', 'ด่วนมาก']
+    example: 'ด่วนมาก',
   })
   @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  urgencyLevel?: string[];
+  @IsString()
+  urgencyLevel?: string;
 
   @ApiProperty({
     description: 'กลุ่มผู้อนุมัติ',

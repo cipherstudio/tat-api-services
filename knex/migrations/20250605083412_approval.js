@@ -49,8 +49,8 @@ exports.up = function(knex) {
 
     // form 8
     // เลือกผู้เห็นชอบผ่านเรื่อง
-    table.json('confidentiality_level').nullable();
-    table.json('urgency_level').nullable();
+    table.string('confidentiality_level').nullable();
+    table.string('urgency_level').nullable();
     table.json('departments').nullable();
     table.json('degrees').nullable();
     table.string('staff').nullable();

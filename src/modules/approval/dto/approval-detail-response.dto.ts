@@ -461,16 +461,16 @@ export class ApprovalDetailResponseDto implements Approval {
   @ApiProperty({
     description: 'ชั้นความลับ',
     required: false,
-    example: ['ลับมาก', 'ลับที่สุด']
+    example: 'ลับที่สุด',
   })
-  confidentialityLevel?: string[];
+  confidentialityLevel?: string;
 
   @ApiProperty({
     description: 'ความด่วน',
     required: false,
-    example: ['ด่วน', 'ด่วนมาก']
+    example: 'ด่วนมาก',
   })
-  urgencyLevel?: string[];
+  urgencyLevel?: string;
 
   @ApiProperty({
     description: 'กลุ่มผู้อนุมัติ',
