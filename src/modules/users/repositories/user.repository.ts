@@ -29,9 +29,17 @@ export class UserRepository extends KnexBaseRepository<User> {
     return await toCamelCase<User>(updated);
   }
 
-  async findByEmail(email: string): Promise<User | undefined> {
+  async findByEmail(
+    email: string,
+  ): Promise<(User & (Employee & ViewPosition4ot & OpLevelSalR)) | undefined> {
     const dbUser = await this.knexService.findOne('users', { email });
-    return dbUser ? await toCamelCase<User>(dbUser) : undefined;
+    if (!dbUser) return undefined;
+    const employee = await this.employeeRepository.findByCodeWithPosition4ot(
+      dbUser.employee_code,
+    );
+    return { ...employee, ...dbUser } as
+      | (User & (Employee & ViewPosition4ot & OpLevelSalR))
+      | undefined;
   }
 
   async findActiveAdmins(): Promise<User[]> {

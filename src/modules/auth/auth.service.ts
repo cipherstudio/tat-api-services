@@ -12,6 +12,10 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { User } from '../users/entities/user.entity';
 import * as bcrypt from 'bcrypt';
+import { OpLevelSalR } from '@modules/dataviews/entities/op-level-sal-r.entity';
+import { ViewPosition4ot } from '@modules/dataviews/entities/view-position-4ot.entity';
+import { Employee } from '@modules/dataviews/entities/employee.entity';
+import { OpMasterT } from '@modules/dataviews/entities/op-master-t.entity';
 
 interface JwtPayload {
   sub: number;
@@ -84,17 +88,25 @@ export class AuthService {
     });
   }
 
-  async validateUser(email: string, pass: string): Promise<any> {
+  async validateUser(
+    email: string,
+    pass: string,
+  ): Promise<
+    (User & (Employee & ViewPosition4ot & OpLevelSalR & OpMasterT)) | null
+  > {
     const user = await this.usersService.findByEmail(email);
     if (user && (await bcrypt.compare(pass, user.password))) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password: unused, ...result } = user;
-      return result;
+      return result as User &
+        (Employee & ViewPosition4ot & OpLevelSalR & OpMasterT);
     }
     return null;
   }
 
-  async login(user: Partial<User>) {
+  async login(
+    user: User & (Employee & ViewPosition4ot & OpLevelSalR & OpMasterT),
+  ) {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
@@ -108,9 +120,10 @@ export class AuthService {
       }),
       user: {
         id: user.id,
-        email: user.email,
-        fullName: user.fullName,
+        email: user.pmtEmailAddr,
+        fullName: user.pmtNameT,
         role: user.role,
+        position: user.posPositionname,
       },
     };
   }

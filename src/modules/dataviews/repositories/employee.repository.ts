@@ -100,43 +100,53 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
     meta: { total: number; limit: number; offset: number; lastPage: number };
   }> {
     let builder = this.knex('OP_MASTER_T')
-      .leftJoin(
-        'OP_LEVEL_SAL_R',
-        'OP_MASTER_T.PMT_LEVEL_CODE',
-        'OP_LEVEL_SAL_R.PLV_CODE',
-      )
-      .leftJoin(
-        'VIEW_POSITION_4OT',
-        'OP_MASTER_T.PMT_POS_NO',
-        'VIEW_POSITION_4OT.POS_POSITIONCODE',
-      )
+      .leftJoin('OP_LEVEL_SAL_R', (builder) => {
+        builder.on(
+          'OP_LEVEL_SAL_R.PLV_CODE',
+          '=',
+          this.knex.raw('RTRIM("OP_MASTER_T"."PMT_LEVEL_CODE")'),
+        );
+      })
+      .leftJoin('VIEW_POSITION_4OT', (builder) => {
+        builder.on(
+          'VIEW_POSITION_4OT.POS_POSITIONCODE',
+          '=',
+          this.knex.raw('RTRIM("OP_MASTER_T"."PMT_POS_NO")'),
+        );
+      })
       .leftJoin('EMPLOYEE', 'OP_MASTER_T.PMT_CODE', 'EMPLOYEE.CODE');
 
-    const conditions: Record<string, any> = {};
-    if (query.code) conditions['PMT_CODE'] = query.code;
-    if (query.name) conditions['EMPLOYEE.NAME'] = query.name;
+    if (query.code) {
+      builder = builder.whereRaw('RTRIM("PMT_CODE") = ?', [query.code]);
+    }
+
+    if (query.name) {
+      builder = builder.where('EMPLOYEE.NAME', query.name);
+    }
 
     if (query.searchTerm) {
       builder = builder.where('EMPLOYEE.NAME', 'like', `%${query.searchTerm}%`);
-    } else {
-      builder = builder.where(conditions);
     }
-    if (query.sex) conditions['EMPLOYEE.SEX'] = query.sex;
-    if (query.province) conditions['EMPLOYEE.PROVINCE'] = query.province;
-    if (query.department) conditions['EMPLOYEE.DEPARTMENT'] = query.department;
-    if (query.position) conditions['EMPLOYEE.POSITION'] = query.position;
 
-    if (!query.searchTerm) {
-      if (query.minSalary !== undefined)
-        builder = builder.andWhere('EMPLOYEE.SALARY', '>=', query.minSalary);
-      if (query.maxSalary !== undefined)
-        builder = builder.andWhere('EMPLOYEE.SALARY', '<=', query.maxSalary);
-    } else {
-      if (query.minSalary !== undefined)
-        builder = builder.andWhere('EMPLOYEE.SALARY', '>=', query.minSalary);
-      if (query.maxSalary !== undefined)
-        builder = builder.andWhere('EMPLOYEE.SALARY', '<=', query.maxSalary);
-    }
+    if (query.sex) builder = builder.where('EMPLOYEE.SEX', query.sex);
+    if (query.province)
+      builder = builder.where('EMPLOYEE.PROVINCE', query.province);
+    if (query.department)
+      builder = builder.where('EMPLOYEE.DEPARTMENT', query.department);
+    if (query.position)
+      builder = builder.where('EMPLOYEE.POSITION', query.position);
+
+    if (query.minSalary !== undefined)
+      builder = builder.andWhere('EMPLOYEE.SALARY', '>=', query.minSalary);
+    if (query.maxSalary !== undefined)
+      builder = builder.andWhere('EMPLOYEE.SALARY', '<=', query.maxSalary);
+
+    const countQuery = builder.clone();
+    countQuery.select(this.knex.raw('count(*) as count'));
+    countQuery.limit(0).offset(0);
+    const countResult = await countQuery.first();
+    const total = Number(countResult?.count || 0);
+
     if (query.limit !== undefined) builder = builder.limit(query.limit);
     if (query.offset !== undefined) builder = builder.offset(query.offset);
 
@@ -144,23 +154,6 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
     const data = await Promise.all(
       dbEntities.map(async (e) => await toCamelCase<Employee>(e)),
     );
-
-    let countQuery;
-    if (query.searchTerm) {
-      countQuery = builder.where(
-        'EMPLOYEE.NAME',
-        'like',
-        `%${query.searchTerm}%`,
-      );
-    } else {
-      countQuery = builder.where(conditions);
-    }
-    if (query.minSalary !== undefined)
-      countQuery.andWhere('EMPLOYEE.SALARY', '>=', query.minSalary);
-    if (query.maxSalary !== undefined)
-      countQuery.andWhere('EMPLOYEE.SALARY', '<=', query.maxSalary);
-    const countResult = await countQuery.count('* as count').first();
-    const total = Number(countResult?.count || 0);
 
     return {
       data,
@@ -177,19 +170,27 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
     code: string,
   ): Promise<(Employee & ViewPosition4ot & OpLevelSalR) | undefined> {
     const employee = await this.knex('OP_MASTER_T')
-      .where('PMT_CODE', code)
-      .leftJoin(
-        'OP_LEVEL_SAL_R',
-        'OP_MASTER_T.PMT_LEVEL_CODE',
-        'OP_LEVEL_SAL_R.PLV_CODE',
-      )
-      .leftJoin(
-        'VIEW_POSITION_4OT',
-        'OP_MASTER_T.PMT_POS_NO',
-        'VIEW_POSITION_4OT.POS_POSITIONCODE',
-      )
+      .whereRaw('RTRIM("PMT_CODE") = ?', [code])
+      .leftJoin('OP_LEVEL_SAL_R', (builder) => {
+        builder.on(
+          'OP_LEVEL_SAL_R.PLV_CODE',
+          '=',
+          this.knex.raw('RTRIM("OP_MASTER_T"."PMT_LEVEL_CODE")'),
+        );
+      })
+      .leftJoin('VIEW_POSITION_4OT', (builder) => {
+        builder.on(
+          'VIEW_POSITION_4OT.POS_POSITIONCODE',
+          '=',
+          this.knex.raw('RTRIM("OP_MASTER_T"."PMT_POS_NO")'),
+        );
+      })
       .leftJoin('EMPLOYEE', 'OP_MASTER_T.PMT_CODE', 'EMPLOYEE.CODE')
       .first();
-    return { ...employee };
+
+    const employeeCamel = employee ? await toCamelCase(employee) : undefined;
+    return employeeCamel as
+      | (Employee & ViewPosition4ot & OpLevelSalR)
+      | undefined;
   }
 }

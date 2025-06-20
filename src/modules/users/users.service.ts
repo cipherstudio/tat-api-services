@@ -6,6 +6,10 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { RedisCacheService } from '../cache/redis-cache.service';
 import * as bcrypt from 'bcrypt';
 import { omitFields } from '../../common/utils/omit-fields';
+import { Employee } from '@modules/dataviews/entities/employee.entity';
+import { ViewPosition4ot } from '@modules/dataviews/entities/view-position-4ot.entity';
+import { OpLevelSalR } from '@modules/dataviews/entities/op-level-sal-r.entity';
+import { OpMasterT } from '@modules/dataviews/entities/op-master-t.entity';
 
 const SENSITIVE_FIELDS = [
   'password',
@@ -60,7 +64,11 @@ export class UsersService {
     return omitFields(user, SENSITIVE_FIELDS);
   }
 
-  async findByEmail(email: string): Promise<User | undefined> {
+  async findByEmail(
+    email: string,
+  ): Promise<
+    (User & (Employee & ViewPosition4ot & OpLevelSalR & OpMasterT)) | undefined
+  > {
     return this.userRepository.findByEmail(email);
   }
 

@@ -34,9 +34,12 @@ import {
   ApiBearerAuth,
   ApiBody,
 } from '@nestjs/swagger';
+import { Employee } from '@modules/dataviews/entities/employee.entity';
+import { ViewPosition4ot } from '@modules/dataviews/entities/view-position-4ot.entity';
+import { OpLevelSalR } from '@modules/dataviews/entities/op-level-sal-r.entity';
 
 interface RequestWithUser extends Request {
-  user: User;
+  user: User & (Employee & ViewPosition4ot & OpLevelSalR);
 }
 
 @ApiTags('authentication')
