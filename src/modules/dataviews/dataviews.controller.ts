@@ -22,7 +22,6 @@ import { QueryVBudgetCodeDto } from './dto/query-v-budget-code.dto';
 import { QueryVTxOtDto } from './dto/query-v-tx-ot.dto';
 import { QueryPsPwJobDto } from './dto/query-ps-pw-job.dto';
 import { QueryOpLevelSalRDto } from './dto/query-op-level-sal-r.dto';
-import { OpLevelSalR } from './entities/op-level-sal-r.entity';
 import {
   ApiOperation,
   ApiQuery,
@@ -43,7 +42,7 @@ import { ViewPosition4otPaginate } from './entities/view-position-4ot.entity';
 import { VBudgetCodePaginate } from './entities/v-budget-code.entity';
 import { VTxOtPaginate } from './entities/v-tx-ot.entity';
 import { PsPwJobPaginate } from './entities/ps-pw-job.entity';
-import { OpLevelSalRRepository, OpLevelSalRPaginate } from './repositories/op-level-sal-r.repository';
+import { OpLevelSalRPaginate } from './repositories/op-level-sal-r.repository';
 
 @ApiTags('dataviews')
 @Controller('dataviews')
@@ -544,7 +543,9 @@ export class DataviewsController {
     type: Number,
     example: 0,
   })
-  findOpLevelSalRWithQuery(@Query() query: QueryOpLevelSalRDto): Promise<OpLevelSalRPaginate> {
+  findOpLevelSalRWithQuery(
+    @Query() query: QueryOpLevelSalRDto,
+  ): Promise<OpLevelSalRPaginate> {
     return this.dataviewsService.findOpLevelSalRWithQuery(query);
   }
 }
