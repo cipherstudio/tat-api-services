@@ -121,6 +121,7 @@ export class ApprovalService {
       includeInactive = false,
       name,
       searchTerm,
+      latestApprovalStatus,
     } = queryOptions || {};
 
     // Prepare conditions
@@ -137,21 +138,158 @@ export class ApprovalService {
     const dbOrderBy = orderBy === 'createdAt' ? 'created_at' : 
                      orderBy === 'updatedAt' ? 'updated_at' : orderBy;
 
-    const result = await this.approvalRepository.findWithPagination(
-      page,
-      limit,
-      conditions,
-      dbOrderBy,
-      orderDir.toLowerCase() as 'asc' | 'desc'
-    );
+    const offset = (page - 1) * limit;
 
-    // If we have a search term, filter results manually
-    if (searchTerm && result.data.length > 0) {
-      result.data = result.data.filter(item => 
+    // Get approvals with pagination
+    const [countResult, approvals] = await Promise.all([
+      this.knexService.knex('approval')
+        .where(conditions)
+        .count('* as count')
+        .first(),
+      this.knexService.knex('approval')
+        .where(conditions)
+        .select(
+          'id',
+          'increment_id as incrementId',
+          'record_type as recordType',
+          'name',
+          'employee_code as employeeCode',
+          'travel_type as travelType',
+          'international_sub_option as internationalSubOption',
+          'approval_ref as approvalRef',
+          'work_start_date as workStartDate',
+          'work_end_date as workEndDate',
+          'start_country as startCountry',
+          'end_country as endCountry',
+          'remarks',
+          'num_travelers as numTravelers',
+          'document_no as documentNo',
+          'document_tel as documentTel',
+          'document_to as documentTo',
+          'document_title as documentTitle',
+          'attachment_id as attachmentId',
+          'form3_total_outbound as form3TotalOutbound',
+          'form3_total_inbound as form3TotalInbound',
+          'form3_total_amount as form3TotalAmount',
+          'exceed_lodging_rights_checked as exceedLodgingRightsChecked',
+          'exceed_lodging_rights_reason as exceedLodgingRightsReason',
+          'form4_total_amount as form4TotalAmount',
+          'form5_total_amount as form5TotalAmount',
+          'approval_date as approvalDate',
+          'staff',
+          'confidentiality_level as confidentialityLevel',
+          'urgency_level as urgencyLevel',
+          'comments',
+          'final_staff as finalStaff',
+          'signer_date as signerDate',
+          'document_ending as documentEnding',
+          'document_ending_wording as documentEndingWording',
+          'signer_name as signerName',
+          'use_file_signature as useFileSignature',
+          'signature_attachment_id as signatureAttachmentId',
+          'use_system_signature as useSystemSignature',
+          'user_id as userId',
+          'created_at as createdAt',
+          'updated_at as updatedAt',
+          'deleted_at as deletedAt'
+        )
+        .orderBy(dbOrderBy, orderDir.toLowerCase() as 'asc' | 'desc')
+        .limit(limit)
+        .offset(offset)
+    ]);
+
+    const total = Number(countResult?.count || 0);
+
+    // Get latest status for each approval
+    const approvalIds = approvals.map(approval => approval.id);
+    let latestStatuses = [];
+    
+    if (approvalIds.length > 0) {
+      // Get latest status for each approval using individual queries
+      const statusPromises = approvalIds.map(async (approvalId) => {
+        const latestStatus = await this.knexService.knex('approval_status')
+          .select('approval_id', 'status', 'created_at')
+          .where('approval_id', approvalId)
+          .orderBy('created_at', 'desc')
+          .first();
+        return latestStatus;
+      });
+      
+      latestStatuses = await Promise.all(statusPromises);
+    }
+
+    // Get date ranges for each approval
+    let dateRanges = [];
+    
+    if (approvalIds.length > 0) {
+      // Get all date ranges for each approval
+      const dateRangePromises = approvalIds.map(async (approvalId) => {
+        const dateRangesForApproval = await this.knexService.knex('approval_date_ranges')
+          .select('approval_id', 'start_date', 'end_date')
+          .where('approval_id', approvalId)
+          .orderBy('start_date', 'asc');
+        return dateRangesForApproval;
+      });
+      
+      dateRanges = await Promise.all(dateRangePromises);
+    }
+
+    // Create a map of latest statuses by approval ID
+    const statusMap = new Map();
+    latestStatuses.forEach(status => {
+      statusMap.set(status.approval_id, {
+        latestApprovalStatus: status.status,
+        latestStatusCreatedAt: status.created_at
+      });
+    });
+
+    // Create a map of date ranges by approval ID
+    const dateRangeMap = new Map();
+    dateRanges.forEach(dateRangeArray => {
+      if (dateRangeArray && dateRangeArray.length > 0) {
+        const approvalId = dateRangeArray[0].approval_id;
+        dateRangeMap.set(approvalId, dateRangeArray.map(range => ({
+          startDate: range.start_date,
+          endDate: range.end_date
+        })));
+      }
+    });
+
+    // Combine approvals with their latest status and date ranges
+    const data = approvals.map(approval => ({
+      ...approval,
+      latestApprovalStatus: statusMap.get(approval.id)?.latestApprovalStatus || null,
+      latestStatusCreatedAt: statusMap.get(approval.id)?.latestStatusCreatedAt || null,
+      approvalDateRanges: dateRangeMap.get(approval.id) || []
+    }));
+
+    // Apply filters
+    let filteredData = data;
+    
+    // Filter by search term
+    if (searchTerm && data.length > 0) {
+      filteredData = filteredData.filter(item => 
         item.documentTitle?.toLowerCase().includes(searchTerm.toLowerCase())
       );
-      result.meta.total = result.data.length;
     }
+
+    // Filter by latest approval status
+    if (latestApprovalStatus && filteredData.length > 0) {
+      filteredData = filteredData.filter(item => 
+        item.latestApprovalStatus === latestApprovalStatus
+      );
+    }
+
+    const result = {
+      data: filteredData,
+      meta: {
+        total: (searchTerm || latestApprovalStatus) ? filteredData.length : total,
+        page,
+        limit,
+        totalPages: Math.ceil(((searchTerm || latestApprovalStatus) ? filteredData.length : total) / limit),
+        lastPage: Math.ceil(((searchTerm || latestApprovalStatus) ? filteredData.length : total) / limit)
+      },
+    };
 
     // Cache the result
     await this.cacheService.set(cacheKey, result, this.CACHE_TTL);
@@ -200,6 +338,8 @@ export class ApprovalService {
         'form5_total_amount as form5TotalAmount',
         'approval_date as approvalDate',
         'staff',
+        'confidentiality_level as confidentialityLevel',
+        'urgency_level as urgencyLevel',
         'comments',
         'final_staff as finalStaff',
         'signer_date as signerDate',
@@ -223,8 +363,6 @@ export class ApprovalService {
     // Map the approval data to the response DTO
     const approvalDto: ApprovalDetailResponseDto = {
       ...approval,
-      confidentialityLevel: approval.confidentiality_level ? JSON.parse(approval.confidentiality_level) : undefined,
-      urgencyLevel: approval.urgency_level ? JSON.parse(approval.urgency_level) : undefined,
       departments: approval.departments ? JSON.parse(approval.departments) : undefined,
       degrees: approval.degrees ? JSON.parse(approval.degrees) : undefined,
       finalDepartments: approval.final_departments ? JSON.parse(approval.final_departments) : undefined,
@@ -526,6 +664,8 @@ export class ApprovalService {
           exceed_lodging_rights_reason: updateDto.exceedLodgingRightsReason,
           form4_total_amount: updateDto.form4TotalAmount,
           form5_total_amount: updateDto.form5TotalAmount,
+          confidentiality_level: updateDto.confidentialityLevel,
+          urgency_level: updateDto.urgencyLevel,
           staff: updateDto.staff,
           comments: updateDto.comments,
           approval_date: updateDto.approvalDate,
@@ -1014,16 +1154,6 @@ export class ApprovalService {
 
       // Process JSON fields
       const updateData: any = {};
-
-      if (updateDto.confidentialityLevel && Array.isArray(updateDto.confidentialityLevel)) {
-        console.log('Processing confidentiality levels:', JSON.stringify(updateDto.confidentialityLevel, null, 2));
-        updateData.confidentiality_level = JSON.stringify(updateDto.confidentialityLevel);
-      }
-
-      if (updateDto.urgencyLevel && Array.isArray(updateDto.urgencyLevel)) {
-        console.log('Processing urgency levels:', JSON.stringify(updateDto.urgencyLevel, null, 2));
-        updateData.urgency_level = JSON.stringify(updateDto.urgencyLevel);
-      }
 
       if (updateDto.departments && Array.isArray(updateDto.departments)) {
         console.log('Processing departments:', JSON.stringify(updateDto.departments, null, 2));

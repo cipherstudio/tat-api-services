@@ -235,6 +235,24 @@ export interface Approval {
    * When the approval was deleted
    */
   deletedAt?: Date;
+
+  /**
+   * The latest approval status
+   */
+  latestApprovalStatus?: string;
+
+  /**
+   * When the latest approval status was created
+   */
+  latestStatusCreatedAt?: Date;
+
+  /**
+   * Array of approval date ranges
+   */
+  approvalDateRanges?: Array<{
+    startDate: string;
+    endDate: string;
+  }>;
 }
 
 // Snake case to camel case mapping for database results
