@@ -41,6 +41,11 @@ export class QueryApprovalDto {
   @IsString()
   searchTerm?: string;
 
+  @ApiPropertyOptional({ description: 'Filter by latest approval status' })
+  @IsOptional()
+  @IsString()
+  latestApprovalStatus?: string;
+
   @ApiPropertyOptional({ description: 'Filter by creation date (after)' })
   @IsOptional()
   @Type(() => Date)

@@ -107,6 +107,12 @@ export class ApprovalController {
     description: 'Search term',
   })
   @ApiQuery({
+    name: 'latestApprovalStatus',
+    type: String,
+    required: false,
+    description: 'Filter by latest approval status',
+  })
+  @ApiQuery({
     name: 'createdAfter',
     type: Date,
     required: false,
@@ -133,6 +139,7 @@ export class ApprovalController {
     @Query('includeInactive') includeInactive?: boolean,
     @Query('name') name?: string,
     @Query('searchTerm') searchTerm?: string,
+    @Query('latestApprovalStatus') latestApprovalStatus?: string,
     @Query('createdAfter') createdAfter?: Date,
     @Query('createdBefore') createdBefore?: Date,
     @Query('includes') includes?: string[],
@@ -145,6 +152,7 @@ export class ApprovalController {
       includeInactive,
       name,
       searchTerm,
+      latestApprovalStatus,
       createdAfter,
       createdBefore,
       includes,

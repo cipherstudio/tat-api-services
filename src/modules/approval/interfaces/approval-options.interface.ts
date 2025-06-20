@@ -23,6 +23,16 @@ export interface ApprovalFilterOptions extends BaseFilterOptions {
    * })
    */
   name?: string;
+
+  /**
+   * Filter by latest approval status
+   * @TypeProperty({
+   *   type: 'string',
+   *   isOptional: true,
+   *   description: 'Filter by latest approval status'
+   * })
+   */
+  latestApprovalStatus?: string;
 }
 
 /**
