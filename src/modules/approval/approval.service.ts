@@ -18,7 +18,6 @@ import { CheckClothingExpenseEligibilityDto } from './dto/check-clothing-expense
 import { ClothingExpenseEligibilityResponseDto } from './dto/clothing-expense-eligibility-response.dto';
 //import { ApprovalWorkLocationDto } from './dto/approval-work-location.dto';
 
-
 @Injectable()
 export class ApprovalService {
   private readonly CACHE_PREFIX = 'approval';
@@ -33,17 +32,18 @@ export class ApprovalService {
   private async generateIncrementId(): Promise<string> {
     // Get current date
     const now = new Date();
-    
+
     // Convert to Buddhist year and get last 2 digits
     const beYear = now.getFullYear() + 543;
     const yearLastTwoDigits = beYear.toString().slice(-2);
-    
+
     // Get current month and pad with leading zero
     const currentMonth = (now.getMonth() + 1).toString().padStart(2, '0');
-    
+
     // Find the last increment ID for current month
     const prefix = `EX${yearLastTwoDigits}${currentMonth}`;
-    const result = await this.knexService.knex('approval')
+    const result = await this.knexService
+      .knex('approval')
       .where('increment_id', 'like', `${prefix}%`)
       .orderBy('increment_id', 'desc')
       .first();
@@ -57,7 +57,10 @@ export class ApprovalService {
     return `${prefix}${sequence.toString().padStart(5, '0')}`;
   }
 
-  async create(createApprovalDto: CreateApprovalDto, userId: number): Promise<Approval> {
+  async create(
+    createApprovalDto: CreateApprovalDto,
+    userId: number,
+  ): Promise<Approval> {
     // Start a transaction
     const trx = await this.knexService.knex.transaction();
 
@@ -69,7 +72,7 @@ export class ApprovalService {
       const data = {
         ...createApprovalDto,
         incrementId,
-        userId
+        userId,
       };
 
       // Create the approval record with increment ID and user ID
@@ -81,7 +84,7 @@ export class ApprovalService {
         user_id: userId,
         approval_id: savedApproval.id,
         created_at: new Date(),
-        updated_at: new Date()
+        updated_at: new Date(),
       });
 
       // Commit the transaction
@@ -91,11 +94,13 @@ export class ApprovalService {
       await this.cacheService.set(
         this.cacheService.generateKey(this.CACHE_PREFIX, savedApproval.id),
         savedApproval,
-        this.CACHE_TTL
+        this.CACHE_TTL,
       );
 
       // Invalidate the list cache
-      await this.cacheService.del(this.cacheService.generateListKey(this.CACHE_PREFIX));
+      await this.cacheService.del(
+        this.cacheService.generateListKey(this.CACHE_PREFIX),
+      );
 
       return savedApproval;
     } catch (error) {
@@ -105,10 +110,13 @@ export class ApprovalService {
     }
   }
 
-  async findAll(queryOptions?: ApprovalQueryOptions): Promise<PaginatedResult<Approval>> {
+  async findAll(
+    queryOptions?: ApprovalQueryOptions,
+  ): Promise<PaginatedResult<Approval>> {
     // Try to get from cache first
     const cacheKey = this.cacheService.generateListKey(this.CACHE_PREFIX);
-    const cachedResult = await this.cacheService.get<PaginatedResult<Approval>>(cacheKey);
+    const cachedResult =
+      await this.cacheService.get<PaginatedResult<Approval>>(cacheKey);
     if (cachedResult) {
       return cachedResult;
     }
@@ -135,18 +143,24 @@ export class ApprovalService {
     conditions.deleted_at = null;
 
     // Convert orderBy from camelCase to snake_case if needed
-    const dbOrderBy = orderBy === 'createdAt' ? 'created_at' : 
-                     orderBy === 'updatedAt' ? 'updated_at' : orderBy;
+    const dbOrderBy =
+      orderBy === 'createdAt'
+        ? 'created_at'
+        : orderBy === 'updatedAt'
+          ? 'updated_at'
+          : orderBy;
 
     const offset = (page - 1) * limit;
 
     // Get approvals with pagination
     const [countResult, approvals] = await Promise.all([
-      this.knexService.knex('approval')
+      this.knexService
+        .knex('approval')
         .where(conditions)
         .count('* as count')
         .first(),
-      this.knexService.knex('approval')
+      this.knexService
+        .knex('approval')
         .where(conditions)
         .select(
           'id',
@@ -191,103 +205,116 @@ export class ApprovalService {
           'user_id as userId',
           'created_at as createdAt',
           'updated_at as updatedAt',
-          'deleted_at as deletedAt'
+          'deleted_at as deletedAt',
         )
         .orderBy(dbOrderBy, orderDir.toLowerCase() as 'asc' | 'desc')
         .limit(limit)
-        .offset(offset)
+        .offset(offset),
     ]);
 
     const total = Number(countResult?.count || 0);
 
     // Get latest status for each approval
-    const approvalIds = approvals.map(approval => approval.id);
+    const approvalIds = approvals.map((approval) => approval.id);
     let latestStatuses = [];
-    
+
     if (approvalIds.length > 0) {
       // Get latest status for each approval using individual queries
       const statusPromises = approvalIds.map(async (approvalId) => {
-        const latestStatus = await this.knexService.knex('approval_status')
+        const latestStatus = await this.knexService
+          .knex('approval_status')
           .select('approval_id', 'status', 'created_at')
           .where('approval_id', approvalId)
           .orderBy('created_at', 'desc')
           .first();
         return latestStatus;
       });
-      
+
       latestStatuses = await Promise.all(statusPromises);
     }
 
     // Get date ranges for each approval
     let dateRanges = [];
-    
+
     if (approvalIds.length > 0) {
       // Get all date ranges for each approval
       const dateRangePromises = approvalIds.map(async (approvalId) => {
-        const dateRangesForApproval = await this.knexService.knex('approval_date_ranges')
+        const dateRangesForApproval = await this.knexService
+          .knex('approval_date_ranges')
           .select('approval_id', 'start_date', 'end_date')
           .where('approval_id', approvalId)
           .orderBy('start_date', 'asc');
         return dateRangesForApproval;
       });
-      
+
       dateRanges = await Promise.all(dateRangePromises);
     }
 
     // Create a map of latest statuses by approval ID
     const statusMap = new Map();
-    latestStatuses.forEach(status => {
+    latestStatuses.forEach((status) => {
       statusMap.set(status.approval_id, {
         latestApprovalStatus: status.status,
-        latestStatusCreatedAt: status.created_at
+        latestStatusCreatedAt: status.created_at,
       });
     });
 
     // Create a map of date ranges by approval ID
     const dateRangeMap = new Map();
-    dateRanges.forEach(dateRangeArray => {
+    dateRanges.forEach((dateRangeArray) => {
       if (dateRangeArray && dateRangeArray.length > 0) {
         const approvalId = dateRangeArray[0].approval_id;
-        dateRangeMap.set(approvalId, dateRangeArray.map(range => ({
-          startDate: range.start_date,
-          endDate: range.end_date
-        })));
+        dateRangeMap.set(
+          approvalId,
+          dateRangeArray.map((range) => ({
+            startDate: range.start_date,
+            endDate: range.end_date,
+          })),
+        );
       }
     });
 
     // Combine approvals with their latest status and date ranges
-    const data = approvals.map(approval => ({
+    const data = approvals.map((approval) => ({
       ...approval,
-      latestApprovalStatus: statusMap.get(approval.id)?.latestApprovalStatus || null,
-      latestStatusCreatedAt: statusMap.get(approval.id)?.latestStatusCreatedAt || null,
-      approvalDateRanges: dateRangeMap.get(approval.id) || []
+      latestApprovalStatus:
+        statusMap.get(approval.id)?.latestApprovalStatus || null,
+      latestStatusCreatedAt:
+        statusMap.get(approval.id)?.latestStatusCreatedAt || null,
+      approvalDateRanges: dateRangeMap.get(approval.id) || [],
     }));
 
     // Apply filters
     let filteredData = data;
-    
+
     // Filter by search term
     if (searchTerm && data.length > 0) {
-      filteredData = filteredData.filter(item => 
-        item.documentTitle?.toLowerCase().includes(searchTerm.toLowerCase())
+      filteredData = filteredData.filter((item) =>
+        item.documentTitle?.toLowerCase().includes(searchTerm.toLowerCase()),
       );
     }
 
     // Filter by latest approval status
     if (latestApprovalStatus && filteredData.length > 0) {
-      filteredData = filteredData.filter(item => 
-        item.latestApprovalStatus === latestApprovalStatus
+      filteredData = filteredData.filter(
+        (item) => item.latestApprovalStatus === latestApprovalStatus,
       );
     }
 
     const result = {
       data: filteredData,
       meta: {
-        total: (searchTerm || latestApprovalStatus) ? filteredData.length : total,
+        total: searchTerm || latestApprovalStatus ? filteredData.length : total,
         page,
         limit,
-        totalPages: Math.ceil(((searchTerm || latestApprovalStatus) ? filteredData.length : total) / limit),
-        lastPage: Math.ceil(((searchTerm || latestApprovalStatus) ? filteredData.length : total) / limit)
+        totalPages: Math.ceil(
+          (searchTerm || latestApprovalStatus ? filteredData.length : total) /
+            limit,
+        ),
+        lastPage: Math.ceil(
+          (searchTerm || latestApprovalStatus ? filteredData.length : total) /
+            limit,
+        ),
       },
     };
 
@@ -300,13 +327,15 @@ export class ApprovalService {
   async findById(id: number): Promise<ApprovalDetailResponseDto> {
     // Try to get from cache first
     const cacheKey = this.cacheService.generateKey(this.CACHE_PREFIX, id);
-    const cachedApproval = await this.cacheService.get<ApprovalDetailResponseDto>(cacheKey);
+    const cachedApproval =
+      await this.cacheService.get<ApprovalDetailResponseDto>(cacheKey);
     if (cachedApproval) {
       return cachedApproval;
     }
 
     // Add soft delete condition to the query
-    const approval = await this.knexService.knex('approval')
+    const approval = await this.knexService
+      .knex('approval')
       .where('id', id)
       .whereNull('deleted_at')
       .select(
@@ -363,30 +392,40 @@ export class ApprovalService {
     // Map the approval data to the response DTO
     const approvalDto: ApprovalDetailResponseDto = {
       ...approval,
-      departments: approval.departments ? JSON.parse(approval.departments) : undefined,
+      departments: approval.departments
+        ? JSON.parse(approval.departments)
+        : undefined,
       degrees: approval.degrees ? JSON.parse(approval.degrees) : undefined,
-      finalDepartments: approval.final_departments ? JSON.parse(approval.final_departments) : undefined,
-      finalDegrees: approval.final_degrees ? JSON.parse(approval.final_degrees) : undefined,
+      finalDepartments: approval.final_departments
+        ? JSON.parse(approval.final_departments)
+        : undefined,
+      finalDegrees: approval.final_degrees
+        ? JSON.parse(approval.final_degrees)
+        : undefined,
     };
 
     // Get status history
-    const statusHistory = await this.knexService.knex('approval_status')
+    const statusHistory = await this.knexService
+      .knex('approval_status')
       .where('approval_id', id)
       .orderBy('created_at', 'desc')
       .select('id', 'status', 'user_id as userId', 'created_at as createdAt');
 
     // Get travel date ranges
-    const travelDateRanges = await this.knexService.knex('approval_date_ranges')
+    const travelDateRanges = await this.knexService
+      .knex('approval_date_ranges')
       .where('approval_id', id)
       .select('id', 'start_date as startDate', 'end_date as endDate');
 
     // Get approval contents
-    const approvalContents = await this.knexService.knex('approval_contents')
+    const approvalContents = await this.knexService
+      .knex('approval_contents')
       .where('approval_id', id)
       .select('id', 'detail');
 
     // Get trip entries
-    const tripEntries = await this.knexService.knex('approval_trip_entries')
+    const tripEntries = await this.knexService
+      .knex('approval_trip_entries')
       .where('approval_id', id)
       .select(
         'id',
@@ -401,14 +440,16 @@ export class ApprovalService {
 
     // Get trip date ranges for each trip entry
     for (const tripEntry of tripEntries) {
-      const tripDateRanges = await this.knexService.knex('approval_trip_date_ranges')
+      const tripDateRanges = await this.knexService
+        .knex('approval_trip_date_ranges')
         .where('approval_trip_entries_id', tripEntry.id)
         .select('id', 'start_date as startDate', 'end_date as endDate');
       tripEntry.tripDateRanges = tripDateRanges;
     }
 
     // Get staff members
-    const staffMembers = await this.knexService.knex('approval_staff_members')
+    const staffMembers = await this.knexService
+      .knex('approval_staff_members')
       .where('approval_id', id)
       .select(
         'id',
@@ -418,12 +459,13 @@ export class ApprovalService {
         'role',
         'position',
         'right_equivalent as rightEquivalent',
-        'organization_position as organizationPosition'
+        'organization_position as organizationPosition',
       );
 
     // Get work locations for each staff member
     for (const staffMember of staffMembers) {
-      const workLocations = await this.knexService.knex('approval_work_locations')
+      const workLocations = await this.knexService
+        .knex('approval_work_locations')
         .where('staff_member_id', staffMember.id)
         .where('approval_id', id)
         .select(
@@ -435,12 +477,13 @@ export class ApprovalService {
           'checked',
           'destination_type as destinationType',
           'destination_id as destinationId',
-          'destination_table as destinationTable'
+          'destination_table as destinationTable',
         );
 
       // Get trip date ranges for each work location
       for (const workLocation of workLocations) {
-        const workLocationTripDateRanges = await this.knexService.knex('approval_work_locations_date_ranges')
+        const workLocationTripDateRanges = await this.knexService
+          .knex('approval_work_locations_date_ranges')
           .where('approval_work_locations_id', workLocation.id)
           .where('approval_id', id)
           .select('id', 'start_date as startDate', 'end_date as endDate');
@@ -449,7 +492,8 @@ export class ApprovalService {
 
       // Get transportation expenses for each work location
       for (const workLocation of workLocations) {
-        const transportationExpenses = await this.knexService.knex('approval_transportation_expense')
+        const transportationExpenses = await this.knexService
+          .knex('approval_transportation_expense')
           .where('work_location_id', workLocation.id)
           .where('staff_member_id', staffMember.id)
           .where('approval_id', id)
@@ -468,14 +512,15 @@ export class ApprovalService {
             'inbound_trips as inboundTrips',
             'inbound_expense as inboundExpense',
             'inbound_total as inboundTotal',
-            'total_amount as totalAmount'
+            'total_amount as totalAmount',
           );
         workLocation.transportationExpenses = transportationExpenses;
       }
 
       // Get accommodation expenses for each work location
       for (const workLocation of workLocations) {
-        const accommodationExpenses = await this.knexService.knex('approval_accommodation_expense')
+        const accommodationExpenses = await this.knexService
+          .knex('approval_accommodation_expense')
           .where('work_location_id', workLocation.id)
           .where('staff_member_id', staffMember.id)
           .where('approval_id', id)
@@ -509,12 +554,13 @@ export class ApprovalService {
             'lodging_double_person_external as lodgingDoublePersonExternal',
             'lodging_total as lodgingTotal',
             'moving_cost_checked as movingCostChecked',
-            'moving_cost_rate as movingCostRate'
+            'moving_cost_rate as movingCostRate',
           );
 
         // Get accommodation transport expenses for each accommodation expense
         for (const accommodationExpense of accommodationExpenses) {
-          const accommodationTransportExpenses = await this.knexService.knex('approval_accommodation_transport_expense')
+          const accommodationTransportExpenses = await this.knexService
+            .knex('approval_accommodation_transport_expense')
             .where('approval_accommodation_expense_id', accommodationExpense.id)
             .where('approval_id', id)
             .select(
@@ -522,12 +568,14 @@ export class ApprovalService {
               'type',
               'amount',
               'checked',
-              'flight_route as flightRoute'
+              'flight_route as flightRoute',
             );
-          accommodationExpense.accommodationTransportExpenses = accommodationTransportExpenses;
+          accommodationExpense.accommodationTransportExpenses =
+            accommodationTransportExpenses;
 
           // Get accommodation holiday expenses for each accommodation expense
-          const accommodationHolidayExpenses = await this.knexService.knex('approval_accommodation_holiday_expense')
+          const accommodationHolidayExpenses = await this.knexService
+            .knex('approval_accommodation_holiday_expense')
             .where('approval_accommodation_expense_id', accommodationExpense.id)
             .where('approval_id', id)
             .select(
@@ -538,9 +586,10 @@ export class ApprovalService {
               'time',
               'hours',
               'total',
-              'note'
+              'note',
             );
-          accommodationExpense.accommodationHolidayExpenses = accommodationHolidayExpenses;
+          accommodationExpense.accommodationHolidayExpenses =
+            accommodationHolidayExpenses;
         }
 
         workLocation.accommodationExpenses = accommodationExpenses;
@@ -549,19 +598,21 @@ export class ApprovalService {
       staffMember.workLocations = workLocations;
 
       // Get entertainment expenses for each staff member
-      const entertainmentExpenses = await this.knexService.knex('approval_entertainment_expense')
+      const entertainmentExpenses = await this.knexService
+        .knex('approval_entertainment_expense')
         .where('staff_member_id', staffMember.id)
         .where('approval_id', id)
         .select(
           'id',
           'entertainment_short_checked as entertainmentShortChecked',
           'entertainment_long_checked as entertainmentLongChecked',
-          'entertainment_amount as entertainmentAmount'
+          'entertainment_amount as entertainmentAmount',
         );
       staffMember.entertainmentExpenses = entertainmentExpenses;
 
       // Get clothing expenses for each staff member
-      const clothingExpenses = await this.knexService.knex('approval_clothing_expense')
+      const clothingExpenses = await this.knexService
+        .knex('approval_clothing_expense')
         .where('employee_code', staffMember.employeeCode)
         .where('approval_id', id)
         .select(
@@ -573,30 +624,26 @@ export class ApprovalService {
           'next_claim_date as nextClaimDate',
           'work_end_date as workEndDate',
           'increment_id as incrementId',
-          'destination_country as destinationCountry'
+          'destination_country as destinationCountry',
         );
       staffMember.clothingExpenses = clothingExpenses;
     }
 
     // Get other expenses
-    const otherExpenses = await this.knexService.knex('approval_other_expense')
+    const otherExpenses = await this.knexService
+      .knex('approval_other_expense')
       .where('approval_id', id)
-      .select(
-        'id',
-        'type',
-        'amount',
-        'position',
-        'reason',
-        'acknowledged'
-      );
+      .select('id', 'type', 'amount', 'position', 'reason', 'acknowledged');
 
     // Get conditions
-    const conditions = await this.knexService.knex('approval_conditions')
+    const conditions = await this.knexService
+      .knex('approval_conditions')
       .where('approval_id', id)
       .select('id', 'text');
 
     // Get budgets
-    const budgets = await this.knexService.knex('approval_budgets')
+    const budgets = await this.knexService
+      .knex('approval_budgets')
       .where('approval_id', id)
       .select(
         'id',
@@ -604,7 +651,7 @@ export class ApprovalService {
         'item_type as itemType',
         'reservation_code as reservationCode',
         'department',
-        'budget_code as budgetCode'
+        'budget_code as budgetCode',
       );
 
     // Combine all the data
@@ -618,7 +665,7 @@ export class ApprovalService {
       staffMembers,
       otherExpenses,
       conditions,
-      budgets
+      budgets,
     };
 
     // Cache the result
@@ -638,47 +685,45 @@ export class ApprovalService {
 
     try {
       // Update approval record
-      await trx('approval')
-        .where('id', id)
-        .update({
-          record_type: updateDto.recordType,
-          name: updateDto.name,
-          employee_code: updateDto.employeeCode,
-          travel_type: updateDto.travelType,
-          international_sub_option: updateDto.internationalSubOption,
-          work_start_date: updateDto.workStartDate,
-          work_end_date: updateDto.workEndDate,
-          start_country: updateDto.startCountry,
-          end_country: updateDto.endCountry,
-          remarks: updateDto.remarks,
-          num_travelers: updateDto.numTravelers,
-          document_no: updateDto.documentNo,
-          document_tel: updateDto.documentTel,
-          document_to: updateDto.documentTo,
-          document_title: updateDto.documentTitle,
-          attachment_id: updateDto.attachmentId,
-          form3_total_outbound: updateDto.form3TotalOutbound,
-          form3_total_inbound: updateDto.form3TotalInbound,
-          form3_total_amount: updateDto.form3TotalAmount,
-          exceed_lodging_rights_checked: updateDto.exceedLodgingRightsChecked,
-          exceed_lodging_rights_reason: updateDto.exceedLodgingRightsReason,
-          form4_total_amount: updateDto.form4TotalAmount,
-          form5_total_amount: updateDto.form5TotalAmount,
-          confidentiality_level: updateDto.confidentialityLevel,
-          urgency_level: updateDto.urgencyLevel,
-          staff: updateDto.staff,
-          comments: updateDto.comments,
-          approval_date: updateDto.approvalDate,
-          final_staff: updateDto.finalStaff,
-          signer_date: updateDto.signerDate,
-          document_ending: updateDto.documentEnding,
-          document_ending_wording: updateDto.documentEndingWording,
-          signer_name: updateDto.signerName,
-          use_file_signature: updateDto.useFileSignature,
-          signature_attachment_id: updateDto.signatureAttachmentId,
-          use_system_signature: updateDto.useSystemSignature,
-          updated_at: new Date(),
-        });
+      await trx('approval').where('id', id).update({
+        record_type: updateDto.recordType,
+        name: updateDto.name,
+        employee_code: updateDto.employeeCode,
+        travel_type: updateDto.travelType,
+        international_sub_option: updateDto.internationalSubOption,
+        work_start_date: updateDto.workStartDate,
+        work_end_date: updateDto.workEndDate,
+        start_country: updateDto.startCountry,
+        end_country: updateDto.endCountry,
+        remarks: updateDto.remarks,
+        num_travelers: updateDto.numTravelers,
+        document_no: updateDto.documentNo,
+        document_tel: updateDto.documentTel,
+        document_to: updateDto.documentTo,
+        document_title: updateDto.documentTitle,
+        attachment_id: updateDto.attachmentId,
+        form3_total_outbound: updateDto.form3TotalOutbound,
+        form3_total_inbound: updateDto.form3TotalInbound,
+        form3_total_amount: updateDto.form3TotalAmount,
+        exceed_lodging_rights_checked: updateDto.exceedLodgingRightsChecked,
+        exceed_lodging_rights_reason: updateDto.exceedLodgingRightsReason,
+        form4_total_amount: updateDto.form4TotalAmount,
+        form5_total_amount: updateDto.form5TotalAmount,
+        confidentiality_level: updateDto.confidentialityLevel,
+        urgency_level: updateDto.urgencyLevel,
+        staff: updateDto.staff,
+        comments: updateDto.comments,
+        approval_date: updateDto.approvalDate,
+        final_staff: updateDto.finalStaff,
+        signer_date: updateDto.signerDate,
+        document_ending: updateDto.documentEnding,
+        document_ending_wording: updateDto.documentEndingWording,
+        signer_name: updateDto.signerName,
+        use_file_signature: updateDto.useFileSignature,
+        signature_attachment_id: updateDto.signatureAttachmentId,
+        use_system_signature: updateDto.useSystemSignature,
+        updated_at: new Date(),
+      });
 
       // Get the updated approval record
       const updatedApprovalRecord = await trx('approval')
@@ -686,8 +731,14 @@ export class ApprovalService {
         .first();
 
       // Process travel date ranges
-      if (updateDto.travelDateRanges && Array.isArray(updateDto.travelDateRanges)) {
-        console.log('Processing travel date ranges:', JSON.stringify(updateDto.travelDateRanges, null, 2));
+      if (
+        updateDto.travelDateRanges &&
+        Array.isArray(updateDto.travelDateRanges)
+      ) {
+        console.log(
+          'Processing travel date ranges:',
+          JSON.stringify(updateDto.travelDateRanges, null, 2),
+        );
         await trx('approval_date_ranges').where('approval_id', id).delete();
         for (const range of updateDto.travelDateRanges) {
           if (range && typeof range === 'object') {
@@ -701,8 +752,14 @@ export class ApprovalService {
       }
 
       // Process approval contents
-      if (updateDto.approvalContents && Array.isArray(updateDto.approvalContents)) {
-        console.log('Processing approval contents:', JSON.stringify(updateDto.approvalContents, null, 2));
+      if (
+        updateDto.approvalContents &&
+        Array.isArray(updateDto.approvalContents)
+      ) {
+        console.log(
+          'Processing approval contents:',
+          JSON.stringify(updateDto.approvalContents, null, 2),
+        );
         await trx('approval_contents').where('approval_id', id).delete();
         for (const content of updateDto.approvalContents) {
           if (content && typeof content === 'object') {
@@ -716,27 +773,42 @@ export class ApprovalService {
 
       // Process trip entries
       if (updateDto.tripEntries && Array.isArray(updateDto.tripEntries)) {
-        console.log('Processing trip entries:', JSON.stringify(updateDto.tripEntries, null, 2));
-        await trx('approval_trip_entries').where('approval_id', id).delete();
+        console.log(
+          'Processing trip entries:',
+          JSON.stringify(updateDto.tripEntries, null, 2),
+        );
+        const previousTripEntries = await trx('approval_trip_entries')
+          .where('approval_id', id)
+          .select('id');
+        const previousTripDateRanges = await trx('approval_trip_date_ranges')
+          .where('approval_id', id)
+          .select('id');
+
+        // delete previous trip entries
+        for (const entry of previousTripEntries) {
+          await trx('approval_trip_entries').where('id', entry.id).delete();
+        }
+        // delete previous trip date ranges
+        for (const range of previousTripDateRanges) {
+          await trx('approval_trip_date_ranges').where('id', range.id).delete();
+        }
+
         for (const entry of updateDto.tripEntries) {
           if (entry && typeof entry === 'object') {
-            const [tripEntryId] = await trx('approval_trip_entries').insert({
-              approval_id: id,
-              location: entry.location,
-              destination: entry.destination,
-              nearby_provinces: entry.nearbyProvinces,
-              details: entry.details,
-              destination_type: entry.destinationType,
-              destination_id: entry.destinationId,
-              destination_table: entry.destinationTable,
-            }).returning('id');
+            const [tripEntryId] = await trx('approval_trip_entries')
+              .insert({
+                approval_id: id,
+                location: entry.location,
+                destination: entry.destination,
+                nearby_provinces: entry.nearbyProvinces,
+                details: entry.details,
+                destination_type: entry.destinationType,
+                destination_id: entry.destinationId,
+                destination_table: entry.destinationTable,
+              })
+              .returning('id');
 
             if (entry.tripDateRanges && Array.isArray(entry.tripDateRanges)) {
-              // Delete existing trip date ranges for this trip entry
-              await trx('approval_trip_date_ranges')
-                .where('approval_id', id)
-                .delete();
-
               for (const range of entry.tripDateRanges) {
                 if (range && typeof range === 'object') {
                   await trx('approval_trip_date_ranges').insert({
@@ -754,17 +826,32 @@ export class ApprovalService {
 
       // Process staff members and their work locations
       if (updateDto.staffMembers && Array.isArray(updateDto.staffMembers)) {
-        console.log('Processing staff members:', JSON.stringify(updateDto.staffMembers, null, 2));
+        console.log(
+          'Processing staff members:',
+          JSON.stringify(updateDto.staffMembers, null, 2),
+        );
         await trx('approval_staff_members').where('approval_id', id).delete();
         await trx('approval_work_locations').where('approval_id', id).delete();
-        await trx('approval_work_locations_date_ranges').where('approval_id', id).delete();
-        await trx('approval_transportation_expense').where('approval_id', id).delete();
-        await trx('approval_accommodation_expense').where('approval_id', id).delete();
-        await trx('approval_accommodation_transport_expense').where('approval_id', id).delete();
-        await trx('approval_accommodation_holiday_expense').where('approval_id', id).delete();
-        await trx('approval_entertainment_expense').where('approval_id', id).delete();
+        await trx('approval_work_locations_date_ranges')
+          .where('approval_id', id)
+          .delete();
+        await trx('approval_transportation_expense')
+          .where('approval_id', id)
+          .delete();
+        await trx('approval_accommodation_expense')
+          .where('approval_id', id)
+          .delete();
+        await trx('approval_accommodation_transport_expense')
+          .where('approval_id', id)
+          .delete();
+        await trx('approval_accommodation_holiday_expense')
+          .where('approval_id', id)
+          .delete();
+        await trx('approval_entertainment_expense')
+          .where('approval_id', id)
+          .delete();
         //await trx('approval_clothing_expense').where('approval_id', id).delete();
-        
+
         for (const staffMember of updateDto.staffMembers) {
           const [insertedStaffMember] = await trx('approval_staff_members')
             .insert({
@@ -845,7 +932,9 @@ export class ApprovalService {
               // Process accommodation expenses
               if (Array.isArray(workLocation.accommodationExpenses)) {
                 for (const expense of workLocation.accommodationExpenses) {
-                  const [accommodationExpense] = await trx('approval_accommodation_expense')
+                  const [accommodationExpense] = await trx(
+                    'approval_accommodation_expense',
+                  )
                     .insert({
                       approval_id: id,
                       staff_member_id: insertedStaffMember.id,
@@ -875,7 +964,8 @@ export class ApprovalService {
                       lodging_single_nights: expense.lodgingSingleNights,
                       lodging_single_rate: expense.lodgingSingleRate,
                       lodging_double_person: expense.lodgingDoublePerson,
-                      lodging_double_person_external: expense.lodgingDoublePersonExternal,
+                      lodging_double_person_external:
+                        expense.lodgingDoublePersonExternal,
                       lodging_total: expense.lodgingTotal,
                       moving_cost_checked: expense.movingCostChecked,
                       moving_cost_rate: expense.movingCostRate,
@@ -887,37 +977,43 @@ export class ApprovalService {
                   // Process accommodation transport expenses
                   if (Array.isArray(expense.accommodationTransportExpenses)) {
                     for (const transportExpense of expense.accommodationTransportExpenses) {
-                      await trx('approval_accommodation_transport_expense')
-                        .insert({
-                          approval_id: id,
-                          approval_accommodation_expense_id: accommodationExpense.id,
-                          type: transportExpense.type,
-                          amount: transportExpense.amount,
-                          checked: transportExpense.checked,
-                          flight_route: transportExpense.flightRoute,
-                          created_at: new Date(),
-                          updated_at: new Date(),
-                        });
+                      await trx(
+                        'approval_accommodation_transport_expense',
+                      ).insert({
+                        approval_id: id,
+                        approval_accommodation_expense_id:
+                          accommodationExpense.id,
+                        type: transportExpense.type,
+                        amount: transportExpense.amount,
+                        checked: transportExpense.checked,
+                        flight_route: transportExpense.flightRoute,
+                        created_at: new Date(),
+                        updated_at: new Date(),
+                      });
                     }
                   }
 
                   // Process accommodation holiday expenses
-                  if (Array.isArray(workLocation.accommodationHolidayExpenses)) {
+                  if (
+                    Array.isArray(workLocation.accommodationHolidayExpenses)
+                  ) {
                     for (const holidayExpense of workLocation.accommodationHolidayExpenses) {
-                      await trx('approval_accommodation_holiday_expense')
-                        .insert({
-                          approval_id: id,
-                          approval_accommodation_expense_id: accommodationExpense.id,
-                          date: holidayExpense.date,
-                          thai_date: holidayExpense.thaiDate,
-                          checked: holidayExpense.checked,
-                          time: holidayExpense.time,
-                          hours: holidayExpense.hours,
-                          total: holidayExpense.total,
-                          note: holidayExpense.note,
-                          created_at: new Date(),
-                          updated_at: new Date(),
-                        });
+                      await trx(
+                        'approval_accommodation_holiday_expense',
+                      ).insert({
+                        approval_id: id,
+                        approval_accommodation_expense_id:
+                          accommodationExpense.id,
+                        date: holidayExpense.date,
+                        thai_date: holidayExpense.thaiDate,
+                        checked: holidayExpense.checked,
+                        time: holidayExpense.time,
+                        hours: holidayExpense.hours,
+                        total: holidayExpense.total,
+                        note: holidayExpense.note,
+                        created_at: new Date(),
+                        updated_at: new Date(),
+                      });
                     }
                   }
                 }
@@ -929,8 +1025,10 @@ export class ApprovalService {
                   await trx('approval_entertainment_expense').insert({
                     approval_id: id,
                     staff_member_id: insertedStaffMember.id,
-                    entertainment_short_checked: expense.entertainmentShortChecked,
-                    entertainment_long_checked: expense.entertainmentLongChecked,
+                    entertainment_short_checked:
+                      expense.entertainmentShortChecked,
+                    entertainment_long_checked:
+                      expense.entertainmentLongChecked,
                     entertainment_amount: expense.entertainmentAmount,
                     created_at: new Date(),
                     updated_at: new Date(),
@@ -945,12 +1043,14 @@ export class ApprovalService {
                   const existingExpense = await trx('approval_clothing_expense')
                     .where({
                       approval_id: id,
-                      employee_code: staffMember.employeeCode
+                      employee_code: staffMember.employeeCode,
                     })
                     .first();
 
                   // get first destination country
-                  const destinationCountry = updateDto.tripEntries.find(trip => trip.destinationTable === 'countries')?.destination;
+                  const destinationCountry = updateDto.tripEntries.find(
+                    (trip) => trip.destinationTable === 'countries',
+                  )?.destination;
 
                   // get work end date
                   let workEndDate = null;
@@ -964,48 +1064,79 @@ export class ApprovalService {
                   if (updateDto.travelType === 'international') {
                     // get work start date from first start date of traveldateranges
                     workStartDate = updateDto.travelDateRanges[0].start_date;
-                    const pwJob = await this.getPwJob(Number(staffMember.employeeCode));
+                    const pwJob = await this.getPwJob(
+                      Number(staffMember.employeeCode),
+                    );
                     if (!pwJob) {
-                      nextClaimDate = this.calculateNextClaimDate(workStartDate);
+                      nextClaimDate =
+                        this.calculateNextClaimDate(workStartDate);
                     } else {
-                      const organize = await this.knexService.knex('OP_ORGANIZE_R_TEMP')
+                      const organize = await this.knexService
+                        .knex('OP_ORGANIZE_R_TEMP')
                         .where('DEPTID', pwJob.DEPTID)
                         .first();
 
-                      if (organize.POG_TYPE == 3) {  // ต่างประเทศ
+                      if (organize.POG_TYPE == 3) {
+                        // ต่างประเทศ
                         // หา ประเภท A B C ของ office internatinal จากใบเก่า
-                        const oldDestination = await this.knexService.knex('office_international')
+                        const oldDestination = await this.knexService
+                          .knex('office_international')
                           .where('pog_code', organize.POG_CODE)
-                          .join('countries', 'office_international.country_id', 'countries.id')
+                          .join(
+                            'countries',
+                            'office_international.country_id',
+                            'countries.id',
+                          )
                           .first();
 
                         // หา ประเภท A B C ของ current destination employee
-                        const destination = updateDto.staffMembers.find(emp => emp.employeeCode === staffMember.employeeCode)?.workLocations.find(location => location.destinationTable === 'countries')?.[0];
+                        const destination = updateDto.staffMembers
+                          .find(
+                            (emp) =>
+                              emp.employeeCode === staffMember.employeeCode,
+                          )
+                          ?.workLocations.find(
+                            (location) =>
+                              location.destinationTable === 'countries',
+                          )?.[0];
                         let currentDestination;
                         if (destination.destinationTable === 'countries') {
-                          currentDestination = await this.knexService.knex('countries')
+                          currentDestination = await this.knexService
+                            .knex('countries')
                             .where('id', destination.destinationId)
                             .first();
-                        } else if (destination.destinationTable === 'tatOffices') {
-                          currentDestination = await this.knexService.knex('tat_offices')
+                        } else if (
+                          destination.destinationTable === 'tatOffices'
+                        ) {
+                          currentDestination = await this.knexService
+                            .knex('tat_offices')
                             .where('id', destination.destinationId)
-                            .join('countries', 'tat_offices.country_id', 'countries.id')
+                            .join(
+                              'countries',
+                              'tat_offices.country_id',
+                              'countries.id',
+                            )
                             .first();
                         }
 
                         if (currentDestination && oldDestination) {
                           // ถ้าเป็นประเภท A B C ของ ใบเก่า และ ใบใหม่ ไม่เหมือนกัน
                           if (currentDestination.type !== oldDestination.type) {
-                            nextClaimDate = this.calculateNextClaimDate(workStartDate);
+                            nextClaimDate =
+                              this.calculateNextClaimDate(workStartDate);
                           } else {
                             // ถ้าประเภทเหมือนกัน
                             // ให้เอา EFFDT จาก pwJob มาเช็คกับ checkEligibilityDto.workStartDate ว่าเกิน 2 ปี หรือยัง ถ้าเกินแล้ว, set isEligible true
                             // @todo อาจต้องเปลี่ยนไปเช็ค วันรายงานตัวกับ ViewDutyformCommands (รอคอนเฟิม)
-                            const isOverTwoYears = this.isOverTwoYears(pwJob.EFFDT, workStartDate);
+                            const isOverTwoYears = this.isOverTwoYears(
+                              pwJob.EFFDT,
+                              workStartDate,
+                            );
                             if (isOverTwoYears) {
                               // @todo หาวันรายงานตัว
                               const reportingDateDummy = '2024-03-20';
-                              nextClaimDate = this.calculateNextClaimDate(reportingDateDummy);
+                              nextClaimDate =
+                                this.calculateNextClaimDate(reportingDateDummy);
                             } else {
                               nextClaimDate = null;
                             }
@@ -1013,31 +1144,47 @@ export class ApprovalService {
                         } else {
                           // @todo
                         }
-                      } else { // ในประเทศ
+                      } else {
+                        // ในประเทศ
                         nextClaimDate = null;
                       }
                     }
-                  } else if (updateDto.travelType === 'temporary-international') {
+                  } else if (
+                    updateDto.travelType === 'temporary-international'
+                  ) {
                     workStartDate = updateDto.workStartDate;
-                    const pwJob = await this.getPwJob(Number(staffMember.employeeCode));
+                    const pwJob = await this.getPwJob(
+                      Number(staffMember.employeeCode),
+                    );
                     if (!pwJob) {
-                      nextClaimDate = this.calculateNextClaimDate(workStartDate);
+                      nextClaimDate =
+                        this.calculateNextClaimDate(workStartDate);
                     } else {
                       // ถ้ามี pwJob
                       // @todo ให้เช็คว่า เบิกครั้งก่อนประเภทไหน
-                      if (true) { // ex. ประจำ
+                      if (true) {
+                        // ex. ประจำ
                         // @todo เช็คว่ามีวันรายงานตัวไหม
-                        if (true) { // ex.มีวันรายงานตัว
+                        if (true) {
+                          // ex.มีวันรายงานตัว
                           // @todo get วันรายงานตัว
                           const reportingDateDummy = '2024-03-20';
-                          nextClaimDate = this.calculateNextClaimDate(reportingDateDummy);
-                        } else { // ex.ไม่มีวันรายงานตัว
-                          nextClaimDate = this.calculateNextClaimDate(workStartDate);
+                          nextClaimDate =
+                            this.calculateNextClaimDate(reportingDateDummy);
+                        } else {
+                          // ex.ไม่มีวันรายงานตัว
+                          nextClaimDate =
+                            this.calculateNextClaimDate(workStartDate);
                         }
-                      } else { // ex. ชั่วคราว
-                        const isOverTwoYears = this.isOverTwoYears(pwJob.EFFDT, workStartDate);
+                      } else {
+                        // ex. ชั่วคราว
+                        const isOverTwoYears = this.isOverTwoYears(
+                          pwJob.EFFDT,
+                          workStartDate,
+                        );
                         if (isOverTwoYears) {
-                          nextClaimDate = this.calculateNextClaimDate(workStartDate);
+                          nextClaimDate =
+                            this.calculateNextClaimDate(workStartDate);
                         } else {
                           nextClaimDate = null;
                         }
@@ -1050,7 +1197,7 @@ export class ApprovalService {
                     await trx('approval_clothing_expense')
                       .where({
                         approval_id: id,
-                        employee_code: staffMember.employeeCode
+                        employee_code: staffMember.employeeCode,
                       })
                       .update({
                         clothing_file_checked: expense.clothingFileChecked,
@@ -1061,7 +1208,7 @@ export class ApprovalService {
                         work_end_date: workEndDate, // ไม่ต้องส่ง เอามาจาก step 1
                         increment_id: approval.incrementId,
                         destination_country: destinationCountry ?? null,
-                        updated_at: new Date()
+                        updated_at: new Date(),
                       });
                   } else {
                     // Insert new record
@@ -1078,7 +1225,7 @@ export class ApprovalService {
                       increment_id: approval.incrementId,
                       destination_country: destinationCountry ?? null,
                       created_at: new Date(),
-                      updated_at: new Date()
+                      updated_at: new Date(),
                     });
                   }
                 }
@@ -1091,7 +1238,9 @@ export class ApprovalService {
       // After processing all staff members, clean up old clothing expenses
       if (updateDto.staffMembers && Array.isArray(updateDto.staffMembers)) {
         // Get all employee codes from current staff members
-        const currentEmployeeCodes = updateDto.staffMembers.map(staff => staff.employeeCode);
+        const currentEmployeeCodes = updateDto.staffMembers.map(
+          (staff) => staff.employeeCode,
+        );
 
         // Delete clothing expenses for employee codes that are no longer in the staff members list
         await trx('approval_clothing_expense')
@@ -1102,7 +1251,10 @@ export class ApprovalService {
 
       // Process other expenses
       if (updateDto.otherExpenses && Array.isArray(updateDto.otherExpenses)) {
-        console.log('Processing other expenses:', JSON.stringify(updateDto.otherExpenses, null, 2));
+        console.log(
+          'Processing other expenses:',
+          JSON.stringify(updateDto.otherExpenses, null, 2),
+        );
         await trx('approval_other_expense').where('approval_id', id).delete();
         for (const expense of updateDto.otherExpenses) {
           if (expense && typeof expense === 'object') {
@@ -1122,7 +1274,10 @@ export class ApprovalService {
 
       // Process conditions
       if (updateDto.conditions && Array.isArray(updateDto.conditions)) {
-        console.log('Processing conditions:', JSON.stringify(updateDto.conditions, null, 2));
+        console.log(
+          'Processing conditions:',
+          JSON.stringify(updateDto.conditions, null, 2),
+        );
         await trx('approval_conditions').where('approval_id', id).delete();
         for (const condition of updateDto.conditions) {
           if (condition && typeof condition === 'object') {
@@ -1136,7 +1291,10 @@ export class ApprovalService {
 
       // Process budgets
       if (updateDto.budgets && Array.isArray(updateDto.budgets)) {
-        console.log('Processing budgets:', JSON.stringify(updateDto.budgets, null, 2));
+        console.log(
+          'Processing budgets:',
+          JSON.stringify(updateDto.budgets, null, 2),
+        );
         await trx('approval_budgets').where('approval_id', id).delete();
         for (const budget of updateDto.budgets) {
           if (budget && typeof budget === 'object') {
@@ -1156,29 +1314,44 @@ export class ApprovalService {
       const updateData: any = {};
 
       if (updateDto.departments && Array.isArray(updateDto.departments)) {
-        console.log('Processing departments:', JSON.stringify(updateDto.departments, null, 2));
+        console.log(
+          'Processing departments:',
+          JSON.stringify(updateDto.departments, null, 2),
+        );
         updateData.departments = JSON.stringify(updateDto.departments);
       }
 
       if (updateDto.degrees && Array.isArray(updateDto.degrees)) {
-        console.log('Processing degrees:', JSON.stringify(updateDto.degrees, null, 2));
+        console.log(
+          'Processing degrees:',
+          JSON.stringify(updateDto.degrees, null, 2),
+        );
         updateData.degrees = JSON.stringify(updateDto.degrees);
       }
 
-      if (updateDto.finalDepartments && Array.isArray(updateDto.finalDepartments)) {
-        console.log('Processing final departments:', JSON.stringify(updateDto.finalDepartments, null, 2));
-        updateData.final_departments = JSON.stringify(updateDto.finalDepartments);
+      if (
+        updateDto.finalDepartments &&
+        Array.isArray(updateDto.finalDepartments)
+      ) {
+        console.log(
+          'Processing final departments:',
+          JSON.stringify(updateDto.finalDepartments, null, 2),
+        );
+        updateData.final_departments = JSON.stringify(
+          updateDto.finalDepartments,
+        );
       }
 
       if (updateDto.finalDegrees && Array.isArray(updateDto.finalDegrees)) {
-        console.log('Processing final degrees:', JSON.stringify(updateDto.finalDegrees, null, 2));
+        console.log(
+          'Processing final degrees:',
+          JSON.stringify(updateDto.finalDegrees, null, 2),
+        );
         updateData.final_degrees = JSON.stringify(updateDto.finalDegrees);
       }
 
       if (Object.keys(updateData).length > 0) {
-        await trx('approval')
-          .where('id', id)
-          .update(updateData);
+        await trx('approval').where('id', id).update(updateData);
       }
 
       // Commit the transaction
@@ -1204,12 +1377,20 @@ export class ApprovalService {
     }
 
     // Remove from cache
-    await this.cacheService.del(this.cacheService.generateKey(this.CACHE_PREFIX, id));
+    await this.cacheService.del(
+      this.cacheService.generateKey(this.CACHE_PREFIX, id),
+    );
     // Invalidate the list cache
-    await this.cacheService.del(this.cacheService.generateListKey(this.CACHE_PREFIX));
+    await this.cacheService.del(
+      this.cacheService.generateListKey(this.CACHE_PREFIX),
+    );
   }
 
-  async updateStatus(id: number, updateStatusDto: UpdateApprovalStatusDto, userId: number): Promise<void> {
+  async updateStatus(
+    id: number,
+    updateStatusDto: UpdateApprovalStatusDto,
+    userId: number,
+  ): Promise<void> {
     const approval = await this.findById(id);
     if (!approval) {
       throw new NotFoundException(`Approval with ID ${id} not found`);
@@ -1225,15 +1406,19 @@ export class ApprovalService {
         user_id: userId,
         approval_id: id,
         created_at: new Date(),
-        updated_at: new Date()
+        updated_at: new Date(),
       });
 
       // Commit the transaction
       await trx.commit();
 
       // Invalidate the cache
-      await this.cacheService.del(this.cacheService.generateKey(this.CACHE_PREFIX, id));
-      await this.cacheService.del(this.cacheService.generateListKey(this.CACHE_PREFIX));
+      await this.cacheService.del(
+        this.cacheService.generateKey(this.CACHE_PREFIX, id),
+      );
+      await this.cacheService.del(
+        this.cacheService.generateListKey(this.CACHE_PREFIX),
+      );
     } catch (error) {
       // Rollback the transaction in case of error
       await trx.rollback();
@@ -1255,21 +1440,23 @@ export class ApprovalService {
 
     try {
       // Update clothing expense dates
-      await trx('approval_clothing_expense')
-        .where('approval_id', id)
-        .update({
-          reporting_date: updateDatesDto.reportingDate,
-          next_claim_date: updateDatesDto.nextClaimDate,
-          ddwork_end_date: updateDatesDto.ddworkEndDate,
-          updated_at: new Date(),
-        });
+      await trx('approval_clothing_expense').where('approval_id', id).update({
+        reporting_date: updateDatesDto.reportingDate,
+        next_claim_date: updateDatesDto.nextClaimDate,
+        ddwork_end_date: updateDatesDto.ddworkEndDate,
+        updated_at: new Date(),
+      });
 
       // Commit the transaction
       await trx.commit();
 
       // Invalidate the cache
-      await this.cacheService.del(this.cacheService.generateKey(this.CACHE_PREFIX, id));
-      await this.cacheService.del(this.cacheService.generateListKey(this.CACHE_PREFIX));
+      await this.cacheService.del(
+        this.cacheService.generateKey(this.CACHE_PREFIX, id),
+      );
+      await this.cacheService.del(
+        this.cacheService.generateListKey(this.CACHE_PREFIX),
+      );
     } catch (error) {
       // Rollback the transaction in case of error
       await trx.rollback();
@@ -1280,16 +1467,21 @@ export class ApprovalService {
   async checkClothingExpenseEligibility(
     checkEligibilityDto: CheckClothingExpenseEligibilityDto,
   ): Promise<ClothingExpenseEligibilityResponseDto[]> {
-
-    const employeeCodes = checkEligibilityDto.employees.map(emp => emp.employeeCode);
+    const employeeCodes = checkEligibilityDto.employees.map(
+      (emp) => emp.employeeCode,
+    );
 
     // set default result isEligible false
-    const result = employeeCodes.map(employeeCode => ({
+    const result = employeeCodes.map((employeeCode) => ({
       employeeCode,
       isEligible: false,
     }));
 
-    if (!['international', 'temporary-international'].includes(checkEligibilityDto.travelType)) {
+    if (
+      !['international', 'temporary-international'].includes(
+        checkEligibilityDto.travelType,
+      )
+    ) {
       // return all employee codes with isEligible false
       return result;
     }
@@ -1297,10 +1489,13 @@ export class ApprovalService {
     if (checkEligibilityDto.travelType === 'international') {
       await this.processInternationalEligibility(checkEligibilityDto, result);
     } else if (checkEligibilityDto.travelType === 'temporary-international') {
-      await this.processTemporaryInternationalEligibility(checkEligibilityDto, result);
+      await this.processTemporaryInternationalEligibility(
+        checkEligibilityDto,
+        result,
+      );
     } else {
       // ถ้าเป็นประเภทอื่นๆ, set isEligible false
-      result.forEach(r => r.isEligible = false);
+      result.forEach((r) => (r.isEligible = false));
     }
 
     return result;
@@ -1308,38 +1503,49 @@ export class ApprovalService {
 
   private async processInternationalEligibility(
     checkEligibilityDto: CheckClothingExpenseEligibilityDto,
-    result: ClothingExpenseEligibilityResponseDto[]
+    result: ClothingExpenseEligibilityResponseDto[],
   ): Promise<void> {
-    for (const employeeCode of result.map(r => r.employeeCode)) {
+    for (const employeeCode of result.map((r) => r.employeeCode)) {
       const pwJob = await this.getPwJob(employeeCode);
 
       // ถ้าไม่เจอข้อมูลการเบิกล่าสุด, set isEligible true
       if (!pwJob) {
         this.updateEligibility(result, employeeCode, true);
       } else {
-        await this.processPwJobForInternational(pwJob, checkEligibilityDto, result, employeeCode);
+        await this.processPwJobForInternational(
+          pwJob,
+          checkEligibilityDto,
+          result,
+          employeeCode,
+        );
       }
     }
   }
 
   private async processTemporaryInternationalEligibility(
     checkEligibilityDto: CheckClothingExpenseEligibilityDto,
-    result: ClothingExpenseEligibilityResponseDto[]
+    result: ClothingExpenseEligibilityResponseDto[],
   ): Promise<void> {
-    for (const employeeCode of result.map(r => r.employeeCode)) {
+    for (const employeeCode of result.map((r) => r.employeeCode)) {
       const pwJob = await this.getPwJob(employeeCode);
 
       // ถ้าไม่เจอข้อมูลการเบิกล่าสุด, set isEligible true
       if (!pwJob) {
         this.updateEligibility(result, employeeCode, true);
       } else {
-        await this.processPwJobForTemporaryInternational(pwJob, checkEligibilityDto, result, employeeCode);
+        await this.processPwJobForTemporaryInternational(
+          pwJob,
+          checkEligibilityDto,
+          result,
+          employeeCode,
+        );
       }
     }
   }
 
   private async getPwJob(employeeCode: number) {
-    return await this.knexService.knex('PS_PW_JOB_TEMP')
+    return await this.knexService
+      .knex('PS_PW_JOB_TEMP')
       .where('EMPLID', employeeCode)
       .andWhere('ACTION', 'XFR')
       .andWhere('ACTION_REASON', '008')
@@ -1350,32 +1556,39 @@ export class ApprovalService {
     pwJob: any,
     checkEligibilityDto: CheckClothingExpenseEligibilityDto,
     result: ClothingExpenseEligibilityResponseDto[],
-    employeeCode: number
+    employeeCode: number,
   ): Promise<void> {
     // เอา pwJob.DEPTID ไปเช็ค table OP_ORGANIZE_R_TEMP ว่าเป็นหน่วยงานต่างประเทศไหม
-    const organize = await this.knexService.knex('OP_ORGANIZE_R_TEMP')
+    const organize = await this.knexService
+      .knex('OP_ORGANIZE_R_TEMP')
       .where('DEPTID', pwJob.DEPTID)
       .first();
 
-    if (organize.POG_TYPE == 3) { // POG_TYPE 2 = ในประเทศ / 3 = ต่างประเทศ
+    if (organize.POG_TYPE == 3) {
+      // POG_TYPE 2 = ในประเทศ / 3 = ต่างประเทศ
       // ถ้าเป็นหน่วยงานต่างประเทศ
       // เอา organize.POG_CODE ไปเช็ค table office_international ว่าเป็นสำนักงาน นั้นเป็น ประเภทไหน
 
       // หา ประเภท A B C ของ office internatinal จากใบเก่า
-      const oldDestination = await this.knexService.knex('office_international')
+      const oldDestination = await this.knexService
+        .knex('office_international')
         .where('pog_code', organize.POG_CODE)
         .join('countries', 'office_international.country_id', 'countries.id')
         .first();
 
       // หา ประเภท A B C ของ current destination employee
-      const destination = checkEligibilityDto.employees.find(emp => emp.employeeCode === employeeCode);
+      const destination = checkEligibilityDto.employees.find(
+        (emp) => emp.employeeCode === employeeCode,
+      );
       let currentDestination;
       if (destination.destinationTable === 'countries') {
-        currentDestination = await this.knexService.knex('countries')
+        currentDestination = await this.knexService
+          .knex('countries')
           .where('id', destination.destinationId)
           .first();
       } else if (destination.destinationTable === 'tatOffices') {
-        currentDestination = await this.knexService.knex('tat_offices')
+        currentDestination = await this.knexService
+          .knex('tat_offices')
           .where('id', destination.destinationId)
           .join('countries', 'tat_offices.country_id', 'countries.id')
           .first();
@@ -1389,13 +1602,15 @@ export class ApprovalService {
           // ถ้าประเภทเหมือนกัน
           // ให้เอา EFFDT จาก pwJob มาเช็คกับ checkEligibilityDto.workStartDate ว่าเกิน 2 ปี หรือยัง ถ้าเกินแล้ว, set isEligible true
           // @todo อาจต้องเปลี่ยนไปเช็ค วันรายงานตัวกับ ViewDutyformCommands (รอคอนเฟิม)
-          const isOverTwoYears = this.isOverTwoYears(pwJob.EFFDT, checkEligibilityDto.workStartDate);
+          const isOverTwoYears = this.isOverTwoYears(
+            pwJob.EFFDT,
+            checkEligibilityDto.workStartDate,
+          );
           this.updateEligibility(result, employeeCode, isOverTwoYears);
         }
       } else {
         this.updateEligibility(result, employeeCode, true);
       }
-
     } else {
       // @todo ถ้าเป็น type อื่นๆ
     }
@@ -1405,15 +1620,20 @@ export class ApprovalService {
     pwJob: any,
     checkEligibilityDto: CheckClothingExpenseEligibilityDto,
     result: ClothingExpenseEligibilityResponseDto[],
-    employeeCode: number
+    employeeCode: number,
   ): Promise<void> {
     // @todo ต้องเช็คว่า ครั้งก่อนเบิกประเภทไหน
-    if (true) { // ex ครั้งก่อนเป็นประจำ, set isEligible true
+    if (true) {
+      // ex ครั้งก่อนเป็นประจำ, set isEligible true
       this.updateEligibility(result, employeeCode, true);
-    } else { // ex ครั้งก่อนเป็นชั่วคราว
+    } else {
+      // ex ครั้งก่อนเป็นชั่วคราว
       // ให้เอา EFFDT จาก pwJob มาเช็คกับ checkEligibilityDto.workStartDate ว่าเกิน 2 ปี หรือยัง ถ้าเกินแล้ว, set isEligible true
       // @todo อาจต้องเปลี่ยนไปเช็ค วันรายงานตัวกับ ViewDutyformCommands (รอคอนเฟิม)
-      const isOverTwoYears = this.isOverTwoYears(pwJob.EFFDT, checkEligibilityDto.workStartDate);
+      const isOverTwoYears = this.isOverTwoYears(
+        pwJob.EFFDT,
+        checkEligibilityDto.workStartDate,
+      );
       this.updateEligibility(result, employeeCode, isOverTwoYears);
     }
   }
@@ -1429,9 +1649,9 @@ export class ApprovalService {
   private updateEligibility(
     result: ClothingExpenseEligibilityResponseDto[],
     employeeCode: number,
-    isEligible: boolean
+    isEligible: boolean,
   ): void {
-    const employeeResult = result.find(r => r.employeeCode === employeeCode);
+    const employeeResult = result.find((r) => r.employeeCode === employeeCode);
     if (employeeResult) {
       employeeResult.isEligible = isEligible;
     }
@@ -1440,7 +1660,11 @@ export class ApprovalService {
   private calculateNextClaimDate(workStartDate: string): string {
     //  next_cliam_date = (workSartDate s  + 2 ปี + 1 วัน )
     const workStartDateObj = new Date(workStartDate);
-    const nextClaimDate = new Date(workStartDateObj.getTime() + (2 * 365 * 24 * 60 * 60 * 1000) + (24 * 60 * 60 * 1000));
+    const nextClaimDate = new Date(
+      workStartDateObj.getTime() +
+        2 * 365 * 24 * 60 * 60 * 1000 +
+        24 * 60 * 60 * 1000,
+    );
     return nextClaimDate.toISOString().split('T')[0];
   }
 }
