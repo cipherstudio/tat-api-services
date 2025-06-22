@@ -15,6 +15,9 @@ export class EmployeeDto {
 
   @ApiProperty({ description: 'รหัสระดับ' })
   pmtLevelCode: string;
+
+  @ApiProperty({ description: 'ชื่อตำแหน่ง' })
+  positionName: string;
 }
 
 export class DepartmentDto {

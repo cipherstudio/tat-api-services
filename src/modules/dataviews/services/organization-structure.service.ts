@@ -17,8 +17,6 @@ export class OrganizationStructureService {
   async getOrganizationStructure(
     query: QueryOrganizationStructureDto,
   ): Promise<OrganizationStructurePaginate> {
-    console.log('=== DEBUG: Service received query ===', query);
-    
     // ตั้งค่า default values
     const queryWithDefaults: QueryOrganizationStructureDto = {
       includeEmployees: query.includeEmployees ?? true,
@@ -28,9 +26,10 @@ export class OrganizationStructureService {
       divisionCode: query.divisionCode,
       sectionCode: query.sectionCode,
       searchTerm: query.searchTerm,
+      employeeSearchTerm: query.employeeSearchTerm,
+      employeePage: query.employeePage ?? 1,
+      employeeLimit: query.employeeLimit ?? 10,
     };
-    
-    console.log('=== DEBUG: Query with defaults ===', queryWithDefaults);
 
     // สร้าง cache key จาก query parameters
     const cacheKey = this.buildCacheKey(queryWithDefaults);
@@ -155,6 +154,9 @@ export class OrganizationStructureService {
     if (query.searchTerm) parts.push(`search_${query.searchTerm}`);
     if (query.includeEmployees !== undefined) parts.push(`emp_${query.includeEmployees}`);
     if (query.onlyWithEmployees !== undefined) parts.push(`only_${query.onlyWithEmployees}`);
+    if (query.employeeSearchTerm) parts.push(`emp_search_${query.employeeSearchTerm}`);
+    if (query.employeePage !== undefined) parts.push(`emp_page_${query.employeePage}`);
+    if (query.employeeLimit !== undefined) parts.push(`emp_limit_${query.employeeLimit}`);
 
     return parts.join('_');
   }

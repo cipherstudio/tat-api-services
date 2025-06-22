@@ -68,10 +68,10 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
 
     let employees: any[] = [];
     if (query.includeEmployees) {
-      employees = await this.getEmployeesData(allOrganizations.map(org => org.POG_CODE));
+      employees = await this.getEmployeesData(allOrganizations.map(org => org.POG_CODE), query);
     }
 
-    const structure = this.buildOrganizationStructure(camelCaseOrganizations, employees);
+    const structure = this.buildOrganizationStructure(camelCaseOrganizations, employees, query);
 
     if (query.onlyWithEmployees && query.includeEmployees) {
       structure.mainOrganizations = structure.mainOrganizations
@@ -82,12 +82,23 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
     return structure;
   }
 
-  private async getEmployeesData(organizationCodes: string[]): Promise<any[]> {
+  private async getEmployeesData(
+    organizationCodes: string[],
+    query?: QueryOrganizationStructureDto,
+  ): Promise<any[]> {
     if (organizationCodes.length === 0) return [];
 
-    const employees = await this.knex('OP_ORGANIZE_R')
+    let employeeQuery = this.knex('OP_ORGANIZE_R')
       .leftJoin('OP_POSITION_NO_T', this.knex.raw('OP_ORGANIZE_R.POG_CODE = TRIM(OP_POSITION_NO_T.PPN_ORGANIZE)'))
       .leftJoin('OP_MASTER_T', this.knex.raw('TRIM(OP_POSITION_NO_T.PPN_NUMBER) = TRIM(OP_MASTER_T.PMT_POS_NO)'))
+      .leftJoin('VIEW_POSITION_4OT', (builder) => {
+        builder.on(
+          'VIEW_POSITION_4OT.POS_POSITIONCODE',
+          '=',
+          this.knex.raw('RTRIM("OP_MASTER_T"."PMT_POS_NO")'),
+        );
+      })
+      .leftJoin('EMPLOYEE', 'OP_MASTER_T.PMT_CODE', 'EMPLOYEE.CODE')
       .select([
         'OP_ORGANIZE_R.POG_CODE',
         'OP_POSITION_NO_T.PPN_ORGANIZE',
@@ -97,12 +108,23 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
         'OP_MASTER_T.PMT_NAME_T',
         'OP_MASTER_T.PMT_NAME_E',
         'OP_MASTER_T.PMT_LEVEL_CODE',
+        'VIEW_POSITION_4OT.POS_POSITIONNAME',
       ])
       .whereIn('OP_ORGANIZE_R.POG_CODE', organizationCodes)
-      .whereNotNull('OP_MASTER_T.PMT_CODE')
-      .orderBy(['OP_ORGANIZE_R.POG_CODE', 'OP_MASTER_T.PMT_NAME_T']);
+      .whereNotNull('OP_MASTER_T.PMT_CODE');
 
+    if (query?.employeeSearchTerm) {
+      employeeQuery = employeeQuery.where((builder) => {
+        builder
+          .where('EMPLOYEE.NAME', 'like', `%${query.employeeSearchTerm}%`)
+          .orWhere('VIEW_POSITION_4OT.POS_POSITIONNAME', 'like', `%${query.employeeSearchTerm}%`);
+      });
+    }
 
+    // Apply ordering
+    employeeQuery = employeeQuery.orderBy(['OP_ORGANIZE_R.POG_CODE', 'OP_MASTER_T.PMT_NAME_T']);
+
+    const employees = await employeeQuery;
 
     const camelCaseEmployees = await Promise.all(
       employees.map(async (emp) => await toCamelCase(emp))
@@ -114,9 +136,10 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
   private buildOrganizationStructure(
     organizations: any[],
     employees: any[],
+    query?: QueryOrganizationStructureDto,
   ): OrganizationStructure {
     const mainOrganizations: MainOrganization[] = [];
-    const employeesByOrg = this.groupEmployeesByOrganization(employees);
+    const employeesByOrg = this.groupEmployeesByOrganization(employees, query);
 
     const orgsByCode = new Map();
     organizations.forEach(org => {
@@ -131,6 +154,41 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
       const mainOrg = orgsByCode.get(mainCode);
       if (!mainOrg) continue;
 
+      // รวม employee ทั้งหมดใน mainOrganization นี้
+      const allEmployeesInMainOrg: Employee[] = [];
+      const orgCodesInMainOrg = organizations
+        .filter(org => org.pogCode.charAt(0) === mainCode.charAt(0))
+        .map(org => org.pogCode);
+
+      orgCodesInMainOrg.forEach(orgCode => {
+        const orgEmployees = employeesByOrg.get(orgCode) || [];
+        allEmployeesInMainOrg.push(...orgEmployees);
+      });
+
+      // Apply pagination สำหรับ employee ทั้งหมดใน mainOrganization
+      let paginatedEmployees = allEmployeesInMainOrg;
+      if (query?.employeeLimit || query?.employeePage) {
+        const limit = query.employeeLimit || 10;
+        const page = query.employeePage || 1;
+        const offset = (page - 1) * limit;
+        paginatedEmployees = allEmployeesInMainOrg.slice(offset, offset + limit);
+      }
+
+      // สร้าง Map ของ employee ที่ถูก paginated ตาม orgCode
+      const paginatedEmployeesByOrg = new Map<string, Employee[]>();
+      paginatedEmployees.forEach(emp => {
+        // หา orgCode ของ employee นี้จากข้อมูลเดิม
+        for (const [orgCode, empList] of employeesByOrg.entries()) {
+          if (empList.some(e => e.pmtCode === emp.pmtCode)) {
+            if (!paginatedEmployeesByOrg.has(orgCode)) {
+              paginatedEmployeesByOrg.set(orgCode, []);
+            }
+            paginatedEmployeesByOrg.get(orgCode)!.push(emp);
+            break;
+          }
+        }
+      });
+
       const mainOrgStructure: MainOrganization = {
         code: mainOrg.pogCode,
         name: mainOrg.pogDesc || '',
@@ -139,7 +197,7 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
         departments: [],
         divisions: [],
         sections: [],
-        employees: employeesByOrg.get(mainOrg.pogCode) || [],
+        employees: paginatedEmployeesByOrg.get(mainOrg.pogCode) || [],
       };
 
       const departments = organizations.filter(org => 
@@ -152,7 +210,7 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
           name: dept.pogDesc || '',
           abbreviation: dept.pogAbbreviation || '',
           positionAbbreviation: dept.pogPosname || '',
-          employees: employeesByOrg.get(dept.pogCode) || [],
+          employees: paginatedEmployeesByOrg.get(dept.pogCode) || [],
         };
         mainOrgStructure.departments.push(deptStructure);
       }
@@ -167,7 +225,7 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
           name: div.pogDesc || '',
           abbreviation: div.pogAbbreviation || '',
           positionAbbreviation: div.pogPosname || '',
-          employees: employeesByOrg.get(div.pogCode) || [],
+          employees: paginatedEmployeesByOrg.get(div.pogCode) || [],
         };
         mainOrgStructure.divisions.push(divStructure);
       }
@@ -182,7 +240,7 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
           name: sect.pogDesc || '',
           abbreviation: sect.pogAbbreviation || '',
           positionAbbreviation: sect.pogPosname || '',
-          employees: employeesByOrg.get(sect.pogCode) || [],
+          employees: paginatedEmployeesByOrg.get(sect.pogCode) || [],
         };
         mainOrgStructure.sections.push(sectStructure);
       }
@@ -204,7 +262,10 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
     };
   }
 
-  private groupEmployeesByOrganization(employees: any[]): Map<string, Employee[]> {
+  private groupEmployeesByOrganization(
+    employees: any[],
+    query?: QueryOrganizationStructureDto,
+  ): Map<string, Employee[]> {
     const grouped = new Map<string, Employee[]>();
 
     employees.forEach(emp => {
@@ -219,6 +280,7 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
         pmtNameE: emp.pmtNameE,
         pmtPosNo: emp.pmtPosNo,
         pmtLevelCode: emp.pmtLevelCode,
+        positionName: emp.posPositionname || '',
       });
     });
 

@@ -4,6 +4,7 @@ export interface Employee {
   pmtNameE: string;
   pmtPosNo: string;
   pmtLevelCode: string;
+  positionName: string;
 }
 
 export interface Department {

@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsBoolean } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsOptional, IsString, IsBoolean, IsNumber, Min } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 
 export class QueryOrganizationStructureDto {
   @ApiPropertyOptional({
@@ -63,4 +63,34 @@ export class QueryOrganizationStructureDto {
     return value;
   })
   onlyWithEmployees?: boolean = false;
+
+  // Employee filtering parameters
+  @ApiPropertyOptional({
+    description: 'ค้นหาพนักงานจากชื่อ-นามสกุลหรือตำแหน่งงาน',
+  })
+  @IsOptional()
+  @IsString()
+  employeeSearchTerm?: string;
+
+  @ApiPropertyOptional({
+    description: 'หน้าของข้อมูลพนักงานทั้งหมดในหน่วยงานหลัก',
+    minimum: 1,
+    default: 1,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Type(() => Number)
+  employeePage?: number = 1;
+
+  @ApiPropertyOptional({
+    description: 'จำนวนพนักงานต่อหน้าในหน่วยงานหลัก',
+    minimum: 1,
+    default: 10,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Type(() => Number)
+  employeeLimit?: number = 10;
 } 

@@ -86,6 +86,21 @@ export class OrganizationStructureController {
     required: false,
     description: 'แสดงเฉพาะหน่วยงานที่มีพนักงาน',
   })
+  @ApiQuery({
+    name: 'employeeSearchTerm',
+    required: false,
+    description: 'ค้นหาพนักงานจากชื่อ-นามสกุลหรือตำแหน่งงาน',
+  })
+  @ApiQuery({
+    name: 'employeePage',
+    required: false,
+    description: 'หน้าของข้อมูลพนักงานทั้งหมดในหน่วยงานหลัก',
+  })
+  @ApiQuery({
+    name: 'employeeLimit',
+    required: false,
+    description: 'จำนวนพนักงานต่อหน้าในหน่วยงานหลัก',
+  })
   async getOrganizationStructure(
     @Query(new ValidationPipe({ transform: true }))
     query: QueryOrganizationStructureDto,
