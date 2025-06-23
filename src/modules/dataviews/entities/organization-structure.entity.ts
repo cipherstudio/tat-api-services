@@ -7,7 +7,7 @@ export interface Employee {
   positionName: string;
 }
 
-export interface Department {
+export interface Section {
   code: string;
   name: string;
   abbreviation: string;
@@ -20,14 +20,16 @@ export interface Division {
   name: string;
   abbreviation: string;
   positionAbbreviation: string;
+  sections: Section[];         // งานทั้งหมดใน กอง นี้
   employees: Employee[];
 }
 
-export interface Section {
+export interface Department {
   code: string;
   name: string;
   abbreviation: string;
   positionAbbreviation: string;
+  divisions: Division[];       // กองทั้งหมดใน ฝ่าย/สำนัก นี้
   employees: Employee[];
 }
 
@@ -36,9 +38,7 @@ export interface MainOrganization {
   name: string;
   abbreviation: string;
   positionAbbreviation: string;
-  departments: Department[];    // ฝ่าย/กลุ่ม
-  divisions: Division[];        // กอง
-  sections: Section[];          // งาน
+  departments: Department[];    // ฝ่าย/กลุ่ม (มี กอง และ งาน ซ้อนอยู่ข้างใน)
   employees: Employee[];        // พนักงานของหน่วยงานหลัก
 }
 

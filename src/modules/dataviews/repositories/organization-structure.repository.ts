@@ -195,14 +195,22 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
         abbreviation: mainOrg.pogAbbreviation || '',
         positionAbbreviation: mainOrg.pogPosname || '',
         departments: [],
-        divisions: [],
-        sections: [],
         employees: paginatedEmployeesByOrg.get(mainOrg.pogCode) || [],
       };
 
-      const departments = organizations.filter(org => 
-        this.isDepartment(org.pogCode) && org.pogCode.charAt(0) === mainCode.charAt(0)
-      );
+      const departments = organizations
+        .filter(org => 
+          this.isDepartment(org.pogCode) && org.pogCode.charAt(0) === mainCode.charAt(0)
+        )
+        .sort((a, b) => {
+          const aIsGroup = a.pogCode.substring(2, 4) === '01'; // XX01XX
+          const bIsGroup = b.pogCode.substring(2, 4) === '01'; // XX01XX
+          
+          if (aIsGroup && !bIsGroup) return 1;
+          if (!aIsGroup && bIsGroup) return -1;
+          
+          return a.pogCode.localeCompare(b.pogCode); 
+        });
 
       for (const dept of departments) {
         const deptStructure: Department = {
@@ -210,39 +218,49 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
           name: dept.pogDesc || '',
           abbreviation: dept.pogAbbreviation || '',
           positionAbbreviation: dept.pogPosname || '',
+          divisions: [],
           employees: paginatedEmployeesByOrg.get(dept.pogCode) || [],
         };
+
+        // หา divisions ที่เป็นของ department นี้
+        const departmentDivisions = organizations.filter(org => 
+          this.isDivision(org.pogCode) && 
+          org.pogCode.charAt(0) === mainCode.charAt(0) &&
+          org.pogCode.substring(0, 2) === dept.pogCode.substring(0, 2) // หลัก 2 ตัวแรกเหมือนกัน
+        );
+
+        for (const div of departmentDivisions) {
+          const divStructure: Division = {
+            code: div.pogCode,
+            name: div.pogDesc || '',
+            abbreviation: div.pogAbbreviation || '',
+            positionAbbreviation: div.pogPosname || '',
+            sections: [],
+            employees: paginatedEmployeesByOrg.get(div.pogCode) || [],
+          };
+
+          // หา sections ที่เป็นของ division นี้
+          const divisionSections = organizations.filter(org => 
+            this.isSection(org.pogCode) && 
+            org.pogCode.charAt(0) === mainCode.charAt(0) &&
+            org.pogCode.substring(0, 4) === div.pogCode.substring(0, 4) // หลัก 4 ตัวแรกเหมือนกัน
+          );
+
+          for (const sect of divisionSections) {
+            const sectStructure: Section = {
+              code: sect.pogCode,
+              name: sect.pogDesc || '',
+              abbreviation: sect.pogAbbreviation || '',
+              positionAbbreviation: sect.pogPosname || '',
+              employees: paginatedEmployeesByOrg.get(sect.pogCode) || [],
+            };
+            divStructure.sections.push(sectStructure);
+          }
+
+          deptStructure.divisions.push(divStructure);
+        }
+
         mainOrgStructure.departments.push(deptStructure);
-      }
-
-      const divisions = organizations.filter(org => 
-        this.isDivision(org.pogCode) && org.pogCode.charAt(0) === mainCode.charAt(0)
-      );
-
-      for (const div of divisions) {
-        const divStructure: Division = {
-          code: div.pogCode,
-          name: div.pogDesc || '',
-          abbreviation: div.pogAbbreviation || '',
-          positionAbbreviation: div.pogPosname || '',
-          employees: paginatedEmployeesByOrg.get(div.pogCode) || [],
-        };
-        mainOrgStructure.divisions.push(divStructure);
-      }
-
-      const sections = organizations.filter(org => 
-        this.isSection(org.pogCode) && org.pogCode.charAt(0) === mainCode.charAt(0)
-      );
-
-      for (const sect of sections) {
-        const sectStructure: Section = {
-          code: sect.pogCode,
-          name: sect.pogDesc || '',
-          abbreviation: sect.pogAbbreviation || '',
-          positionAbbreviation: sect.pogPosname || '',
-          employees: paginatedEmployeesByOrg.get(sect.pogCode) || [],
-        };
-        mainOrgStructure.sections.push(sectStructure);
       }
 
       mainOrganizations.push(mainOrgStructure);
@@ -288,23 +306,29 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
   }
 
   private filterOrganizationWithEmployees(mainOrg: MainOrganization): MainOrganization | null {
-    const filteredDepartments = mainOrg.departments.filter(dept => dept.employees.length > 0);
-    
-    const filteredDivisions = mainOrg.divisions.filter(div => div.employees.length > 0);
-    
-    const filteredSections = mainOrg.sections.filter(sect => sect.employees.length > 0);
+    const filteredDepartments = mainOrg.departments
+      .map(dept => {
+        const filteredDivisions = dept.divisions
+          .map(div => {
+            const filteredSections = div.sections.filter(sect => sect.employees.length > 0);
+            const hasEmployeesInDiv = div.employees.length > 0 || filteredSections.length > 0;
+            
+            return hasEmployeesInDiv ? { ...div, sections: filteredSections } : null;
+          })
+          .filter(div => div !== null);
 
-    const hasEmployees = mainOrg.employees.length > 0 || 
-                        filteredDepartments.length > 0 || 
-                        filteredDivisions.length > 0 || 
-                        filteredSections.length > 0;
+        const hasEmployeesInDept = dept.employees.length > 0 || filteredDivisions.length > 0;
+        
+        return hasEmployeesInDept ? { ...dept, divisions: filteredDivisions } : null;
+      })
+      .filter(dept => dept !== null);
+
+    const hasEmployees = mainOrg.employees.length > 0 || filteredDepartments.length > 0;
 
     return hasEmployees
       ? {
           ...mainOrg,
           departments: filteredDepartments,
-          divisions: filteredDivisions,
-          sections: filteredSections,
         }
       : null;
   }
@@ -314,14 +338,21 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
   }
 
   private isDepartment(code: string): boolean {
-    return code.endsWith('0000') && !code.endsWith('00000') && code.length === 6;
+    return (code.endsWith('0000') && !code.endsWith('00000') && code.length === 6) ||
+           (code.endsWith('0100') && code.charAt(1) === '0' && code.length === 6);
   }
 
   private isDivision(code: string): boolean {   
-    return code.endsWith('00') && !code.endsWith('000') && code.length === 6;
+    if (code.length !== 6 || !code.endsWith('0')) return false;
+    
+    const isNotMainOrg = !this.isMainOrganization(code);
+    const isNotDepartment = !this.isDepartment(code);
+    
+    return isNotMainOrg && isNotDepartment;
   }
 
   private isSection(code: string): boolean {
-    return !code.endsWith('00') && code.length === 6;
+    return code.length === 6 && !code.endsWith('0') && 
+           !this.isMainOrganization(code) && !this.isDepartment(code);
   }
 } 
