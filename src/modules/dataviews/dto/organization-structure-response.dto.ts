@@ -20,11 +20,11 @@ export class EmployeeDto {
   positionName: string;
 }
 
-export class DepartmentDto {
-  @ApiProperty({ description: 'รหัสฝ่าย/กลุ่ม' })
+export class SectionDto {
+  @ApiProperty({ description: 'รหัสงาน' })
   code: string;
 
-  @ApiProperty({ description: 'ชื่อฝ่าย/กลุ่ม' })
+  @ApiProperty({ description: 'ชื่องาน' })
   name: string;
 
   @ApiProperty({ description: 'ชื่อย่อ' })
@@ -33,7 +33,7 @@ export class DepartmentDto {
   @ApiProperty({ description: 'ชื่อย่อตำแหน่ง' })
   positionAbbreviation: string;
 
-  @ApiProperty({ description: 'พนักงานในฝ่าย/กลุ่ม', type: [EmployeeDto] })
+  @ApiProperty({ description: 'พนักงานในงาน', type: [EmployeeDto] })
   employees: EmployeeDto[];
 }
 
@@ -50,15 +50,18 @@ export class DivisionDto {
   @ApiProperty({ description: 'ชื่อย่อตำแหน่ง' })
   positionAbbreviation: string;
 
+  @ApiProperty({ description: 'งานในกองนี้', type: [SectionDto] })
+  sections: SectionDto[];
+
   @ApiProperty({ description: 'พนักงานในกอง', type: [EmployeeDto] })
   employees: EmployeeDto[];
 }
 
-export class SectionDto {
-  @ApiProperty({ description: 'รหัสงาน' })
+export class DepartmentDto {
+  @ApiProperty({ description: 'รหัสฝ่าย/กลุ่ม' })
   code: string;
 
-  @ApiProperty({ description: 'ชื่องาน' })
+  @ApiProperty({ description: 'ชื่อฝ่าย/กลุ่ม' })
   name: string;
 
   @ApiProperty({ description: 'ชื่อย่อ' })
@@ -67,7 +70,10 @@ export class SectionDto {
   @ApiProperty({ description: 'ชื่อย่อตำแหน่ง' })
   positionAbbreviation: string;
 
-  @ApiProperty({ description: 'พนักงานในงาน', type: [EmployeeDto] })
+  @ApiProperty({ description: 'กองในฝ่าย/กลุ่มนี้', type: [DivisionDto] })
+  divisions: DivisionDto[];
+
+  @ApiProperty({ description: 'พนักงานในฝ่าย/กลุ่ม', type: [EmployeeDto] })
   employees: EmployeeDto[];
 }
 
@@ -86,12 +92,6 @@ export class MainOrganizationDto {
 
   @ApiProperty({ description: 'ฝ่าย/กลุ่มในหน่วยงาน', type: [DepartmentDto] })
   departments: DepartmentDto[];
-
-  @ApiProperty({ description: 'กองในหน่วยงาน', type: [DivisionDto] })
-  divisions: DivisionDto[];
-
-  @ApiProperty({ description: 'งานในหน่วยงาน', type: [SectionDto] })
-  sections: SectionDto[];
 
   @ApiProperty({ description: 'พนักงานของหน่วยงานหลัก', type: [EmployeeDto] })
   employees: EmployeeDto[];

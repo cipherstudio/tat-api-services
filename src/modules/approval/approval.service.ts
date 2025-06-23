@@ -9,10 +9,10 @@ import { RedisCacheService } from '../cache/redis-cache.service';
 import { ApprovalRepository } from './repositories/approval.repository';
 import { KnexService } from '../../database/knex-service/knex.service';
 import { ApprovalDetailResponseDto } from './dto/approval-detail-response.dto';
-import { ApprovalDateRangeDto } from './dto/approval-date-range.dto';
-import { ApprovalContentDto } from './dto/approval-content.dto';
-import { ApprovalTripEntryDto } from './dto/approval-trip-entry.dto';
-import { ApprovalStaffMemberDto } from './dto/approval-staff-member.dto';
+// import { ApprovalDateRangeDto } from './dto/approval-date-range.dto';
+// import { ApprovalContentDto } from './dto/approval-content.dto';
+// import { ApprovalTripEntryDto } from './dto/approval-trip-entry.dto';
+// import { ApprovalStaffMemberDto } from './dto/approval-staff-member.dto';
 import { UpdateClothingExpenseDatesDto } from './dto/update-clothing-expense-dates.dto';
 import { CheckClothingExpenseEligibilityDto } from './dto/check-clothing-expense-eligibility.dto';
 import { ClothingExpenseEligibilityResponseDto } from './dto/clothing-expense-eligibility-response.dto';
@@ -112,6 +112,7 @@ export class ApprovalService {
 
   async findAll(
     queryOptions?: ApprovalQueryOptions,
+    userId?: number,
   ): Promise<PaginatedResult<Approval>> {
     // Try to get from cache first
     const cacheKey = this.cacheService.generateListKey(this.CACHE_PREFIX);
@@ -130,6 +131,12 @@ export class ApprovalService {
       name,
       searchTerm,
       latestApprovalStatus,
+      incrementId,
+      urgencyLevel,
+      confidentialityLevel,
+      documentTitle,
+      approvalRequestStartDate,
+      approvalRequestEndDate,
     } = queryOptions || {};
 
     // Prepare conditions
@@ -137,6 +144,19 @@ export class ApprovalService {
 
     if (name) {
       conditions.name = name;
+    }
+
+    if (urgencyLevel) {
+      conditions.urgency_level = urgencyLevel;
+    }
+
+    if (confidentialityLevel) {
+      conditions.confidentiality_level = confidentialityLevel;
+    }
+
+    // user can see only their own approvals
+    if (userId) {
+      conditions.user_id = userId;
     }
 
     // Add soft delete condition
@@ -152,16 +172,66 @@ export class ApprovalService {
 
     const offset = (page - 1) * limit;
 
+    // Get approval IDs for latestApprovalStatus filter if needed
+    const approvalIdsWithStatus = await this.knexService.knex
+      .select('approval_id')
+      .from(function () {
+        this.select(
+          'approval_id',
+          'status',
+          this.client.raw(
+            'ROW_NUMBER() OVER (PARTITION BY "approval_id" ORDER BY "created_at" DESC) AS "rn"',
+          ),
+        )
+          .from('approval_status')
+          .as('sub');
+      })
+      .where('rn', 1)
+      .andWhere('status', latestApprovalStatus)
+      .pluck('approval_id');
+
+    // Build query with LIKE conditions
+    let query = this.knexService.knex('approval').where(conditions);
+
+    // Add LIKE conditions for incrementId and documentTitle
+    if (incrementId) {
+      query = query.where('increment_id', 'like', `%${incrementId}%`);
+    }
+
+    if (documentTitle) {
+      query = query.where('document_title', 'like', `%${documentTitle}%`);
+    }
+
+    // Add date range conditions for approval request date (approval_date)
+    if (approvalRequestStartDate && approvalRequestEndDate) {
+      // Both dates provided - filter by date range
+      query = query.whereBetween('approval_date', [
+        approvalRequestStartDate,
+        approvalRequestEndDate,
+      ]);
+    } else if (approvalRequestStartDate) {
+      // Only start date provided - filter from start date onwards
+      query = query.where('approval_date', '>=', approvalRequestStartDate);
+    } else if (approvalRequestEndDate) {
+      // Only end date provided - filter up to end date
+      query = query.where('approval_date', '<=', approvalRequestEndDate);
+    }
+
+    // Add latest approval status filter
+    if (latestApprovalStatus) {
+      if (approvalIdsWithStatus.length > 0) {
+        query = query.whereIn('id', approvalIdsWithStatus);
+      } else {
+        // If no approvals found with the status, return empty result
+        query = query.where('id', 0); // This will return no results
+      }
+    }
+
     // Get approvals with pagination
     const [countResult, approvals] = await Promise.all([
-      this.knexService
-        .knex('approval')
-        .where(conditions)
-        .count('* as count')
-        .first(),
-      this.knexService
-        .knex('approval')
-        .where(conditions)
+      query.clone().count('* as count').first(),
+      query
+        .clone()
         .select(
           'id',
           'increment_id as incrementId',
@@ -284,7 +354,7 @@ export class ApprovalService {
       approvalDateRanges: dateRangeMap.get(approval.id) || [],
     }));
 
-    // Apply filters
+    // Apply additional filters (searchTerm only)
     let filteredData = data;
 
     // Filter by search term
@@ -294,27 +364,14 @@ export class ApprovalService {
       );
     }
 
-    // Filter by latest approval status
-    if (latestApprovalStatus && filteredData.length > 0) {
-      filteredData = filteredData.filter(
-        (item) => item.latestApprovalStatus === latestApprovalStatus,
-      );
-    }
-
     const result = {
       data: filteredData,
       meta: {
-        total: searchTerm || latestApprovalStatus ? filteredData.length : total,
+        total: total, // ใช้ total จาก database query (รวม LIKE conditions และ latestApprovalStatus)
         page,
         limit,
-        totalPages: Math.ceil(
-          (searchTerm || latestApprovalStatus ? filteredData.length : total) /
-            limit,
-        ),
-        lastPage: Math.ceil(
-          (searchTerm || latestApprovalStatus ? filteredData.length : total) /
-            limit,
-        ),
+        totalPages: Math.ceil(total / limit),
+        lastPage: Math.ceil(total / limit),
       },
     };
 
@@ -1036,7 +1093,7 @@ export class ApprovalService {
                 }
               }
 
-              // Process clothing expenses
+              // Process clothing expenses for each staff member
               if (Array.isArray(staffMember.clothingExpenses)) {
                 for (const expense of staffMember.clothingExpenses) {
                   // Check if record exists
