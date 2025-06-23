@@ -5,6 +5,7 @@ import { KnexService } from '../../../database/knex-service/knex.service';
 import { toCamelCase } from '../../../common/utils/case-mapping';
 import { QueryEmployeeDto } from '../dto/query-employee.dto';
 import { ViewPosition4ot } from '../entities/view-position-4ot.entity';
+import { OpLevelSalR } from '../entities/op-level-sal-r.entity';
 
 @Injectable()
 export class EmployeeRepository extends KnexBaseRepository<Employee> {
@@ -76,8 +77,8 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
       countQuery.andWhere('SALARY', '>=', query.minSalary);
     if (query.maxSalary !== undefined)
       countQuery.andWhere('SALARY', '<=', query.maxSalary);
-    const countResult = await countQuery.count('* as count').first();
-    const total = Number(countResult?.count || 0);
+    const countResult = await this.knex('OP_MASTER_T').count('* as count');
+    const total = Number(countResult[0]?.count || 0);
 
     const dbEntities = await builder.select();
     const data = await Promise.all(
@@ -89,62 +90,133 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
         total,
         limit: query.limit ?? 10,
         offset: query.offset ?? 0,
-        lastPage: Math.ceil(total / (query.limit ?? 10)) - 1,
+        lastPage: total === 0 ? 0 : Math.ceil(total / (query.limit ?? 10)) - 1,
       },
     };
   }
 
   async findWithQueryWithPosition4ot(query: QueryEmployeeDto): Promise<{
-    data: (Employee & { position4ot?: ViewPosition4ot })[];
+    data: (Employee & ViewPosition4ot & OpLevelSalR)[];
     meta: { total: number; limit: number; offset: number; lastPage: number };
   }> {
-    const employeesResult = await this.findWithQuery(query);
-    const employees = employeesResult.data;
-    const apaPpnNumbers = employees.map((e) => e.apaPpnNumber).filter(Boolean);
-    let positions: ViewPosition4ot[] = [];
-    if (apaPpnNumbers.length > 0) {
-      positions = await this.knex('VIEW_POSITION_4OT').whereIn(
-        'POS_POSITIONCODE',
-        apaPpnNumbers,
+    let baseBuilder = this.knex('OP_MASTER_T')
+      .leftJoin('OP_LEVEL_SAL_R', (builder) => {
+        builder.on(
+          'OP_LEVEL_SAL_R.PLV_CODE',
+          '=',
+          this.knex.raw('RTRIM("OP_MASTER_T"."PMT_LEVEL_CODE")'),
+        );
+      })
+      .leftJoin('VIEW_POSITION_4OT', (builder) => {
+        builder.on(
+          'VIEW_POSITION_4OT.POS_POSITIONCODE',
+          '=',
+          this.knex.raw('RTRIM("OP_MASTER_T"."PMT_POS_NO")'),
+        );
+      })
+      .leftJoin('EMPLOYEE', 'OP_MASTER_T.PMT_CODE', 'EMPLOYEE.CODE');
+
+    // Apply filters
+    if (query.code) {
+      baseBuilder = baseBuilder.whereRaw('RTRIM("PMT_CODE") = ?', [query.code]);
+    }
+    if (query.name) {
+      baseBuilder = baseBuilder.where('EMPLOYEE.NAME', query.name);
+    }
+    if (query.searchTerm) {
+      baseBuilder = baseBuilder.where(
+        'EMPLOYEE.NAME',
+        'like',
+        `%${query.searchTerm}%`,
       );
     }
-    // toCamelCase ทุก position ก่อนสร้าง map
-    const camelPositions = await Promise.all(
-      positions.map((p) => toCamelCase<ViewPosition4ot>(p)),
+    if (query.sex) baseBuilder = baseBuilder.where('EMPLOYEE.SEX', query.sex);
+    if (query.province)
+      baseBuilder = baseBuilder.where('EMPLOYEE.PROVINCE', query.province);
+    if (query.department)
+      baseBuilder = baseBuilder.where('EMPLOYEE.DEPARTMENT', query.department);
+    if (query.position)
+      baseBuilder = baseBuilder.where('EMPLOYEE.POSITION', query.position);
+    if (query.minSalary !== undefined)
+      baseBuilder = baseBuilder.andWhere(
+        'EMPLOYEE.SALARY',
+        '>=',
+        query.minSalary,
+      );
+    if (query.maxSalary !== undefined)
+      baseBuilder = baseBuilder.andWhere(
+        'EMPLOYEE.SALARY',
+        '<=',
+        query.maxSalary,
+      );
+
+    // Count total distinct records
+    const countQuery = baseBuilder.clone();
+    const countResult = await countQuery
+      .countDistinct('OP_MASTER_T.PMT_CODE as count')
+      .first();
+    const total = Number(countResult?.count || 0);
+
+    // Main query with ROW_NUMBER for deduplication
+    const subquery = baseBuilder
+      .clone()
+      .select([
+        'OP_MASTER_T.*',
+        'OP_LEVEL_SAL_R.*',
+        'VIEW_POSITION_4OT.*',
+        'EMPLOYEE.*',
+        this.knex.raw(
+          'row_number() over (partition by "OP_MASTER_T"."PMT_CODE" order by "OP_MASTER_T"."PMT_CODE" asc) as "rn"',
+        ),
+      ])
+      .as('sub');
+
+    const finalQuery = this.knex(subquery)
+      .where('rn', 1)
+      .limit(query.limit ?? 10)
+      .offset(query.offset ?? 0);
+
+    const dbEntities = await finalQuery;
+    const data = await Promise.all(
+      dbEntities.map(async (e) => await toCamelCase<any>(e)),
     );
-    const positionMap = new Map(
-      camelPositions.map((p) => [p.posPositioncode, p]),
-    );
-    const data = employees.map((e) => ({
-      ...e,
-      position4ot: positionMap.get(e.apaPpnNumber),
-    }));
+
     return {
       data,
       meta: {
-        total: employeesResult.meta.total,
-        limit: employeesResult.meta.limit,
-        offset: employeesResult.meta.offset,
-        lastPage:
-          Math.ceil(
-            employeesResult.meta.total / (employeesResult.meta.limit ?? 10),
-          ) - 1,
+        total,
+        limit: query.limit ?? 10,
+        offset: query.offset ?? 0,
+        lastPage: total === 0 ? 0 : Math.ceil(total / (query.limit ?? 10)) - 1,
       },
     };
   }
 
   async findByCodeWithPosition4ot(
     code: string,
-  ): Promise<(Employee & { position4ot?: ViewPosition4ot }) | undefined> {
-    const employee = await this.findByCode(code);
-    if (!employee) return undefined;
-    let position4ot;
-    if (employee.apaPpnNumber) {
-      const pos = await this.knex('VIEW_POSITION_4OT')
-        .where('POS_POSITIONCODE', employee.apaPpnNumber)
-        .first();
-      position4ot = pos ? await toCamelCase<ViewPosition4ot>(pos) : undefined;
-    }
-    return { ...employee, position4ot };
+  ): Promise<(Employee & ViewPosition4ot & OpLevelSalR) | undefined> {
+    const employee = await this.knex('OP_MASTER_T')
+      .whereRaw('RTRIM("PMT_CODE") = ?', [code])
+      .leftJoin('OP_LEVEL_SAL_R', (builder) => {
+        builder.on(
+          'OP_LEVEL_SAL_R.PLV_CODE',
+          '=',
+          this.knex.raw('RTRIM("OP_MASTER_T"."PMT_LEVEL_CODE")'),
+        );
+      })
+      .leftJoin('VIEW_POSITION_4OT', (builder) => {
+        builder.on(
+          'VIEW_POSITION_4OT.POS_POSITIONCODE',
+          '=',
+          this.knex.raw('RTRIM("OP_MASTER_T"."PMT_POS_NO")'),
+        );
+      })
+      .leftJoin('EMPLOYEE', 'OP_MASTER_T.PMT_CODE', 'EMPLOYEE.CODE')
+      .first();
+
+    const employeeCamel = employee ? await toCamelCase(employee) : undefined;
+    return employeeCamel as
+      | (Employee & ViewPosition4ot & OpLevelSalR)
+      | undefined;
   }
 }

@@ -4,6 +4,9 @@ import { KnexBaseRepository } from '../../../common/repositories/knex-base.repos
 import { KnexService } from '../../../database/knex-service/knex.service';
 import { toCamelCase, toSnakeCase } from '../../../common/utils/case-mapping';
 import { EmployeeRepository } from '../../dataviews/repositories/employee.repository';
+import { Employee } from '@modules/dataviews/entities/employee.entity';
+import { ViewPosition4ot } from '@modules/dataviews/entities/view-position-4ot.entity';
+import { OpLevelSalR } from '@modules/dataviews/entities/op-level-sal-r.entity';
 
 @Injectable()
 export class UserRepository extends KnexBaseRepository<User> {
@@ -26,9 +29,17 @@ export class UserRepository extends KnexBaseRepository<User> {
     return await toCamelCase<User>(updated);
   }
 
-  async findByEmail(email: string): Promise<User | undefined> {
+  async findByEmail(
+    email: string,
+  ): Promise<(User & (Employee & ViewPosition4ot & OpLevelSalR)) | undefined> {
     const dbUser = await this.knexService.findOne('users', { email });
-    return dbUser ? await toCamelCase<User>(dbUser) : undefined;
+    if (!dbUser) return undefined;
+    const employee = await this.employeeRepository.findByCodeWithPosition4ot(
+      dbUser.employee_code,
+    );
+    return { ...employee, ...dbUser } as
+      | (User & (Employee & ViewPosition4ot & OpLevelSalR))
+      | undefined;
   }
 
   async findActiveAdmins(): Promise<User[]> {
@@ -131,7 +142,9 @@ export class UserRepository extends KnexBaseRepository<User> {
     };
   }
 
-  async findByIdWithEmployee(id: number): Promise<User & { employee?: any }> {
+  async findByIdWithEmployee(
+    id: number,
+  ): Promise<User & { employee?: Employee & ViewPosition4ot & OpLevelSalR }> {
     const user = await this.knexService.knex('users').where({ id }).first();
     if (!user) return undefined;
     let employee;
@@ -140,9 +153,13 @@ export class UserRepository extends KnexBaseRepository<User> {
         user.employee_code,
       );
     }
+
+    const employeeCamel = employee ? await toCamelCase(employee) : undefined;
     return {
       ...(await toCamelCase(user)),
-      employee: employee || undefined,
+      employee: employeeCamel as
+        | (Employee & ViewPosition4ot & OpLevelSalR)
+        | undefined,
     };
   }
 }

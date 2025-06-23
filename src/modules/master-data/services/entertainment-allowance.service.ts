@@ -3,6 +3,7 @@ import { CreateEntertainmentAllowanceDto } from '../dto/create-entertainment-all
 import { UpdateEntertainmentAllowanceDto } from '../dto/update-entertainment-allowance.dto';
 import { EntertainmentAllowanceQueryDto } from '../dto/entertainment-allowance-query.dto';
 import { EntertainmentAllowanceRepository } from '../repositories/entertainment-allowance.repository';
+import { toSnakeCase } from '../../../common/utils/case-mapping';
 
 @Injectable()
 export class EntertainmentAllowanceService {
@@ -22,9 +23,26 @@ export class EntertainmentAllowanceService {
       .then((r) => r[0] || null);
   }
 
+  private mapLevelsIdToPrivilegeId(levels: any[]) {
+    if (!levels) return levels;
+    return levels
+      .filter((l) => l.id !== undefined && l.id !== null)
+      .map((l) => ({
+        ...l,
+        privilegeId: l.id,
+      }));
+  }
+
   async create(dto: CreateEntertainmentAllowanceDto) {
+    const mappedDto = {
+      ...dto,
+      levels: this.mapLevelsIdToPrivilegeId(dto.levels),
+    };
+    const snakeCaseDto = await toSnakeCase(mappedDto);
     const result =
-      await this.entertainmentAllowanceRepository.createWithLevels(dto);
+      await this.entertainmentAllowanceRepository.createWithLevels(
+        snakeCaseDto,
+      );
     if (result && result.success === false) {
       return result;
     }
@@ -32,9 +50,14 @@ export class EntertainmentAllowanceService {
   }
 
   async update(id: number, dto: UpdateEntertainmentAllowanceDto) {
+    const mappedDto = {
+      ...dto,
+      levels: this.mapLevelsIdToPrivilegeId(dto.levels),
+    };
+    const snakeCaseDto = await toSnakeCase(mappedDto);
     const result = await this.entertainmentAllowanceRepository.updateWithLevels(
       id,
-      dto,
+      snakeCaseDto,
     );
     if (result && result.success === false) {
       return result;

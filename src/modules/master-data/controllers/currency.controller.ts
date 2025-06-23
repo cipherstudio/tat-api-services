@@ -3,7 +3,7 @@ import {
   Get,
   Post,
   Body,
-  Patch,
+  Put,
   Param,
   Delete,
   ParseIntPipe,
@@ -28,8 +28,8 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
 @ApiTags('Master Data')
 @Controller('master-data/currencies')
-// @UseGuards(JwtAuthGuard)
-// @ApiBearerAuth('JWT-auth')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth('JWT-auth')
 export class CurrencyController {
   constructor(private readonly currencyService: CurrencyService) {}
 
@@ -139,7 +139,7 @@ export class CurrencyController {
     return this.currencyService.findById(id);
   }
 
-  @Patch(':id')
+  @Put(':id')
   @ApiOperation({
     summary: 'แก้ไขข้อมูลสกุลเงิน',
     description: 'แก้ไขข้อมูลสกุลเงินตามรหัส (id)',

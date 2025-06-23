@@ -14,6 +14,7 @@ import { DataviewsModule } from './modules/dataviews/dataviews.module';
 import { FilesModule } from './modules/files/files.module';
 import { DisbursementsupportingModule } from './modules/disbursementsupporting/disbursementsupporting.module';
 import { ApprovalModule } from './modules/approval/approval.module';
+import { ReportApproveModule } from './modules/reportapprove/report-approve.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { ApprovalModule } from './modules/approval/approval.module';
     FilesModule,
     DisbursementsupportingModule,
     ApprovalModule,
+    ReportApproveModule,
   ],
   controllers: [AppController],
   providers: [AppService],

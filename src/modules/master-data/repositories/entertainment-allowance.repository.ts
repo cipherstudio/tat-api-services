@@ -73,7 +73,7 @@ export class EntertainmentAllowanceRepository extends KnexBaseRepository<Enterta
       .select(
         'entertainment_allowances.*',
         'entertainment_allowance_levels.id as level_id',
-        'entertainment_allowance_levels.privilege_id',
+        'entertainment_allowance_levels.privilege_id as level_privilege_id',
         'entertainment_allowance_levels.privilege_name',
         'entertainment_allowance_levels.created_at as level_created_at',
         'entertainment_allowance_levels.updated_at as level_updated_at',
@@ -100,7 +100,7 @@ export class EntertainmentAllowanceRepository extends KnexBaseRepository<Enterta
         map.get(allowanceId).levels.push({
           id: row.level_id,
           allowanceId: row.id,
-          privilegeId: row.privilege_id,
+          privilegeId: row.level_privilege_id,
           privilegeName: row.privilege_name_from_table || row.privilege_name,
           createdAt: row.level_created_at,
           updatedAt: row.level_updated_at,
@@ -127,7 +127,13 @@ export class EntertainmentAllowanceRepository extends KnexBaseRepository<Enterta
         'privilege.id',
       )
       .select(
-        'entertainment_allowances.*',
+        'entertainment_allowances.id as allowance_id',
+        'entertainment_allowances.title',
+        'entertainment_allowances.min_days',
+        'entertainment_allowances.max_days',
+        'entertainment_allowances.amount',
+        'entertainment_allowances.created_at',
+        'entertainment_allowances.updated_at',
         'entertainment_allowance_levels.id as level_id',
         'entertainment_allowance_levels.privilege_id',
         'entertainment_allowance_levels.privilege_name',
@@ -135,16 +141,26 @@ export class EntertainmentAllowanceRepository extends KnexBaseRepository<Enterta
         'entertainment_allowance_levels.updated_at as level_updated_at',
         'privilege.name as privilege_name_from_table',
       );
-    if (Object.keys(filter).length > 0) {
-      knexQuery = knexQuery.where(filter);
+    if (filter.allowance_id) {
+      knexQuery = knexQuery.where(
+        'entertainment_allowances.id',
+        filter.allowance_id,
+      );
+    } else if (filter.id) {
+      knexQuery = knexQuery.where('entertainment_allowances.id', filter.id);
+    } else if (Object.keys(filter).length > 0) {
+      // remove id from filter to avoid ambiguous
+      const rest = { ...filter };
+      delete rest.id;
+      knexQuery = knexQuery.where(rest);
     }
     const rows = await knexQuery;
     const map = new Map();
     for (const row of rows) {
-      const allowanceId = row.id;
+      const allowanceId = row.allowance_id;
       if (!map.has(allowanceId)) {
         map.set(allowanceId, {
-          id: row.id,
+          id: row.allowance_id,
           title: row.title,
           minDays: row.min_days,
           maxDays: row.max_days,
@@ -157,7 +173,7 @@ export class EntertainmentAllowanceRepository extends KnexBaseRepository<Enterta
       if (row.level_id) {
         map.get(allowanceId).levels.push({
           id: row.level_id,
-          allowanceId: row.id,
+          allowanceId: row.allowance_id,
           privilegeId: row.privilege_id,
           privilegeName: row.privilege_name_from_table || row.privilege_name,
           createdAt: row.level_created_at,
@@ -172,7 +188,7 @@ export class EntertainmentAllowanceRepository extends KnexBaseRepository<Enterta
     const { levels, ...allowanceData } = dto;
     // Check if any of the provided privileges are already linked to any allowance
     if (levels && levels.length > 0) {
-      const privilegeIds = levels.map((l) => l.privilegeId);
+      const privilegeIds = levels.map((l) => l.privilege_id);
       const existing = await this.knex('entertainment_allowance_levels')
         .whereIn('privilege_id', privilegeIds)
         .first();
@@ -193,7 +209,7 @@ export class EntertainmentAllowanceRepository extends KnexBaseRepository<Enterta
       const privileges = await this.knex('privilege')
         .whereIn(
           'id',
-          levels.map((l) => l.privilegeId),
+          levels.map((l) => l.privilege_id),
         )
         .select('id', 'name');
 
@@ -201,8 +217,8 @@ export class EntertainmentAllowanceRepository extends KnexBaseRepository<Enterta
 
       const rows = levels.map((l) => ({
         allowance_id: id,
-        privilege_id: l.privilegeId,
-        privilege_name: privilegeMap.get(l.privilegeId),
+        privilege_id: l.privilege_id,
+        privilege_name: privilegeMap.get(l.privilege_id),
       }));
       await this.knex('entertainment_allowance_levels').insert(rows);
     }
@@ -211,53 +227,64 @@ export class EntertainmentAllowanceRepository extends KnexBaseRepository<Enterta
 
   async updateWithLevels(id: number, dto: any) {
     const { levels, ...allowanceData } = dto;
-    // Check if any of the provided privileges are already linked to another allowance (excluding this one)
-    if (levels) {
-      const privilegeIds = levels.map((l) => l.privilegeId);
-      const existing = await this.knex('entertainment_allowance_levels')
-        .whereIn('privilege_id', privilegeIds)
-        .whereNot('allowance_id', id)
-        .first();
-      if (existing) {
-        return {
-          success: false,
-          message: `Privilege (privilegeId=${existing.privilege_id}) is already in use by allowance_id=${existing.allowance_id}`,
-        };
-      }
-    }
+    // 1. อัปเดต allowance หลัก
     await this.knex('entertainment_allowances')
       .where('id', id)
       .update(allowanceData);
-    if (levels) {
-      await this.knex('entertainment_allowance_levels')
-        .where('allowance_id', id)
-        .del();
-      if (levels.length > 0) {
-        // Get privilege names from privilege table
-        const privileges = await this.knex('privilege')
-          .whereIn(
-            'id',
-            levels.map((l) => l.privilegeId),
-          )
-          .select('id', 'name');
 
-        const privilegeMap = new Map(privileges.map((p) => [p.id, p.name]));
+    // 2. ดึง levels เดิมทั้งหมด
+    const oldLevels = await this.knex('entertainment_allowance_levels')
+      .where('allowance_id', id)
+      .orderBy('id', 'asc');
 
-        const rows = levels.map((l) => ({
+    // Create sets for efficient lookup
+    const oldPrivilegeIds = new Set(oldLevels.map((l) => l.privilege_id));
+    const newPrivilegeIds = new Set((levels || []).map((l) => l.privilege_id));
+
+    // Handle updates and inserts
+    for (const newLevel of levels || []) {
+      if (oldPrivilegeIds.has(newLevel.privilege_id)) {
+        // Update existing level
+        await this.knex('entertainment_allowance_levels')
+          .where({
+            allowance_id: id,
+            privilege_id: newLevel.privilege_id,
+          })
+          .update({
+            privilege_name: newLevel.privilege_name,
+            updated_at: new Date(),
+          });
+      } else {
+        // Insert new level
+        await this.knex('entertainment_allowance_levels').insert({
           allowance_id: id,
-          privilege_id: l.privilegeId,
-          privilege_name: privilegeMap.get(l.privilegeId),
-        }));
-        await this.knex('entertainment_allowance_levels').insert(rows);
+          privilege_id: newLevel.privilege_id,
+          privilege_name: newLevel.privilege_name,
+          created_at: new Date(),
+          updated_at: new Date(),
+        });
       }
     }
+
+    // Handle deletes - remove levels that are in old but not in new
+    for (const oldLevel of oldLevels) {
+      if (!newPrivilegeIds.has(oldLevel.privilege_id)) {
+        await this.knex('entertainment_allowance_levels')
+          .where('id', oldLevel.id)
+          .del();
+      }
+    }
+
+    // 4. return ข้อมูลใหม่
     return this.findWithLevels({ id }).then((r) => r[0] || null);
   }
 
   async deleteWithLevels(id: number) {
+    // ลบข้อมูลทั้งหมดใน entertainment_allowance_levels ที่มี allowance_id = id
     await this.knex('entertainment_allowance_levels')
       .where('allowance_id', id)
       .del();
+    // ลบ entertainment_allowances ด้วย id
     await this.knex('entertainment_allowances').where('id', id).del();
   }
 

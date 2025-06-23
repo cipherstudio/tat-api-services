@@ -26,6 +26,7 @@ async function bootstrap() {
   const knexConfig = knexModule.default;
   const knexInstance = knex(knexConfig[environment]);
 
+  // TODO: Uncomment this when we want to run migrations and seeds
   try {
     console.log('Running Knex migrations...');
     await knexInstance.migrate.latest();
