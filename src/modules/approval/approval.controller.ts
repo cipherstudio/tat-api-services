@@ -113,16 +113,40 @@ export class ApprovalController {
     description: 'Filter by latest approval status',
   })
   @ApiQuery({
-    name: 'createdAfter',
-    type: Date,
+    name: 'incrementId',
+    type: String,
     required: false,
-    description: 'Filter by creation date (after)',
+    description: 'Filter by increment ID (เลขที่หนังสือ)',
   })
   @ApiQuery({
-    name: 'createdBefore',
-    type: Date,
+    name: 'urgencyLevel',
+    type: String,
     required: false,
-    description: 'Filter by creation date (before)',
+    description: 'Filter by urgency level (ความด่วน)',
+  })
+  @ApiQuery({
+    name: 'confidentialityLevel',
+    type: String,
+    required: false,
+    description: 'Filter by confidentiality level (ความลับ)',
+  })
+  @ApiQuery({
+    name: 'documentTitle',
+    type: String,
+    required: false,
+    description: 'Filter by document title (เรื่อง)',
+  })
+  @ApiQuery({
+    name: 'approvalRequestStartDate',
+    type: String,
+    required: false,
+    description: 'Filter by approval request start date (วันที่ขออนุมัติเริ่มต้น) - ISO date string (YYYY-MM-DD)',
+  })
+  @ApiQuery({
+    name: 'approvalRequestEndDate',
+    type: String,
+    required: false,
+    description: 'Filter by approval request end date (วันที่ขออนุมัติสิ้นสุด) - ISO date string (YYYY-MM-DD)',
   })
   @ApiQuery({
     name: 'includes',
@@ -132,6 +156,7 @@ export class ApprovalController {
   })
   @ApiResponse({ status: 200, description: 'Success' })
   findAll(
+    @Req() req: RequestWithUser,
     @Query('page', new ValidationPipe({ transform: true })) page?: number,
     @Query('limit', new ValidationPipe({ transform: true })) limit?: number,
     @Query('orderBy') orderBy?: string,
@@ -140,8 +165,12 @@ export class ApprovalController {
     @Query('name') name?: string,
     @Query('searchTerm') searchTerm?: string,
     @Query('latestApprovalStatus') latestApprovalStatus?: string,
-    @Query('createdAfter') createdAfter?: Date,
-    @Query('createdBefore') createdBefore?: Date,
+    @Query('incrementId') incrementId?: string,
+    @Query('urgencyLevel') urgencyLevel?: string,
+    @Query('confidentialityLevel') confidentialityLevel?: string,
+    @Query('documentTitle') documentTitle?: string,
+    @Query('approvalRequestStartDate') approvalRequestStartDate?: string,
+    @Query('approvalRequestEndDate') approvalRequestEndDate?: string,
     @Query('includes') includes?: string[],
   ) {
     const queryOptions: ApprovalQueryOptions = {
@@ -153,12 +182,16 @@ export class ApprovalController {
       name,
       searchTerm,
       latestApprovalStatus,
-      createdAfter,
-      createdBefore,
+      incrementId,
+      urgencyLevel,
+      confidentialityLevel,
+      documentTitle,
+      approvalRequestStartDate,
+      approvalRequestEndDate,
       includes,
     };
 
-    return this.approvalService.findAll(queryOptions);
+    return this.approvalService.findAll(queryOptions, req.user.id);
   }
 
   @Get(':id')

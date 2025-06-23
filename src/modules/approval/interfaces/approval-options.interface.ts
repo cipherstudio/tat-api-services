@@ -33,6 +33,66 @@ export interface ApprovalFilterOptions extends BaseFilterOptions {
    * })
    */
   latestApprovalStatus?: string;
+
+  /**
+   * Filter by increment ID (เลขที่หนังสือ)
+   * @TypeProperty({
+   *   type: 'string',
+   *   isOptional: true,
+   *   description: 'Filter by increment ID (เลขที่หนังสือ)'
+   * })
+   */
+  incrementId?: string;
+
+  /**
+   * Filter by urgency level (ความด่วน)
+   * @TypeProperty({
+   *   type: 'string',
+   *   isOptional: true,
+   *   description: 'Filter by urgency level (ความด่วน)'
+   * })
+   */
+  urgencyLevel?: string;
+
+  /**
+   * Filter by confidentiality level (ความลับ)
+   * @TypeProperty({
+   *   type: 'string',
+   *   isOptional: true,
+   *   description: 'Filter by confidentiality level (ความลับ)'
+   * })
+   */
+  confidentialityLevel?: string;
+
+  /**
+   * Filter by document title (เรื่อง)
+   * @TypeProperty({
+   *   type: 'string',
+   *   isOptional: true,
+   *   description: 'Filter by document title (เรื่อง)'
+   * })
+   */
+  documentTitle?: string;
+
+  /**
+   * Filter by approval request start date (วันที่ขออนุมัติเริ่มต้น)
+   * @TypeProperty({
+   *   type: 'string',
+   *   isOptional: true,
+   *   description: 'Filter by approval request start date (วันที่ขออนุมัติเริ่มต้น) - ISO date string (YYYY-MM-DD)'
+   * })
+   */
+  approvalRequestStartDate?: string;
+
+  /**
+   * Filter by approval request end date (วันที่ขออนุมัติสิ้นสุด)
+   * @TypeProperty({
+   *   type: 'string',
+   *   isOptional: true,
+   *   description: 'Filter by approval request end date (วันที่ขออนุมัติสิ้นสุด) - ISO date string (YYYY-MM-DD)'
+   * })
+   */
+  approvalRequestEndDate?: string;
 }
 
 /**
