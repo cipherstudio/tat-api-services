@@ -121,8 +121,11 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
       });
     }
 
-    // Apply ordering
-    employeeQuery = employeeQuery.orderBy(['OP_ORGANIZE_R.POG_CODE', 'OP_MASTER_T.PMT_NAME_T']);
+    // Apply ordering - เรียงตาม pmtLevelCode จากมากไปน้อย (null ไปหลังสุด) แล้วตามชื่อ
+    employeeQuery = employeeQuery
+      .orderBy('OP_ORGANIZE_R.POG_CODE')
+      .orderByRaw('CASE WHEN OP_MASTER_T.PMT_LEVEL_CODE IS NULL OR TRIM(OP_MASTER_T.PMT_LEVEL_CODE) = \'\' THEN \'00\' ELSE OP_MASTER_T.PMT_LEVEL_CODE END DESC')
+      .orderBy('OP_MASTER_T.PMT_NAME_T');
 
     const employees = await employeeQuery;
 
