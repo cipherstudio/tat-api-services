@@ -23,6 +23,18 @@ export class QueryVTxOtDto {
   @IsOptional()
   activitySubDesc?: string;
 
+  @ApiPropertyOptional({ description: 'ACTIVITY_SUB_CODE' })
+  @IsOptional()
+  activitySubCode?: string;
+
+  @ApiPropertyOptional({ description: 'OUTPUT_PLAN_CODE' })
+  @IsOptional()
+  outputPlanCode?: string;
+
+  @ApiPropertyOptional({ description: 'OUTPUT_PLAN_DESC' })
+  @IsOptional()
+  outputPlanDesc?: string;
+
   @ApiPropertyOptional({
     description: 'จำนวนรายการต่อหน้า (pagination)',
     type: Number,

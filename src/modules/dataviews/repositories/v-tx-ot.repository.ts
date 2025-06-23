@@ -20,11 +20,33 @@ export class VTxOtRepository extends KnexBaseRepository<VTxOt> {
     let builder = this.knex(this.tableName).where(conditions);
 
     if (query.sectionName) {
-      builder = builder.whereRaw('LOWER("SECTION_NAME") LIKE ?', [`%${query.sectionName.toLowerCase()}%`]);
+      builder = builder.whereRaw('LOWER("SECTION_NAME") LIKE ?', [
+        `%${query.sectionName.toLowerCase()}%`,
+      ]);
     }
 
     if (query.activitySubDesc) {
-      builder = builder.whereRaw('LOWER("ACTIVITY_SUB_DESC") LIKE ?', [`%${query.activitySubDesc.toLowerCase()}%`]);
+      builder = builder.whereRaw('LOWER("ACTIVITY_SUB_DESC") LIKE ?', [
+        `%${query.activitySubDesc.toLowerCase()}%`,
+      ]);
+    }
+
+    if (query.activitySubCode) {
+      builder = builder.whereRaw('LOWER("ACTIVITY_SUB_CODE") LIKE ?', [
+        `%${query.activitySubCode.toLowerCase()}%`,
+      ]);
+    }
+
+    if (query.outputPlanCode) {
+      builder = builder.whereRaw('LOWER("OUTPUT_PLAN_CODE") LIKE ?', [
+        `%${query.outputPlanCode.toLowerCase()}%`,
+      ]);
+    }
+
+    if (query.outputPlanDesc) {
+      builder = builder.whereRaw('LOWER("OUTPUT_PLAN_DESC") LIKE ?', [
+        `%${query.outputPlanDesc.toLowerCase()}%`,
+      ]);
     }
 
     if (query.limit !== undefined) builder = builder.limit(query.limit);
@@ -32,10 +54,14 @@ export class VTxOtRepository extends KnexBaseRepository<VTxOt> {
 
     const countQuery = this.knex(this.tableName).where(conditions);
     if (query.sectionName) {
-      countQuery.whereRaw('LOWER("SECTION_NAME") LIKE ?', [`%${query.sectionName.toLowerCase()}%`]);
+      countQuery.whereRaw('LOWER("SECTION_NAME") LIKE ?', [
+        `%${query.sectionName.toLowerCase()}%`,
+      ]);
     }
     if (query.activitySubDesc) {
-      countQuery.whereRaw('LOWER("ACTIVITY_SUB_DESC") LIKE ?', [`%${query.activitySubDesc.toLowerCase()}%`]);
+      countQuery.whereRaw('LOWER("ACTIVITY_SUB_DESC") LIKE ?', [
+        `%${query.activitySubDesc.toLowerCase()}%`,
+      ]);
     }
 
     const countResult = await countQuery.count('* as count').first();
