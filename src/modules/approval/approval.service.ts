@@ -173,22 +173,25 @@ export class ApprovalService {
     const offset = (page - 1) * limit;
 
     // Get approval IDs for latestApprovalStatus filter if needed
-    const approvalIdsWithStatus = await this.knexService.knex
-      .select('approval_id')
-      .from(function () {
-        this.select(
-          'approval_id',
-          'status',
-          this.client.raw(
-            'ROW_NUMBER() OVER (PARTITION BY "approval_id" ORDER BY "created_at" DESC) AS "rn"',
-          ),
-        )
+    let approvalIdsWithStatus: number[] = [];
+    if (latestApprovalStatus) {
+      approvalIdsWithStatus = await this.knexService.knex
+        .select('approval_id')
+        .from(function () {
+          this.select(
+            'approval_id',
+            'status',
+            this.client.raw(
+              'ROW_NUMBER() OVER (PARTITION BY "approval_id" ORDER BY "created_at" DESC) AS "rn"'
+            )
+          )
           .from('approval_status')
           .as('sub');
-      })
-      .where('rn', 1)
-      .andWhere('status', latestApprovalStatus)
-      .pluck('approval_id');
+        })
+        .where('rn', 1)
+        .andWhere('status', latestApprovalStatus)
+        .pluck('approval_id');
+    }
 
     // Build query with LIKE conditions
     let query = this.knexService.knex('approval').where(conditions);
