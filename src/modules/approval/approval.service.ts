@@ -113,6 +113,7 @@ export class ApprovalService {
   async findAll(
     queryOptions?: ApprovalQueryOptions,
     userId?: number,
+    employeeCode?: string,
   ): Promise<PaginatedResult<Approval>> {
     // Try to get from cache first
     const cacheKey = this.cacheService.generateListKey(this.CACHE_PREFIX);
@@ -137,6 +138,7 @@ export class ApprovalService {
       documentTitle,
       approvalRequestStartDate,
       approvalRequestEndDate,
+      isRelatedToMe,
     } = queryOptions || {};
 
     // Prepare conditions
@@ -155,7 +157,7 @@ export class ApprovalService {
     }
 
     // user can see only their own approvals
-    if (userId) {
+    if (userId && !isRelatedToMe) {
       conditions.user_id = userId;
     }
 
@@ -196,6 +198,15 @@ export class ApprovalService {
     // Build query with LIKE conditions
     let query = this.knexService.knex('approval').where(conditions);
 
+    // Add JOIN for isRelatedToMe filter
+    if (isRelatedToMe) {
+      query = query.join(
+        'approval_staff_members',
+        'approval.id',
+        'approval_staff_members.approval_id'
+      ).where('approval_staff_members.employee_code', employeeCode);
+    }
+
     // Add LIKE conditions for incrementId and documentTitle
     if (incrementId) {
       query = query.where('increment_id', 'like', `%${incrementId}%`);
@@ -223,10 +234,10 @@ export class ApprovalService {
     // Add latest approval status filter
     if (latestApprovalStatus) {
       if (approvalIdsWithStatus.length > 0) {
-        query = query.whereIn('id', approvalIdsWithStatus);
+        query = query.whereIn('approval.id', approvalIdsWithStatus);
       } else {
         // If no approvals found with the status, return empty result
-        query = query.where('id', 0); // This will return no results
+        query = query.where('approval.id', 0); // This will return no results
       }
     }
 
@@ -236,51 +247,54 @@ export class ApprovalService {
       query
         .clone()
         .select(
-          'id',
-          'increment_id as incrementId',
-          'record_type as recordType',
-          'name',
-          'employee_code as employeeCode',
-          'travel_type as travelType',
-          'international_sub_option as internationalSubOption',
-          'approval_ref as approvalRef',
-          'work_start_date as workStartDate',
-          'work_end_date as workEndDate',
-          'start_country as startCountry',
-          'end_country as endCountry',
-          'remarks',
-          'num_travelers as numTravelers',
-          'document_no as documentNo',
-          'document_tel as documentTel',
-          'document_to as documentTo',
-          'document_title as documentTitle',
-          'attachment_id as attachmentId',
-          'form3_total_outbound as form3TotalOutbound',
-          'form3_total_inbound as form3TotalInbound',
-          'form3_total_amount as form3TotalAmount',
-          'exceed_lodging_rights_checked as exceedLodgingRightsChecked',
-          'exceed_lodging_rights_reason as exceedLodgingRightsReason',
-          'form4_total_amount as form4TotalAmount',
-          'form5_total_amount as form5TotalAmount',
-          'approval_date as approvalDate',
-          'staff',
-          'confidentiality_level as confidentialityLevel',
-          'urgency_level as urgencyLevel',
-          'comments',
-          'final_staff as finalStaff',
-          'signer_date as signerDate',
-          'document_ending as documentEnding',
-          'document_ending_wording as documentEndingWording',
-          'signer_name as signerName',
-          'use_file_signature as useFileSignature',
-          'signature_attachment_id as signatureAttachmentId',
-          'use_system_signature as useSystemSignature',
-          'user_id as userId',
-          'created_at as createdAt',
-          'updated_at as updatedAt',
-          'deleted_at as deletedAt',
+          'approval.id',
+          'approval.increment_id as incrementId',
+          'approval.record_type as recordType',
+          'approval.name',
+          'approval.employee_code as employeeCode',
+          'approval.travel_type as travelType',
+          'approval.international_sub_option as internationalSubOption',
+          'approval.approval_ref as approvalRef',
+          'approval.work_start_date as workStartDate',
+          'approval.work_end_date as workEndDate',
+          'approval.start_country as startCountry',
+          'approval.end_country as endCountry',
+          'approval.remarks',
+          'approval.num_travelers as numTravelers',
+          'approval.document_no as documentNo',
+          'approval.document_tel as documentTel',
+          'approval.document_to as documentTo',
+          'approval.document_title as documentTitle',
+          'approval.attachment_id as attachmentId',
+          'approval.form3_total_outbound as form3TotalOutbound',
+          'approval.form3_total_inbound as form3TotalInbound',
+          'approval.form3_total_amount as form3TotalAmount',
+          'approval.exceed_lodging_rights_checked as exceedLodgingRightsChecked',
+          'approval.exceed_lodging_rights_reason as exceedLodgingRightsReason',
+          'approval.form4_total_amount as form4TotalAmount',
+          'approval.form5_total_amount as form5TotalAmount',
+          'approval.approval_date as approvalDate',
+          'approval.staff',
+          'approval.confidentiality_level as confidentialityLevel',
+          'approval.urgency_level as urgencyLevel',
+          'approval.comments',
+          'approval.final_staff as finalStaff',
+          'approval.signer_date as signerDate',
+          'approval.document_ending as documentEnding',
+          'approval.document_ending_wording as documentEndingWording',
+          'approval.signer_name as signerName',
+          'approval.use_file_signature as useFileSignature',
+          'approval.signature_attachment_id as signatureAttachmentId',
+          'approval.use_system_signature as useSystemSignature',
+          'approval.user_id as userId',
+          'approval.created_at as createdAt',
+          'approval.updated_at as updatedAt',
+          'approval.deleted_at as deletedAt',
         )
-        .orderBy(dbOrderBy, orderDir.toLowerCase() as 'asc' | 'desc')
+        .orderBy(
+          isRelatedToMe ? `approval.${dbOrderBy}` : dbOrderBy, 
+          orderDir.toLowerCase() as 'asc' | 'desc'
+        )
         .limit(limit)
         .offset(offset),
     ]);
@@ -399,49 +413,49 @@ export class ApprovalService {
       .where('id', id)
       .whereNull('deleted_at')
       .select(
-        'id',
-        'increment_id as incrementId',
-        'record_type as recordType',
-        'name',
-        'employee_code as employeeCode',
-        'travel_type as travelType',
-        'international_sub_option as internationalSubOption',
-        'approval_ref as approvalRef',
-        'work_start_date as workStartDate',
-        'work_end_date as workEndDate',
-        'start_country as startCountry',
-        'end_country as endCountry',
-        'remarks',
-        'num_travelers as numTravelers',
-        'document_no as documentNo',
-        'document_tel as documentTel',
-        'document_to as documentTo',
-        'document_title as documentTitle',
-        'attachment_id as attachmentId',
-        'form3_total_outbound as form3TotalOutbound',
-        'form3_total_inbound as form3TotalInbound',
-        'form3_total_amount as form3TotalAmount',
-        'exceed_lodging_rights_checked as exceedLodgingRightsChecked',
-        'exceed_lodging_rights_reason as exceedLodgingRightsReason',
-        'form4_total_amount as form4TotalAmount',
-        'form5_total_amount as form5TotalAmount',
-        'approval_date as approvalDate',
-        'staff',
-        'confidentiality_level as confidentialityLevel',
-        'urgency_level as urgencyLevel',
-        'comments',
-        'final_staff as finalStaff',
-        'signer_date as signerDate',
-        'document_ending as documentEnding',
-        'document_ending_wording as documentEndingWording',
-        'signer_name as signerName',
-        'use_file_signature as useFileSignature',
-        'signature_attachment_id as signatureAttachmentId',
-        'use_system_signature as useSystemSignature',
-        'user_id as userId',
-        'created_at as createdAt',
-        'updated_at as updatedAt',
-        'deleted_at as deletedAt',
+        'approval.id',
+        'approval.increment_id as incrementId',
+        'approval.record_type as recordType',
+        'approval.name',
+        'approval.employee_code as employeeCode',
+        'approval.travel_type as travelType',
+        'approval.international_sub_option as internationalSubOption',
+        'approval.approval_ref as approvalRef',
+        'approval.work_start_date as workStartDate',
+        'approval.work_end_date as workEndDate',
+        'approval.start_country as startCountry',
+        'approval.end_country as endCountry',
+        'approval.remarks',
+        'approval.num_travelers as numTravelers',
+        'approval.document_no as documentNo',
+        'approval.document_tel as documentTel',
+        'approval.document_to as documentTo',
+        'approval.document_title as documentTitle',
+        'approval.attachment_id as attachmentId',
+        'approval.form3_total_outbound as form3TotalOutbound',
+        'approval.form3_total_inbound as form3TotalInbound',
+        'approval.form3_total_amount as form3TotalAmount',
+        'approval.exceed_lodging_rights_checked as exceedLodgingRightsChecked',
+        'approval.exceed_lodging_rights_reason as exceedLodgingRightsReason',
+        'approval.form4_total_amount as form4TotalAmount',
+        'approval.form5_total_amount as form5TotalAmount',
+        'approval.approval_date as approvalDate',
+        'approval.staff',
+        'approval.confidentiality_level as confidentialityLevel',
+        'approval.urgency_level as urgencyLevel',
+        'approval.comments',
+        'approval.final_staff as finalStaff',
+        'approval.signer_date as signerDate',
+        'approval.document_ending as documentEnding',
+        'approval.document_ending_wording as documentEndingWording',
+        'approval.signer_name as signerName',
+        'approval.use_file_signature as useFileSignature',
+        'approval.signature_attachment_id as signatureAttachmentId',
+        'approval.use_system_signature as useSystemSignature',
+        'approval.user_id as userId',
+        'approval.created_at as createdAt',
+        'approval.updated_at as updatedAt',
+        'approval.deleted_at as deletedAt',
       )
       .first();
 
