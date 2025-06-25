@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Approval } from './entities/approval.entity';
+import { ApprovalStatusLabel } from './entities/approval-status-label.entity';
 import { CreateApprovalDto } from './dto/create-approval.dto';
 import { UpdateApprovalDto } from './dto/update-approval.dto';
 import { UpdateApprovalStatusDto } from './dto/update-approval-status.dto';
@@ -1729,5 +1730,71 @@ export class ApprovalService {
         24 * 60 * 60 * 1000,
     );
     return nextClaimDate.toISOString().split('T')[0];
+  }
+
+  // Approval Status Label methods
+  async findAllStatusLabels(): Promise<ApprovalStatusLabel[]> {
+    const cacheKey = `${this.CACHE_PREFIX}:status_labels`;
+    
+    // Try to get from cache first
+    const cached = await this.cacheService.get<string>(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
+    // If not in cache, get from database
+    const statusLabels = await this.knexService.knex('approval_status_labels')
+      .orderBy('id', 'asc')
+      .select('*');
+
+    // Transform to camelCase
+    const transformedLabels = statusLabels.map(label => ({
+      id: label.id,
+      statusCode: label.status_code,
+      label: label.label,
+      createdAt: label.created_at,
+      updatedAt: label.updated_at,
+    }));
+
+    // Cache the result
+    await this.cacheService.set(cacheKey, JSON.stringify(transformedLabels), this.CACHE_TTL);
+
+    return transformedLabels;
+  }
+
+  async findStatusLabelById(id: number): Promise<ApprovalStatusLabel | undefined> {
+    const statusLabel = await this.knexService.knex('approval_status_labels')
+      .where('id', id)
+      .first();
+
+    if (!statusLabel) {
+      return undefined;
+    }
+
+    return {
+      id: statusLabel.id,
+      statusCode: statusLabel.status_code,
+      label: statusLabel.label,
+      createdAt: statusLabel.created_at,
+      updatedAt: statusLabel.updated_at,
+    };
+  }
+
+  async findStatusLabelByStatusCode(statusCode: string): Promise<ApprovalStatusLabel | undefined> {
+    const statusLabel = await this.knexService.knex('approval_status_labels')
+      .where('status_code', statusCode)
+      .first();
+
+    if (!statusLabel) {
+      return undefined;
+    }
+
+    return {
+      id: statusLabel.id,
+      statusCode: statusLabel.status_code,
+      label: statusLabel.label,
+      createdAt: statusLabel.created_at,
+      updatedAt: statusLabel.updated_at,
+    };
   }
 }
