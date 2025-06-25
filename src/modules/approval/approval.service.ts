@@ -68,19 +68,26 @@ export class ApprovalService {
       // Generate increment ID
       const incrementId = await this.generateIncrementId();
 
+      // Get the approval status label ID
+      const approvalStatusLabelId = await this.knexService.knex('approval_status_labels')
+        .where('status_code', 'DRAFT')
+        .select('id')
+        .first();
+
       // Transform data to snake case
       const data = {
         ...createApprovalDto,
         incrementId,
         userId,
+        approvalStatusLabelId: approvalStatusLabelId.id,
       };
 
       // Create the approval record with increment ID and user ID
       const savedApproval = await this.approvalRepository.create(data, trx);
 
       // Create the approval status record
-      await trx('approval_status').insert({
-        status: 'ฉบับร่าง',
+      await trx('approval_status_history').insert({
+        approval_status_label_id: approvalStatusLabelId.id,
         user_id: userId,
         approval_id: savedApproval.id,
         created_at: new Date(),
@@ -174,25 +181,14 @@ export class ApprovalService {
 
     const offset = (page - 1) * limit;
 
-    // Get approval IDs for latestApprovalStatus filter if needed
-    let approvalIdsWithStatus: number[] = [];
+    let approvalStatusLabelId: number = null;
     if (latestApprovalStatus) {
-      approvalIdsWithStatus = await this.knexService.knex
-        .select('approval_id')
-        .from(function () {
-          this.select(
-            'approval_id',
-            'status',
-            this.client.raw(
-              'ROW_NUMBER() OVER (PARTITION BY "approval_id" ORDER BY "created_at" DESC) AS "rn"'
-            )
-          )
-          .from('approval_status')
-          .as('sub');
-        })
-        .where('rn', 1)
-        .andWhere('status', latestApprovalStatus)
-        .pluck('approval_id');
+      const statusLabel = await this.knexService.knex('approval_status_labels')
+        .where('status_code', latestApprovalStatus)
+        .select('id')
+        .first();
+      
+      approvalStatusLabelId = statusLabel?.id || null;
     }
 
     // Build query with LIKE conditions
@@ -206,6 +202,9 @@ export class ApprovalService {
         'approval_staff_members.approval_id'
       ).where('approval_staff_members.employee_code', employeeCode);
     }
+
+    // Add JOIN for status labels (always join to get status information)
+    query = query.leftJoin('approval_status_labels as asl', 'approval.approval_status_label_id', 'asl.id');
 
     // Add LIKE conditions for incrementId and documentTitle
     if (incrementId) {
@@ -232,13 +231,11 @@ export class ApprovalService {
     }
 
     // Add latest approval status filter
-    if (latestApprovalStatus) {
-      if (approvalIdsWithStatus.length > 0) {
-        query = query.whereIn('approval.id', approvalIdsWithStatus);
-      } else {
-        // If no approvals found with the status, return empty result
-        query = query.where('approval.id', 0); // This will return no results
-      }
+    if (latestApprovalStatus && approvalStatusLabelId) {
+      query = query.where('approval.approval_status_label_id', approvalStatusLabelId);
+    } else if (latestApprovalStatus && !approvalStatusLabelId) {
+      // If status code not found, return empty result
+      query = query.where('approval.id', 0); // This will return no results
     }
 
     // Get approvals with pagination
@@ -290,6 +287,8 @@ export class ApprovalService {
           'approval.created_at as createdAt',
           'approval.updated_at as updatedAt',
           'approval.deleted_at as deletedAt',
+          'asl.label as latestApprovalStatus',
+          'approval.updated_at as latestStatusCreatedAt',
         )
         .orderBy(
           isRelatedToMe ? `approval.${dbOrderBy}` : dbOrderBy, 
@@ -301,24 +300,8 @@ export class ApprovalService {
 
     const total = Number(countResult?.count || 0);
 
-    // Get latest status for each approval
+    // Get approval IDs for date ranges query
     const approvalIds = approvals.map((approval) => approval.id);
-    let latestStatuses = [];
-
-    if (approvalIds.length > 0) {
-      // Get latest status for each approval using individual queries
-      const statusPromises = approvalIds.map(async (approvalId) => {
-        const latestStatus = await this.knexService
-          .knex('approval_status')
-          .select('approval_id', 'status', 'created_at')
-          .where('approval_id', approvalId)
-          .orderBy('created_at', 'desc')
-          .first();
-        return latestStatus;
-      });
-
-      latestStatuses = await Promise.all(statusPromises);
-    }
 
     // Get date ranges for each approval
     let dateRanges = [];
@@ -337,15 +320,6 @@ export class ApprovalService {
       dateRanges = await Promise.all(dateRangePromises);
     }
 
-    // Create a map of latest statuses by approval ID
-    const statusMap = new Map();
-    latestStatuses.forEach((status) => {
-      statusMap.set(status.approval_id, {
-        latestApprovalStatus: status.status,
-        latestStatusCreatedAt: status.created_at,
-      });
-    });
-
     // Create a map of date ranges by approval ID
     const dateRangeMap = new Map();
     dateRanges.forEach((dateRangeArray) => {
@@ -361,13 +335,9 @@ export class ApprovalService {
       }
     });
 
-    // Combine approvals with their latest status and date ranges
+    // Combine approvals with their date ranges (status is already included from JOIN)
     const data = approvals.map((approval) => ({
       ...approval,
-      latestApprovalStatus:
-        statusMap.get(approval.id)?.latestApprovalStatus || null,
-      latestStatusCreatedAt:
-        statusMap.get(approval.id)?.latestStatusCreatedAt || null,
       approvalDateRanges: dateRangeMap.get(approval.id) || [],
     }));
 
@@ -410,8 +380,8 @@ export class ApprovalService {
     // Add soft delete condition to the query
     const approval = await this.knexService
       .knex('approval')
-      .where('id', id)
-      .whereNull('deleted_at')
+      .where('approval.id', id)
+      .whereNull('approval.deleted_at')
       .select(
         'approval.id',
         'approval.increment_id as incrementId',
@@ -456,7 +426,9 @@ export class ApprovalService {
         'approval.created_at as createdAt',
         'approval.updated_at as updatedAt',
         'approval.deleted_at as deletedAt',
+        'asl.label as currentStatus',
       )
+      .join('approval_status_labels as asl', 'approval.approval_status_label_id', 'asl.id')
       .first();
 
     if (!approval) {
@@ -480,10 +452,11 @@ export class ApprovalService {
 
     // Get status history
     const statusHistory = await this.knexService
-      .knex('approval_status')
-      .where('approval_id', id)
-      .orderBy('created_at', 'desc')
-      .select('id', 'status', 'user_id as userId', 'created_at as createdAt');
+      .knex('approval_status_history as ash')
+      .join('approval_status_labels as asl', 'ash.approval_status_label_id', 'asl.id')
+      .where('ash.approval_id', id)
+      .orderBy('ash.created_at', 'desc')
+      .select('ash.id', 'asl.label as status', 'ash.user_id as userId', 'ash.created_at as createdAt');
 
     // Get travel date ranges
     const travelDateRanges = await this.knexService
@@ -732,7 +705,7 @@ export class ApprovalService {
     const response: ApprovalDetailResponseDto = {
       ...approvalDto,
       statusHistory,
-      currentStatus: statusHistory[0]?.status || 'ฉบับร่าง',
+      //currentStatus: statusHistory[0]?.status || 'ฉบับร่าง',
       travelDateRanges,
       approvalContents,
       tripEntries,
@@ -1473,14 +1446,30 @@ export class ApprovalService {
     // Start a transaction
     const trx = await this.knexService.knex.transaction();
 
+    // get approval status label id
+    const approvalStatusLabelId = await this.knexService.knex('approval_status_labels')
+      .where('status_code', updateStatusDto.status)
+      .select('id')
+      .first();
+
+    // if approvalStatusLabelId not found, throw error
+    if (!approvalStatusLabelId) {
+      throw new NotFoundException(`Approval status label with status code ${updateStatusDto.status} not found`);
+    }
+
     try {
       // Insert new status record
-      await trx('approval_status').insert({
-        status: updateStatusDto.status,
+      await trx('approval_status_history').insert({
+        approval_status_label_id: approvalStatusLabelId.id,
         user_id: userId,
         approval_id: id,
         created_at: new Date(),
         updated_at: new Date(),
+      });
+
+      // update approval status label id
+      await trx('approval').where('id', id).update({
+        approval_status_label_id: approvalStatusLabelId.id,
       });
 
       // Commit the transaction
