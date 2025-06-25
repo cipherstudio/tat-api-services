@@ -91,33 +91,29 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
     let employeeQuery = this.knex('OP_ORGANIZE_R')
       .leftJoin('OP_POSITION_NO_T', this.knex.raw('OP_ORGANIZE_R.POG_CODE = TRIM(OP_POSITION_NO_T.PPN_ORGANIZE)'))
       .leftJoin('OP_MASTER_T', this.knex.raw('TRIM(OP_POSITION_NO_T.PPN_NUMBER) = TRIM(OP_MASTER_T.PMT_POS_NO)'))
-      .leftJoin('VIEW_POSITION_4OT', (builder) => {
-        builder.on(
-          'VIEW_POSITION_4OT.POS_POSITIONCODE',
-          '=',
-          this.knex.raw('RTRIM("OP_MASTER_T"."PMT_POS_NO")'),
-        );
-      })
+      .leftJoin('OP_POS_EXECUTIVE_R', this.knex.raw('TRIM(OP_MASTER_T.PMT_POS_EX) = TRIM(OP_POS_EXECUTIVE_R.PPE_CODE)'))
       .leftJoin('EMPLOYEE', 'OP_MASTER_T.PMT_CODE', 'EMPLOYEE.CODE')
       .select([
         'OP_ORGANIZE_R.POG_CODE',
         'OP_POSITION_NO_T.PPN_ORGANIZE',
         'OP_POSITION_NO_T.PPN_NUMBER', 
         'OP_MASTER_T.PMT_POS_NO',
+        'OP_MASTER_T.PMT_POS_EX',
         'OP_MASTER_T.PMT_CODE',
         'OP_MASTER_T.PMT_NAME_T',
         'OP_MASTER_T.PMT_NAME_E',
         'OP_MASTER_T.PMT_LEVEL_CODE',
-        'VIEW_POSITION_4OT.POS_POSITIONNAME',
+        'OP_POS_EXECUTIVE_R.PPE_DESC_T',
       ])
       .whereIn('OP_ORGANIZE_R.POG_CODE', organizationCodes)
-      .whereNotNull('OP_MASTER_T.PMT_CODE');
+      .whereNotNull('OP_MASTER_T.PMT_CODE')
+      .whereNotNull('OP_MASTER_T.PMT_POS_EX');
 
     if (query?.employeeSearchTerm) {
       employeeQuery = employeeQuery.where((builder) => {
         builder
           .where('EMPLOYEE.NAME', 'like', `%${query.employeeSearchTerm}%`)
-          .orWhere('VIEW_POSITION_4OT.POS_POSITIONNAME', 'like', `%${query.employeeSearchTerm}%`);
+          .orWhere('OP_POS_EXECUTIVE_R.PPE_DESC_T', 'like', `%${query.employeeSearchTerm}%`);
       });
     }
 
@@ -301,7 +297,7 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
         pmtNameE: emp.pmtNameE,
         pmtPosNo: emp.pmtPosNo,
         pmtLevelCode: emp.pmtLevelCode,
-        positionName: emp.posPositionname || '',
+        positionName: emp.ppeDescT || '',
       });
     });
 
