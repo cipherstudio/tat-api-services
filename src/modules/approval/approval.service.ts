@@ -182,11 +182,11 @@ export class ApprovalService {
             'approval_id',
             'status',
             this.client.raw(
-              'ROW_NUMBER() OVER (PARTITION BY "approval_id" ORDER BY "created_at" DESC) AS "rn"'
-            )
+              'ROW_NUMBER() OVER (PARTITION BY "approval_id" ORDER BY "created_at" DESC) AS "rn"',
+            ),
           )
-          .from('approval_status')
-          .as('sub');
+            .from('approval_status')
+            .as('sub');
         })
         .where('rn', 1)
         .andWhere('status', latestApprovalStatus)
@@ -742,6 +742,8 @@ export class ApprovalService {
 
     // Start a transaction
     const trx = await this.knexService.knex.transaction();
+
+    console.log('updateDto', updateDto.confidentialityLevel);
 
     try {
       // Update approval record
