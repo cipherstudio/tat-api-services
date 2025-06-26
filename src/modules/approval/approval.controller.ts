@@ -35,6 +35,8 @@ import { ApprovalDetailResponseDto } from './dto/approval-detail-response.dto';
 import { UpdateClothingExpenseDatesDto } from './dto/update-clothing-expense-dates.dto';
 import { CheckClothingExpenseEligibilityDto } from './dto/check-clothing-expense-eligibility.dto';
 import { ClothingExpenseEligibilityResponseDto } from './dto/clothing-expense-eligibility-response.dto';
+import { ApprovalStatusLabelResponseDto } from './entities/approval-status-label.entity';
+//import { ApprovalWorkLocationDto } from './dto/approval-work-location.dto';
 
 interface RequestWithUser extends Request {
   user: User;
@@ -154,6 +156,12 @@ export class ApprovalController {
       'Filter by approval request end date (วันที่ขออนุมัติสิ้นสุด) - ISO date string (YYYY-MM-DD)',
   })
   @ApiQuery({
+    name: 'isRelatedToMe',
+    type: Boolean,
+    required: false,
+    description: 'Filter by whether the approval is related to the user',
+  })
+  @ApiQuery({
     name: 'includes',
     type: [String],
     required: false,
@@ -176,6 +184,7 @@ export class ApprovalController {
     @Query('documentTitle') documentTitle?: string,
     @Query('approvalRequestStartDate') approvalRequestStartDate?: string,
     @Query('approvalRequestEndDate') approvalRequestEndDate?: string,
+    @Query('isRelatedToMe') isRelatedToMe?: boolean,
     @Query('includes') includes?: string[],
   ) {
     const queryOptions: ApprovalQueryOptions = {
@@ -193,10 +202,25 @@ export class ApprovalController {
       documentTitle,
       approvalRequestStartDate,
       approvalRequestEndDate,
+      isRelatedToMe,
       includes,
     };
 
-    return this.approvalService.findAll(queryOptions, req.user.id);
+    return this.approvalService.findAll(queryOptions, req.user.id, req.user.employeeCode);
+  }
+
+  @Get('status')
+  @ApiOperation({
+    summary: 'Get approval status labels',
+    description: 'Retrieve all approval status labels from the database',
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Success',
+    type: [ApprovalStatusLabelResponseDto]
+  })
+  getStatusLabels(): Promise<ApprovalStatusLabelResponseDto[]> {
+    return this.approvalService.findAllStatusLabels();
   }
 
   @Get(':id')

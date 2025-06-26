@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Approval } from './entities/approval.entity';
+import { ApprovalStatusLabel } from './entities/approval-status-label.entity';
 import { CreateApprovalDto } from './dto/create-approval.dto';
 import { UpdateApprovalDto } from './dto/update-approval.dto';
 import { UpdateApprovalStatusDto } from './dto/update-approval-status.dto';
@@ -68,19 +69,27 @@ export class ApprovalService {
       // Generate increment ID
       const incrementId = await this.generateIncrementId();
 
+      // Get the approval status label ID
+      const approvalStatusLabelId = await this.knexService
+        .knex('approval_status_labels')
+        .where('status_code', 'DRAFT')
+        .select('id')
+        .first();
+
       // Transform data to snake case
       const data = {
         ...createApprovalDto,
         incrementId,
         userId,
+        approvalStatusLabelId: approvalStatusLabelId.id,
       };
 
       // Create the approval record with increment ID and user ID
       const savedApproval = await this.approvalRepository.create(data, trx);
 
       // Create the approval status record
-      await trx('approval_status').insert({
-        status: 'ฉบับร่าง',
+      await trx('approval_status_history').insert({
+        approval_status_label_id: approvalStatusLabelId.id,
         user_id: userId,
         approval_id: savedApproval.id,
         created_at: new Date(),
@@ -113,6 +122,7 @@ export class ApprovalService {
   async findAll(
     queryOptions?: ApprovalQueryOptions,
     userId?: number,
+    employeeCode?: string,
   ): Promise<PaginatedResult<Approval>> {
     // Try to get from cache first
     const cacheKey = this.cacheService.generateListKey(this.CACHE_PREFIX);
@@ -127,7 +137,7 @@ export class ApprovalService {
       limit = 10,
       orderBy = 'createdAt',
       orderDir = 'DESC',
-      includeInactive = false,
+      // includeInactive = false,
       name,
       searchTerm,
       latestApprovalStatus,
@@ -137,6 +147,7 @@ export class ApprovalService {
       documentTitle,
       approvalRequestStartDate,
       approvalRequestEndDate,
+      isRelatedToMe,
     } = queryOptions || {};
 
     // Prepare conditions
@@ -155,7 +166,7 @@ export class ApprovalService {
     }
 
     // user can see only their own approvals
-    if (userId) {
+    if (userId && !isRelatedToMe) {
       conditions.user_id = userId;
     }
 
@@ -172,29 +183,37 @@ export class ApprovalService {
 
     const offset = (page - 1) * limit;
 
-    // Get approval IDs for latestApprovalStatus filter if needed
-    let approvalIdsWithStatus: number[] = [];
+    let approvalStatusLabelId: number = null;
     if (latestApprovalStatus) {
-      approvalIdsWithStatus = await this.knexService.knex
-        .select('approval_id')
-        .from(function () {
-          this.select(
-            'approval_id',
-            'status',
-            this.client.raw(
-              'ROW_NUMBER() OVER (PARTITION BY "approval_id" ORDER BY "created_at" DESC) AS "rn"',
-            ),
-          )
-            .from('approval_status')
-            .as('sub');
-        })
-        .where('rn', 1)
-        .andWhere('status', latestApprovalStatus)
-        .pluck('approval_id');
+      const statusLabel = await this.knexService
+        .knex('approval_status_labels')
+        .where('status_code', latestApprovalStatus)
+        .select('id')
+        .first();
+
+      approvalStatusLabelId = statusLabel?.id || null;
     }
 
     // Build query with LIKE conditions
     let query = this.knexService.knex('approval').where(conditions);
+
+    // Add JOIN for isRelatedToMe filter
+    if (isRelatedToMe) {
+      query = query
+        .join(
+          'approval_staff_members',
+          'approval.id',
+          'approval_staff_members.approval_id',
+        )
+        .where('approval_staff_members.employee_code', employeeCode);
+    }
+
+    // Add JOIN for status labels (always join to get status information)
+    query = query.leftJoin(
+      'approval_status_labels as asl',
+      'approval.approval_status_label_id',
+      'asl.id',
+    );
 
     // Add LIKE conditions for incrementId and documentTitle
     if (incrementId) {
@@ -221,13 +240,14 @@ export class ApprovalService {
     }
 
     // Add latest approval status filter
-    if (latestApprovalStatus) {
-      if (approvalIdsWithStatus.length > 0) {
-        query = query.whereIn('id', approvalIdsWithStatus);
-      } else {
-        // If no approvals found with the status, return empty result
-        query = query.where('id', 0); // This will return no results
-      }
+    if (latestApprovalStatus && approvalStatusLabelId) {
+      query = query.where(
+        'approval.approval_status_label_id',
+        approvalStatusLabelId,
+      );
+    } else if (latestApprovalStatus && !approvalStatusLabelId) {
+      // If status code not found, return empty result
+      query = query.where('approval.id', 0); // This will return no results
     }
 
     // Get approvals with pagination
@@ -236,75 +256,64 @@ export class ApprovalService {
       query
         .clone()
         .select(
-          'id',
-          'increment_id as incrementId',
-          'record_type as recordType',
-          'name',
-          'employee_code as employeeCode',
-          'travel_type as travelType',
-          'international_sub_option as internationalSubOption',
-          'approval_ref as approvalRef',
-          'work_start_date as workStartDate',
-          'work_end_date as workEndDate',
-          'start_country as startCountry',
-          'end_country as endCountry',
-          'remarks',
-          'num_travelers as numTravelers',
-          'document_no as documentNo',
-          'document_tel as documentTel',
-          'document_to as documentTo',
-          'document_title as documentTitle',
-          'attachment_id as attachmentId',
-          'form3_total_outbound as form3TotalOutbound',
-          'form3_total_inbound as form3TotalInbound',
-          'form3_total_amount as form3TotalAmount',
-          'exceed_lodging_rights_checked as exceedLodgingRightsChecked',
-          'exceed_lodging_rights_reason as exceedLodgingRightsReason',
-          'form4_total_amount as form4TotalAmount',
-          'form5_total_amount as form5TotalAmount',
-          'approval_date as approvalDate',
-          'staff',
-          'confidentiality_level as confidentialityLevel',
-          'urgency_level as urgencyLevel',
-          'comments',
-          'final_staff as finalStaff',
-          'signer_date as signerDate',
-          'document_ending as documentEnding',
-          'document_ending_wording as documentEndingWording',
-          'signer_name as signerName',
-          'use_file_signature as useFileSignature',
-          'signature_attachment_id as signatureAttachmentId',
-          'use_system_signature as useSystemSignature',
-          'user_id as userId',
-          'created_at as createdAt',
-          'updated_at as updatedAt',
-          'deleted_at as deletedAt',
+          'approval.id',
+          'approval.increment_id as incrementId',
+          'approval.record_type as recordType',
+          'approval.name',
+          'approval.employee_code as employeeCode',
+          'approval.travel_type as travelType',
+          'approval.international_sub_option as internationalSubOption',
+          'approval.approval_ref as approvalRef',
+          'approval.work_start_date as workStartDate',
+          'approval.work_end_date as workEndDate',
+          'approval.start_country as startCountry',
+          'approval.end_country as endCountry',
+          'approval.remarks',
+          'approval.num_travelers as numTravelers',
+          'approval.document_no as documentNo',
+          'approval.document_tel as documentTel',
+          'approval.document_to as documentTo',
+          'approval.document_title as documentTitle',
+          'approval.attachment_id as attachmentId',
+          'approval.form3_total_outbound as form3TotalOutbound',
+          'approval.form3_total_inbound as form3TotalInbound',
+          'approval.form3_total_amount as form3TotalAmount',
+          'approval.exceed_lodging_rights_checked as exceedLodgingRightsChecked',
+          'approval.exceed_lodging_rights_reason as exceedLodgingRightsReason',
+          'approval.form4_total_amount as form4TotalAmount',
+          'approval.form5_total_amount as form5TotalAmount',
+          'approval.approval_date as approvalDate',
+          'approval.staff',
+          'approval.confidentiality_level as confidentialityLevel',
+          'approval.urgency_level as urgencyLevel',
+          'approval.comments',
+          'approval.final_staff as finalStaff',
+          'approval.signer_date as signerDate',
+          'approval.document_ending as documentEnding',
+          'approval.document_ending_wording as documentEndingWording',
+          'approval.signer_name as signerName',
+          'approval.use_file_signature as useFileSignature',
+          'approval.signature_attachment_id as signatureAttachmentId',
+          'approval.use_system_signature as useSystemSignature',
+          'approval.user_id as userId',
+          'approval.created_at as createdAt',
+          'approval.updated_at as updatedAt',
+          'approval.deleted_at as deletedAt',
+          'asl.label as latestApprovalStatus',
+          'approval.updated_at as latestStatusCreatedAt',
         )
-        .orderBy(dbOrderBy, orderDir.toLowerCase() as 'asc' | 'desc')
+        .orderBy(
+          isRelatedToMe ? `approval.${dbOrderBy}` : dbOrderBy,
+          orderDir.toLowerCase() as 'asc' | 'desc',
+        )
         .limit(limit)
         .offset(offset),
     ]);
 
     const total = Number(countResult?.count || 0);
 
-    // Get latest status for each approval
+    // Get approval IDs for date ranges query
     const approvalIds = approvals.map((approval) => approval.id);
-    let latestStatuses = [];
-
-    if (approvalIds.length > 0) {
-      // Get latest status for each approval using individual queries
-      const statusPromises = approvalIds.map(async (approvalId) => {
-        const latestStatus = await this.knexService
-          .knex('approval_status')
-          .select('approval_id', 'status', 'created_at')
-          .where('approval_id', approvalId)
-          .orderBy('created_at', 'desc')
-          .first();
-        return latestStatus;
-      });
-
-      latestStatuses = await Promise.all(statusPromises);
-    }
 
     // Get date ranges for each approval
     let dateRanges = [];
@@ -323,15 +332,6 @@ export class ApprovalService {
       dateRanges = await Promise.all(dateRangePromises);
     }
 
-    // Create a map of latest statuses by approval ID
-    const statusMap = new Map();
-    latestStatuses.forEach((status) => {
-      statusMap.set(status.approval_id, {
-        latestApprovalStatus: status.status,
-        latestStatusCreatedAt: status.created_at,
-      });
-    });
-
     // Create a map of date ranges by approval ID
     const dateRangeMap = new Map();
     dateRanges.forEach((dateRangeArray) => {
@@ -347,13 +347,9 @@ export class ApprovalService {
       }
     });
 
-    // Combine approvals with their latest status and date ranges
+    // Combine approvals with their date ranges (status is already included from JOIN)
     const data = approvals.map((approval) => ({
       ...approval,
-      latestApprovalStatus:
-        statusMap.get(approval.id)?.latestApprovalStatus || null,
-      latestStatusCreatedAt:
-        statusMap.get(approval.id)?.latestStatusCreatedAt || null,
       approvalDateRanges: dateRangeMap.get(approval.id) || [],
     }));
 
@@ -396,52 +392,58 @@ export class ApprovalService {
     // Add soft delete condition to the query
     const approval = await this.knexService
       .knex('approval')
-      .where('id', id)
-      .whereNull('deleted_at')
+      .where('approval.id', id)
+      .whereNull('approval.deleted_at')
       .select(
-        'id',
-        'increment_id as incrementId',
-        'record_type as recordType',
-        'name',
-        'employee_code as employeeCode',
-        'travel_type as travelType',
-        'international_sub_option as internationalSubOption',
-        'approval_ref as approvalRef',
-        'work_start_date as workStartDate',
-        'work_end_date as workEndDate',
-        'start_country as startCountry',
-        'end_country as endCountry',
-        'remarks',
-        'num_travelers as numTravelers',
-        'document_no as documentNo',
-        'document_tel as documentTel',
-        'document_to as documentTo',
-        'document_title as documentTitle',
-        'attachment_id as attachmentId',
-        'form3_total_outbound as form3TotalOutbound',
-        'form3_total_inbound as form3TotalInbound',
-        'form3_total_amount as form3TotalAmount',
-        'exceed_lodging_rights_checked as exceedLodgingRightsChecked',
-        'exceed_lodging_rights_reason as exceedLodgingRightsReason',
-        'form4_total_amount as form4TotalAmount',
-        'form5_total_amount as form5TotalAmount',
-        'approval_date as approvalDate',
-        'staff',
-        'confidentiality_level as confidentialityLevel',
-        'urgency_level as urgencyLevel',
-        'comments',
-        'final_staff as finalStaff',
-        'signer_date as signerDate',
-        'document_ending as documentEnding',
-        'document_ending_wording as documentEndingWording',
-        'signer_name as signerName',
-        'use_file_signature as useFileSignature',
-        'signature_attachment_id as signatureAttachmentId',
-        'use_system_signature as useSystemSignature',
-        'user_id as userId',
-        'created_at as createdAt',
-        'updated_at as updatedAt',
-        'deleted_at as deletedAt',
+        'approval.id',
+        'approval.increment_id as incrementId',
+        'approval.record_type as recordType',
+        'approval.name',
+        'approval.employee_code as employeeCode',
+        'approval.travel_type as travelType',
+        'approval.international_sub_option as internationalSubOption',
+        'approval.approval_ref as approvalRef',
+        'approval.work_start_date as workStartDate',
+        'approval.work_end_date as workEndDate',
+        'approval.start_country as startCountry',
+        'approval.end_country as endCountry',
+        'approval.remarks',
+        'approval.num_travelers as numTravelers',
+        'approval.document_no as documentNo',
+        'approval.document_tel as documentTel',
+        'approval.document_to as documentTo',
+        'approval.document_title as documentTitle',
+        'approval.attachment_id as attachmentId',
+        'approval.form3_total_outbound as form3TotalOutbound',
+        'approval.form3_total_inbound as form3TotalInbound',
+        'approval.form3_total_amount as form3TotalAmount',
+        'approval.exceed_lodging_rights_checked as exceedLodgingRightsChecked',
+        'approval.exceed_lodging_rights_reason as exceedLodgingRightsReason',
+        'approval.form4_total_amount as form4TotalAmount',
+        'approval.form5_total_amount as form5TotalAmount',
+        'approval.approval_date as approvalDate',
+        'approval.staff',
+        'approval.confidentiality_level as confidentialityLevel',
+        'approval.urgency_level as urgencyLevel',
+        'approval.comments',
+        'approval.final_staff as finalStaff',
+        'approval.signer_date as signerDate',
+        'approval.document_ending as documentEnding',
+        'approval.document_ending_wording as documentEndingWording',
+        'approval.signer_name as signerName',
+        'approval.use_file_signature as useFileSignature',
+        'approval.signature_attachment_id as signatureAttachmentId',
+        'approval.use_system_signature as useSystemSignature',
+        'approval.user_id as userId',
+        'approval.created_at as createdAt',
+        'approval.updated_at as updatedAt',
+        'approval.deleted_at as deletedAt',
+        'asl.label as currentStatus',
+      )
+      .join(
+        'approval_status_labels as asl',
+        'approval.approval_status_label_id',
+        'asl.id',
       )
       .first();
 
@@ -466,10 +468,20 @@ export class ApprovalService {
 
     // Get status history
     const statusHistory = await this.knexService
-      .knex('approval_status')
-      .where('approval_id', id)
-      .orderBy('created_at', 'desc')
-      .select('id', 'status', 'user_id as userId', 'created_at as createdAt');
+      .knex('approval_status_history as ash')
+      .join(
+        'approval_status_labels as asl',
+        'ash.approval_status_label_id',
+        'asl.id',
+      )
+      .where('ash.approval_id', id)
+      .orderBy('ash.created_at', 'desc')
+      .select(
+        'ash.id',
+        'asl.label as status',
+        'ash.user_id as userId',
+        'ash.created_at as createdAt',
+      );
 
     // Get travel date ranges
     const travelDateRanges = await this.knexService
@@ -718,7 +730,7 @@ export class ApprovalService {
     const response: ApprovalDetailResponseDto = {
       ...approvalDto,
       statusHistory,
-      currentStatus: statusHistory[0]?.status || 'ฉบับร่าง',
+      //currentStatus: statusHistory[0]?.status || 'ฉบับร่าง',
       travelDateRanges,
       approvalContents,
       tripEntries,
@@ -1461,14 +1473,33 @@ export class ApprovalService {
     // Start a transaction
     const trx = await this.knexService.knex.transaction();
 
+    // get approval status label id
+    const approvalStatusLabelId = await this.knexService
+      .knex('approval_status_labels')
+      .where('status_code', updateStatusDto.status)
+      .select('id')
+      .first();
+
+    // if approvalStatusLabelId not found, throw error
+    if (!approvalStatusLabelId) {
+      throw new NotFoundException(
+        `Approval status label with status code ${updateStatusDto.status} not found`,
+      );
+    }
+
     try {
       // Insert new status record
-      await trx('approval_status').insert({
-        status: updateStatusDto.status,
+      await trx('approval_status_history').insert({
+        approval_status_label_id: approvalStatusLabelId.id,
         user_id: userId,
         approval_id: id,
         created_at: new Date(),
         updated_at: new Date(),
+      });
+
+      // update approval status label id
+      await trx('approval').where('id', id).update({
+        approval_status_label_id: approvalStatusLabelId.id,
       });
 
       // Commit the transaction
@@ -1728,5 +1759,82 @@ export class ApprovalService {
         24 * 60 * 60 * 1000,
     );
     return nextClaimDate.toISOString().split('T')[0];
+  }
+
+  // Approval Status Label methods
+  async findAllStatusLabels(): Promise<ApprovalStatusLabel[]> {
+    const cacheKey = `${this.CACHE_PREFIX}:status_labels`;
+
+    // Try to get from cache first
+    const cached = await this.cacheService.get<string>(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
+    // If not in cache, get from database
+    const statusLabels = await this.knexService
+      .knex('approval_status_labels')
+      .orderBy('id', 'asc')
+      .select('*');
+
+    // Transform to camelCase
+    const transformedLabels = statusLabels.map((label) => ({
+      id: label.id,
+      statusCode: label.status_code,
+      label: label.label,
+      createdAt: label.created_at,
+      updatedAt: label.updated_at,
+    }));
+
+    // Cache the result
+    await this.cacheService.set(
+      cacheKey,
+      JSON.stringify(transformedLabels),
+      this.CACHE_TTL,
+    );
+
+    return transformedLabels;
+  }
+
+  async findStatusLabelById(
+    id: number,
+  ): Promise<ApprovalStatusLabel | undefined> {
+    const statusLabel = await this.knexService
+      .knex('approval_status_labels')
+      .where('id', id)
+      .first();
+
+    if (!statusLabel) {
+      return undefined;
+    }
+
+    return {
+      id: statusLabel.id,
+      statusCode: statusLabel.status_code,
+      label: statusLabel.label,
+      createdAt: statusLabel.created_at,
+      updatedAt: statusLabel.updated_at,
+    };
+  }
+
+  async findStatusLabelByStatusCode(
+    statusCode: string,
+  ): Promise<ApprovalStatusLabel | undefined> {
+    const statusLabel = await this.knexService
+      .knex('approval_status_labels')
+      .where('status_code', statusCode)
+      .first();
+
+    if (!statusLabel) {
+      return undefined;
+    }
+
+    return {
+      id: statusLabel.id,
+      statusCode: statusLabel.status_code,
+      label: statusLabel.label,
+      createdAt: statusLabel.created_at,
+      updatedAt: statusLabel.updated_at,
+    };
   }
 }
