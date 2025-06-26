@@ -162,6 +162,11 @@ export interface Approval {
   staff?: string;
 
   /**
+   * Staff employee code
+   */
+  staffEmployeeCode?: string;
+
+  /**
    * Comments
    */
   comments?: string;
@@ -185,6 +190,11 @@ export interface Approval {
    * Final staff
    */
   finalStaff?: string;
+
+  /**
+   * Final staff employee code
+   */
+  finalStaffEmployeeCode?: string;
 
   /**
    * Signer date
@@ -289,11 +299,13 @@ export const approvalColumnMap = {
   departments: 'departments',
   degrees: 'degrees',
   staff: 'staff',
+  staff_employee_code: 'staffEmployeeCode',
   comments: 'comments',
   approval_date: 'approvalDate',
   final_departments: 'finalDepartments',
   final_degrees: 'finalDegrees',
   final_staff: 'finalStaff',
+  final_staff_employee_code: 'finalStaffEmployeeCode',
   signer_date: 'signerDate',
   document_ending: 'documentEnding',
   document_ending_wording: 'documentEndingWording',
@@ -340,11 +352,13 @@ export const approvalReverseColumnMap = {
   departments: 'departments',
   degrees: 'degrees',
   staff: 'staff',
+  staffEmployeeCode: 'staff_employee_code',
   comments: 'comments',
   approvalDate: 'approval_date',
   finalDepartments: 'final_departments',
   finalDegrees: 'final_degrees',
   finalStaff: 'final_staff',
+  finalStaffEmployeeCode: 'final_staff_employee_code',
   signerDate: 'signer_date',
   documentEnding: 'document_ending',
   documentEndingWording: 'document_ending_wording',

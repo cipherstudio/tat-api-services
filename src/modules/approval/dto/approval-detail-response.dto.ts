@@ -494,6 +494,13 @@ export class ApprovalDetailResponseDto implements Approval {
   staff?: string;
 
   @ApiProperty({
+    description: 'รหัสผู้เห็นชอบผ่านเรื่อง',
+    required: false,
+    example: '66019'
+  })
+  staffEmployeeCode?: string;
+
+  @ApiProperty({
     description: 'ความเห็น',
     required: false,
     example: 'รายละเอียดความเห็น'
@@ -527,6 +534,13 @@ export class ApprovalDetailResponseDto implements Approval {
     example: 'หัวหน้าส่วนสื่อดิจิทัล (นางสาวสมหญิง ไชโย)'
   })
   finalStaff?: string;
+
+  @ApiProperty({
+    description: 'รหัสผู้อนุมัติ (ขั้นตอนสุดท้าย)',
+    required: false,
+    example: '66019'
+  })
+  finalStaffEmployeeCode?: string;
 
   @ApiProperty({
     description: 'วันที่ลงนาม',
