@@ -148,6 +148,7 @@ export class ApprovalService {
       approvalRequestStartDate,
       approvalRequestEndDate,
       isRelatedToMe,
+      isMyApproval,
     } = queryOptions || {};
 
     // Validate pagination parameters
@@ -171,7 +172,7 @@ export class ApprovalService {
     }
 
     // user can see only their own approvals
-    if (userId && !isRelatedToMe) {
+    if (userId && (!isRelatedToMe || !isMyApproval)) {
       conditions.user_id = userId;
     }
 
@@ -213,12 +214,17 @@ export class ApprovalService {
         .where('approval_staff_members.employee_code', employeeCode);
     }
 
+    // Add filter for my approval
+    if (isMyApproval) {
+      query = query.where('approval.final_staff_employee_code', employeeCode);
+    }
+
     // Add JOIN for status labels (always join to get status information)
     query = query
       .leftJoin(
-        'approval_status_labels',
+        'approval_status_labels as asl',
         'approval.approval_status_label_id',
-        'approval_status_labels.id',
+        'asl.id',
       )
       .leftJoin('OP_MASTER_T', (builder) => {
         builder.on(
@@ -270,63 +276,39 @@ export class ApprovalService {
         .clone()
         .select(
           'approval.id',
-          'approval.user_id',
-          'approval.increment_id',
-          'approval.approval_ref',
-          'approval.record_type',
+          'approval.increment_id as incrementId',
+          'approval.record_type as recordType',
           'approval.name',
-          'approval.employee_code',
-          'approval.travel_type',
-          'approval.international_sub_option',
-          'approval.work_start_date',
-          'approval.work_end_date',
-          'approval.start_country',
-          'approval.end_country',
+          'approval.employee_code as employeeCode',
+          'approval.travel_type as travelType',
+          'approval.international_sub_option as internationalSubOption',
+          'approval.approval_ref as approvalRef',
+          'approval.work_start_date as workStartDate',
+          'approval.work_end_date as workEndDate',
+          'approval.start_country as startCountry',
+          'approval.end_country as endCountry',
           'approval.remarks',
-          'approval.num_travelers',
-          'approval.document_no',
-          'approval.document_tel',
-          'approval.document_to',
-          'approval.document_title',
-          'approval.attachment_id',
-          'approval.form3_total_outbound',
-          'approval.form3_total_inbound',
-          'approval.form3_total_amount',
-          'approval.exceed_lodging_rights_checked',
-          'approval.exceed_lodging_rights_reason',
-          'approval.form4_total_amount',
-          'approval.form5_total_amount',
-          'approval.confidentiality_level',
-          'approval.urgency_level',
-          'approval.departments',
-          'approval.degrees',
+          'approval.num_travelers as numTravelers',
+          'approval.document_no as documentNo',
+          'approval.document_tel as documentTel',
+          'approval.document_to as documentTo',
+          'approval.document_title as documentTitle',
+          'approval.attachment_id as attachmentId',
+          'approval.form3_total_outbound as form3TotalOutbound',
+          'approval.form3_total_inbound as form3TotalInbound',
+          'approval.form3_total_amount as form3TotalAmount',
+          'approval.exceed_lodging_rights_checked as exceedLodgingRightsChecked',
+          'approval.exceed_lodging_rights_reason as exceedLodgingRightsReason',
+          'approval.form4_total_amount as form4TotalAmount',
+          'approval.form5_total_amount as form5TotalAmount',
+          'approval.approval_date as approvalDate',
           'approval.staff',
           'approval.staff_employee_code as staffEmployeeCode',
+          'approval.final_staff_employee_code as finalStaffEmployeeCode',
           'approval.confidentiality_level as confidentialityLevel',
           'approval.urgency_level as urgencyLevel',
           'approval.comments',
-          'approval.approval_date',
-          'approval.final_departments',
-          'approval.final_degrees',
-          'approval.final_staff',
-          'approval.signer_date',
-          'approval.document_ending',
-          'approval.document_ending_wording',
-          'approval.signer_name',
-          'approval.use_file_signature',
-          'approval.signature_attachment_id',
-          'approval.use_system_signature',
-          'approval.created_at',
-          'approval.updated_at',
-          'approval.deleted_at',
-          // joined columns
-          'approval_status_labels.label as currentStatus',
-          'approval_status_labels.updated_at as currentStatusUpdatedAt',
-          'approval_status_labels.status_code as currentStatusCode',
-          'approval_status_labels.created_at as currentStatusCreatedAt',
-          'OP_MASTER_T.PMT_NAME_T as employeeName',
           'approval.final_staff as finalStaff',
-          'approval.final_staff_employee_code as finalStaffEmployeeCode',
           'approval.signer_date as signerDate',
           'approval.document_ending as documentEnding',
           'approval.document_ending_wording as documentEndingWording',
@@ -338,8 +320,10 @@ export class ApprovalService {
           'approval.created_at as createdAt',
           'approval.updated_at as updatedAt',
           'approval.deleted_at as deletedAt',
+          // joined columns
           'asl.label as latestApprovalStatus',
-          'approval.updated_at as latestStatusCreatedAt',
+          'asl.updated_at as latestStatusCreatedAt',
+          'OP_MASTER_T.PMT_NAME_T as employeeName',
         )
         .orderBy(dbOrderBy, orderDir.toLowerCase() as 'asc' | 'desc')
         .limit(validatedLimit)
@@ -821,8 +805,6 @@ export class ApprovalService {
 
     // Start a transaction
     const trx = await this.knexService.knex.transaction();
-
-    console.log('updateDto', updateDto.confidentialityLevel);
 
     try {
       // Update approval record
