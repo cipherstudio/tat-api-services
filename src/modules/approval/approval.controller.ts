@@ -26,7 +26,6 @@ import { ApprovalService } from './approval.service';
 import { CreateApprovalDto } from './dto/create-approval.dto';
 import { UpdateApprovalDto } from './dto/update-approval.dto';
 import { UpdateApprovalStatusDto } from './dto/update-approval-status.dto';
-import { QueryApprovalDto } from './dto/query-approval.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ApprovalQueryOptions } from './interfaces/approval-options.interface';
 import { Request } from 'express';
@@ -206,7 +205,7 @@ export class ApprovalController {
       includes,
     };
 
-    return this.approvalService.findAll(queryOptions, req.user.id, req.user.employeeCode);
+    return this.approvalService.findAll(queryOptions);
   }
 
   @Get('status')
@@ -214,10 +213,10 @@ export class ApprovalController {
     summary: 'Get approval status labels',
     description: 'Retrieve all approval status labels from the database',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Success',
-    type: [ApprovalStatusLabelResponseDto]
+    type: [ApprovalStatusLabelResponseDto],
   })
   getStatusLabels(): Promise<ApprovalStatusLabelResponseDto[]> {
     return this.approvalService.findAllStatusLabels();

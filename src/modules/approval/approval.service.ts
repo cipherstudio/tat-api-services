@@ -85,7 +85,7 @@ export class ApprovalService {
       };
 
       // Create the approval record with increment ID and user ID
-      const savedApproval = await this.approvalRepository.create(data, trx);
+      const savedApproval = await this.approvalRepository.create(data);
 
       // Create the approval status record
       await trx('approval_status_history').insert({
@@ -209,11 +209,19 @@ export class ApprovalService {
     }
 
     // Add JOIN for status labels (always join to get status information)
-    query = query.leftJoin(
-      'approval_status_labels as asl',
-      'approval.approval_status_label_id',
-      'asl.id',
-    );
+    query = query
+      .leftJoin(
+        'approval_status_labels',
+        'approval.approval_status_label_id',
+        'approval_status_labels.id',
+      )
+      .leftJoin('OP_MASTER_T', (builder) => {
+        builder.on(
+          'approval.employee_code',
+          '=',
+          this.knexService.knex.raw('RTRIM("OP_MASTER_T"."PMT_CODE")'),
+        );
+      });
 
     // Add LIKE conditions for incrementId and documentTitle
     if (incrementId) {
@@ -257,50 +265,58 @@ export class ApprovalService {
         .clone()
         .select(
           'approval.id',
-          'approval.increment_id as incrementId',
-          'approval.record_type as recordType',
+          'approval.user_id',
+          'approval.increment_id',
+          'approval.approval_ref',
+          'approval.record_type',
           'approval.name',
-          'approval.employee_code as employeeCode',
-          'approval.travel_type as travelType',
-          'approval.international_sub_option as internationalSubOption',
-          'approval.approval_ref as approvalRef',
-          'approval.work_start_date as workStartDate',
-          'approval.work_end_date as workEndDate',
-          'approval.start_country as startCountry',
-          'approval.end_country as endCountry',
+          'approval.employee_code',
+          'approval.travel_type',
+          'approval.international_sub_option',
+          'approval.work_start_date',
+          'approval.work_end_date',
+          'approval.start_country',
+          'approval.end_country',
           'approval.remarks',
-          'approval.num_travelers as numTravelers',
-          'approval.document_no as documentNo',
-          'approval.document_tel as documentTel',
-          'approval.document_to as documentTo',
-          'approval.document_title as documentTitle',
-          'approval.attachment_id as attachmentId',
-          'approval.form3_total_outbound as form3TotalOutbound',
-          'approval.form3_total_inbound as form3TotalInbound',
-          'approval.form3_total_amount as form3TotalAmount',
-          'approval.exceed_lodging_rights_checked as exceedLodgingRightsChecked',
-          'approval.exceed_lodging_rights_reason as exceedLodgingRightsReason',
-          'approval.form4_total_amount as form4TotalAmount',
-          'approval.form5_total_amount as form5TotalAmount',
-          'approval.approval_date as approvalDate',
+          'approval.num_travelers',
+          'approval.document_no',
+          'approval.document_tel',
+          'approval.document_to',
+          'approval.document_title',
+          'approval.attachment_id',
+          'approval.form3_total_outbound',
+          'approval.form3_total_inbound',
+          'approval.form3_total_amount',
+          'approval.exceed_lodging_rights_checked',
+          'approval.exceed_lodging_rights_reason',
+          'approval.form4_total_amount',
+          'approval.form5_total_amount',
+          'approval.confidentiality_level',
+          'approval.urgency_level',
+          'approval.departments',
+          'approval.degrees',
           'approval.staff',
-          'approval.confidentiality_level as confidentialityLevel',
-          'approval.urgency_level as urgencyLevel',
           'approval.comments',
-          'approval.final_staff as finalStaff',
-          'approval.signer_date as signerDate',
-          'approval.document_ending as documentEnding',
-          'approval.document_ending_wording as documentEndingWording',
-          'approval.signer_name as signerName',
-          'approval.use_file_signature as useFileSignature',
-          'approval.signature_attachment_id as signatureAttachmentId',
-          'approval.use_system_signature as useSystemSignature',
-          'approval.user_id as userId',
-          'approval.created_at as createdAt',
-          'approval.updated_at as updatedAt',
-          'approval.deleted_at as deletedAt',
-          'asl.label as latestApprovalStatus',
-          'approval.updated_at as latestStatusCreatedAt',
+          'approval.approval_date',
+          'approval.final_departments',
+          'approval.final_degrees',
+          'approval.final_staff',
+          'approval.signer_date',
+          'approval.document_ending',
+          'approval.document_ending_wording',
+          'approval.signer_name',
+          'approval.use_file_signature',
+          'approval.signature_attachment_id',
+          'approval.use_system_signature',
+          'approval.created_at',
+          'approval.updated_at',
+          'approval.deleted_at',
+          // joined columns
+          'approval_status_labels.label as currentStatus',
+          'approval_status_labels.updated_at as currentStatusUpdatedAt',
+          'approval_status_labels.status_code as currentStatusCode',
+          'approval_status_labels.created_at as currentStatusCreatedAt',
+          'OP_MASTER_T.PMT_NAME_T as employeeName',
         )
         .orderBy(
           isRelatedToMe ? `approval.${dbOrderBy}` : dbOrderBy,
@@ -379,6 +395,35 @@ export class ApprovalService {
 
     return result;
   }
+
+  // async findAll(queryOptions: ApprovalQueryOptions) {
+  //   // Filter out undefined and null values
+  //   const filteredConditions = Object.entries(queryOptions).reduce(
+  //     (acc, [key, value]) => {
+  //       if (value !== undefined && value !== null) {
+  //         acc[key] = value;
+  //       }
+  //       return acc;
+  //     },
+  //     {} as Record<string, any>,
+  //   );
+
+  //   const {
+  //     page = 1,
+  //     limit = 10,
+  //     orderBy = 'createdAt',
+  //     orderDir = 'DESC',
+  //     ...conditions
+  //   } = filteredConditions;
+
+  //   return this.approvalRepository.findWithPaginationAndSearch(
+  //     page,
+  //     limit,
+  //     conditions,
+  //     orderBy,
+  //     orderDir as 'asc' | 'desc',
+  //   );
+  // }
 
   async findById(id: number): Promise<ApprovalDetailResponseDto> {
     // Try to get from cache first
