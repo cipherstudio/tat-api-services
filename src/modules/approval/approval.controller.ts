@@ -26,7 +26,6 @@ import { ApprovalService } from './approval.service';
 import { CreateApprovalDto } from './dto/create-approval.dto';
 import { UpdateApprovalDto } from './dto/update-approval.dto';
 import { UpdateApprovalStatusDto } from './dto/update-approval-status.dto';
-import { QueryApprovalDto } from './dto/query-approval.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ApprovalQueryOptions } from './interfaces/approval-options.interface';
 import { Request } from 'express';
@@ -56,7 +55,10 @@ export class ApprovalController {
   })
   @ApiBody({ type: CreateApprovalDto })
   @ApiResponse({ status: 201, description: 'Approval created successfully' })
-  create(@Body() createApprovalDto: CreateApprovalDto, @Req() req: RequestWithUser) {
+  create(
+    @Body() createApprovalDto: CreateApprovalDto,
+    @Req() req: RequestWithUser,
+  ) {
     return this.approvalService.create(createApprovalDto, req.user.id);
   }
 
@@ -142,13 +144,15 @@ export class ApprovalController {
     name: 'approvalRequestStartDate',
     type: String,
     required: false,
-    description: 'Filter by approval request start date (วันที่ขออนุมัติเริ่มต้น) - ISO date string (YYYY-MM-DD)',
+    description:
+      'Filter by approval request start date (วันที่ขออนุมัติเริ่มต้น) - ISO date string (YYYY-MM-DD)',
   })
   @ApiQuery({
     name: 'approvalRequestEndDate',
     type: String,
     required: false,
-    description: 'Filter by approval request end date (วันที่ขออนุมัติสิ้นสุด) - ISO date string (YYYY-MM-DD)',
+    description:
+      'Filter by approval request end date (วันที่ขออนุมัติสิ้นสุด) - ISO date string (YYYY-MM-DD)',
   })
   @ApiQuery({
     name: 'isRelatedToMe',
@@ -201,7 +205,7 @@ export class ApprovalController {
       includes,
     };
 
-    return this.approvalService.findAll(queryOptions, req.user.id, req.user.employeeCode);
+    return this.approvalService.findAll(queryOptions);
   }
 
   @Get('status')
@@ -209,10 +213,10 @@ export class ApprovalController {
     summary: 'Get approval status labels',
     description: 'Retrieve all approval status labels from the database',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Success',
-    type: [ApprovalStatusLabelResponseDto]
+    type: [ApprovalStatusLabelResponseDto],
   })
   getStatusLabels(): Promise<ApprovalStatusLabelResponseDto[]> {
     return this.approvalService.findAllStatusLabels();
@@ -223,12 +227,14 @@ export class ApprovalController {
     summary: 'Get approval by ID',
     description: 'Retrieve an approval record by its ID with status history',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Success',
-    type: ApprovalDetailResponseDto
+    type: ApprovalDetailResponseDto,
   })
-  findById(@Param('id', ParseIntPipe) id: number): Promise<ApprovalDetailResponseDto> {
+  findById(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<ApprovalDetailResponseDto> {
     return this.approvalService.findById(id);
   }
 
@@ -252,7 +258,10 @@ export class ApprovalController {
     description: 'Update the status of an approval record',
   })
   @ApiBody({ type: UpdateApprovalStatusDto })
-  @ApiResponse({ status: 204, description: 'Approval status updated successfully' })
+  @ApiResponse({
+    status: 204,
+    description: 'Approval status updated successfully',
+  })
   @HttpCode(HttpStatus.NO_CONTENT)
   updateStatus(
     @Param('id', ParseIntPipe) id: number,
@@ -276,10 +285,14 @@ export class ApprovalController {
   @Patch(':id/clothing-expense-dates')
   @ApiOperation({
     summary: 'Update clothing expense dates',
-    description: 'Update reporting date, next claim date, and DD work end date for clothing expense',
+    description:
+      'Update reporting date, next claim date, and DD work end date for clothing expense',
   })
   @ApiBody({ type: UpdateClothingExpenseDatesDto })
-  @ApiResponse({ status: 204, description: 'Clothing expense dates updated successfully' })
+  @ApiResponse({
+    status: 204,
+    description: 'Clothing expense dates updated successfully',
+  })
   @HttpCode(HttpStatus.NO_CONTENT)
   updateClothingExpenseDates(
     @Param('id', ParseIntPipe) id: number,
@@ -291,17 +304,20 @@ export class ApprovalController {
   @Post('check-clothing-expense-eligibility')
   @ApiOperation({
     summary: 'Check clothing expense eligibility',
-    description: 'Check if employees are eligible for clothing expense claim based on next claim date',
+    description:
+      'Check if employees are eligible for clothing expense claim based on next claim date',
   })
   @ApiBody({ type: CheckClothingExpenseEligibilityDto })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Success',
-    type: [ClothingExpenseEligibilityResponseDto]
+    type: [ClothingExpenseEligibilityResponseDto],
   })
   checkClothingExpenseEligibility(
     @Body() checkEligibilityDto: CheckClothingExpenseEligibilityDto,
   ): Promise<ClothingExpenseEligibilityResponseDto[]> {
-    return this.approvalService.checkClothingExpenseEligibility(checkEligibilityDto);
+    return this.approvalService.checkClothingExpenseEligibility(
+      checkEligibilityDto,
+    );
   }
 }

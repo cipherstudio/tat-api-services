@@ -70,7 +70,8 @@ export class ApprovalService {
       const incrementId = await this.generateIncrementId();
 
       // Get the approval status label ID
-      const approvalStatusLabelId = await this.knexService.knex('approval_status_labels')
+      const approvalStatusLabelId = await this.knexService
+        .knex('approval_status_labels')
         .where('status_code', 'DRAFT')
         .select('id')
         .first();
@@ -84,7 +85,7 @@ export class ApprovalService {
       };
 
       // Create the approval record with increment ID and user ID
-      const savedApproval = await this.approvalRepository.create(data, trx);
+      const savedApproval = await this.approvalRepository.create(data);
 
       // Create the approval status record
       await trx('approval_status_history').insert({
@@ -136,7 +137,7 @@ export class ApprovalService {
       limit = 10,
       orderBy = 'createdAt',
       orderDir = 'DESC',
-      includeInactive = false,
+      // includeInactive = false,
       name,
       searchTerm,
       latestApprovalStatus,
@@ -189,11 +190,12 @@ export class ApprovalService {
 
     let approvalStatusLabelId: number = null;
     if (latestApprovalStatus) {
-      const statusLabel = await this.knexService.knex('approval_status_labels')
+      const statusLabel = await this.knexService
+        .knex('approval_status_labels')
         .where('status_code', latestApprovalStatus)
         .select('id')
         .first();
-      
+
       approvalStatusLabelId = statusLabel?.id || null;
     }
 
@@ -202,15 +204,29 @@ export class ApprovalService {
 
     // Add JOIN for isRelatedToMe filter
     if (isRelatedToMe) {
-      query = query.join(
-        'approval_staff_members',
-        'approval.id',
-        'approval_staff_members.approval_id'
-      ).where('approval_staff_members.employee_code', employeeCode);
+      query = query
+        .join(
+          'approval_staff_members',
+          'approval.id',
+          'approval_staff_members.approval_id',
+        )
+        .where('approval_staff_members.employee_code', employeeCode);
     }
 
     // Add JOIN for status labels (always join to get status information)
-    query = query.leftJoin('approval_status_labels as asl', 'approval.approval_status_label_id', 'asl.id');
+    query = query
+      .leftJoin(
+        'approval_status_labels',
+        'approval.approval_status_label_id',
+        'approval_status_labels.id',
+      )
+      .leftJoin('OP_MASTER_T', (builder) => {
+        builder.on(
+          'approval.employee_code',
+          '=',
+          this.knexService.knex.raw('RTRIM("OP_MASTER_T"."PMT_CODE")'),
+        );
+      });
 
     // Add LIKE conditions for incrementId and documentTitle
     if (incrementId) {
@@ -238,7 +254,10 @@ export class ApprovalService {
 
     // Add latest approval status filter
     if (latestApprovalStatus && approvalStatusLabelId) {
-      query = query.where('approval.approval_status_label_id', approvalStatusLabelId);
+      query = query.where(
+        'approval.approval_status_label_id',
+        approvalStatusLabelId,
+      );
     } else if (latestApprovalStatus && !approvalStatusLabelId) {
       // If status code not found, return empty result
       query = query.where('approval.id', 0); // This will return no results
@@ -251,37 +270,61 @@ export class ApprovalService {
         .clone()
         .select(
           'approval.id',
-          'approval.increment_id as incrementId',
-          'approval.record_type as recordType',
+          'approval.user_id',
+          'approval.increment_id',
+          'approval.approval_ref',
+          'approval.record_type',
           'approval.name',
-          'approval.employee_code as employeeCode',
-          'approval.travel_type as travelType',
-          'approval.international_sub_option as internationalSubOption',
-          'approval.approval_ref as approvalRef',
-          'approval.work_start_date as workStartDate',
-          'approval.work_end_date as workEndDate',
-          'approval.start_country as startCountry',
-          'approval.end_country as endCountry',
+          'approval.employee_code',
+          'approval.travel_type',
+          'approval.international_sub_option',
+          'approval.work_start_date',
+          'approval.work_end_date',
+          'approval.start_country',
+          'approval.end_country',
           'approval.remarks',
-          'approval.num_travelers as numTravelers',
-          'approval.document_no as documentNo',
-          'approval.document_tel as documentTel',
-          'approval.document_to as documentTo',
-          'approval.document_title as documentTitle',
-          'approval.attachment_id as attachmentId',
-          'approval.form3_total_outbound as form3TotalOutbound',
-          'approval.form3_total_inbound as form3TotalInbound',
-          'approval.form3_total_amount as form3TotalAmount',
-          'approval.exceed_lodging_rights_checked as exceedLodgingRightsChecked',
-          'approval.exceed_lodging_rights_reason as exceedLodgingRightsReason',
-          'approval.form4_total_amount as form4TotalAmount',
-          'approval.form5_total_amount as form5TotalAmount',
-          'approval.approval_date as approvalDate',
+          'approval.num_travelers',
+          'approval.document_no',
+          'approval.document_tel',
+          'approval.document_to',
+          'approval.document_title',
+          'approval.attachment_id',
+          'approval.form3_total_outbound',
+          'approval.form3_total_inbound',
+          'approval.form3_total_amount',
+          'approval.exceed_lodging_rights_checked',
+          'approval.exceed_lodging_rights_reason',
+          'approval.form4_total_amount',
+          'approval.form5_total_amount',
+          'approval.confidentiality_level',
+          'approval.urgency_level',
+          'approval.departments',
+          'approval.degrees',
           'approval.staff',
           'approval.staff_employee_code as staffEmployeeCode',
           'approval.confidentiality_level as confidentialityLevel',
           'approval.urgency_level as urgencyLevel',
           'approval.comments',
+          'approval.approval_date',
+          'approval.final_departments',
+          'approval.final_degrees',
+          'approval.final_staff',
+          'approval.signer_date',
+          'approval.document_ending',
+          'approval.document_ending_wording',
+          'approval.signer_name',
+          'approval.use_file_signature',
+          'approval.signature_attachment_id',
+          'approval.use_system_signature',
+          'approval.created_at',
+          'approval.updated_at',
+          'approval.deleted_at',
+          // joined columns
+          'approval_status_labels.label as currentStatus',
+          'approval_status_labels.updated_at as currentStatusUpdatedAt',
+          'approval_status_labels.status_code as currentStatusCode',
+          'approval_status_labels.created_at as currentStatusCreatedAt',
+          'OP_MASTER_T.PMT_NAME_T as employeeName',
           'approval.final_staff as finalStaff',
           'approval.final_staff_employee_code as finalStaffEmployeeCode',
           'approval.signer_date as signerDate',
@@ -373,6 +416,35 @@ export class ApprovalService {
     return result;
   }
 
+  // async findAll(queryOptions: ApprovalQueryOptions) {
+  //   // Filter out undefined and null values
+  //   const filteredConditions = Object.entries(queryOptions).reduce(
+  //     (acc, [key, value]) => {
+  //       if (value !== undefined && value !== null) {
+  //         acc[key] = value;
+  //       }
+  //       return acc;
+  //     },
+  //     {} as Record<string, any>,
+  //   );
+
+  //   const {
+  //     page = 1,
+  //     limit = 10,
+  //     orderBy = 'createdAt',
+  //     orderDir = 'DESC',
+  //     ...conditions
+  //   } = filteredConditions;
+
+  //   return this.approvalRepository.findWithPaginationAndSearch(
+  //     page,
+  //     limit,
+  //     conditions,
+  //     orderBy,
+  //     orderDir as 'asc' | 'desc',
+  //   );
+  // }
+
   async findById(id: number): Promise<ApprovalDetailResponseDto> {
     // Try to get from cache first
     const cacheKey = this.cacheService.generateKey(this.CACHE_PREFIX, id);
@@ -435,7 +507,11 @@ export class ApprovalService {
         'approval.deleted_at as deletedAt',
         'asl.label as currentStatus',
       )
-      .join('approval_status_labels as asl', 'approval.approval_status_label_id', 'asl.id')
+      .join(
+        'approval_status_labels as asl',
+        'approval.approval_status_label_id',
+        'asl.id',
+      )
       .first();
 
     if (!approval) {
@@ -460,10 +536,19 @@ export class ApprovalService {
     // Get status history
     const statusHistory = await this.knexService
       .knex('approval_status_history as ash')
-      .join('approval_status_labels as asl', 'ash.approval_status_label_id', 'asl.id')
+      .join(
+        'approval_status_labels as asl',
+        'ash.approval_status_label_id',
+        'asl.id',
+      )
       .where('ash.approval_id', id)
       .orderBy('ash.created_at', 'desc')
-      .select('ash.id', 'asl.label as status', 'ash.user_id as userId', 'ash.created_at as createdAt');
+      .select(
+        'ash.id',
+        'asl.label as status',
+        'ash.user_id as userId',
+        'ash.created_at as createdAt',
+      );
 
     // Get travel date ranges
     const travelDateRanges = await this.knexService
@@ -736,6 +821,8 @@ export class ApprovalService {
 
     // Start a transaction
     const trx = await this.knexService.knex.transaction();
+
+    console.log('updateDto', updateDto.confidentialityLevel);
 
     try {
       // Update approval record
@@ -1456,14 +1543,17 @@ export class ApprovalService {
     const trx = await this.knexService.knex.transaction();
 
     // get approval status label id
-    const approvalStatusLabelId = await this.knexService.knex('approval_status_labels')
+    const approvalStatusLabelId = await this.knexService
+      .knex('approval_status_labels')
       .where('status_code', updateStatusDto.status)
       .select('id')
       .first();
 
     // if approvalStatusLabelId not found, throw error
     if (!approvalStatusLabelId) {
-      throw new NotFoundException(`Approval status label with status code ${updateStatusDto.status} not found`);
+      throw new NotFoundException(
+        `Approval status label with status code ${updateStatusDto.status} not found`,
+      );
     }
 
     try {
@@ -1743,7 +1833,7 @@ export class ApprovalService {
   // Approval Status Label methods
   async findAllStatusLabels(): Promise<ApprovalStatusLabel[]> {
     const cacheKey = `${this.CACHE_PREFIX}:status_labels`;
-    
+
     // Try to get from cache first
     const cached = await this.cacheService.get<string>(cacheKey);
     if (cached) {
@@ -1751,12 +1841,13 @@ export class ApprovalService {
     }
 
     // If not in cache, get from database
-    const statusLabels = await this.knexService.knex('approval_status_labels')
+    const statusLabels = await this.knexService
+      .knex('approval_status_labels')
       .orderBy('id', 'asc')
       .select('*');
 
     // Transform to camelCase
-    const transformedLabels = statusLabels.map(label => ({
+    const transformedLabels = statusLabels.map((label) => ({
       id: label.id,
       statusCode: label.status_code,
       label: label.label,
@@ -1765,13 +1856,20 @@ export class ApprovalService {
     }));
 
     // Cache the result
-    await this.cacheService.set(cacheKey, JSON.stringify(transformedLabels), this.CACHE_TTL);
+    await this.cacheService.set(
+      cacheKey,
+      JSON.stringify(transformedLabels),
+      this.CACHE_TTL,
+    );
 
     return transformedLabels;
   }
 
-  async findStatusLabelById(id: number): Promise<ApprovalStatusLabel | undefined> {
-    const statusLabel = await this.knexService.knex('approval_status_labels')
+  async findStatusLabelById(
+    id: number,
+  ): Promise<ApprovalStatusLabel | undefined> {
+    const statusLabel = await this.knexService
+      .knex('approval_status_labels')
       .where('id', id)
       .first();
 
@@ -1788,8 +1886,11 @@ export class ApprovalService {
     };
   }
 
-  async findStatusLabelByStatusCode(statusCode: string): Promise<ApprovalStatusLabel | undefined> {
-    const statusLabel = await this.knexService.knex('approval_status_labels')
+  async findStatusLabelByStatusCode(
+    statusCode: string,
+  ): Promise<ApprovalStatusLabel | undefined> {
+    const statusLabel = await this.knexService
+      .knex('approval_status_labels')
       .where('status_code', statusCode)
       .first();
 
