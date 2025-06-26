@@ -762,6 +762,15 @@ export class UpdateApprovalDto {
   staff?: string;
 
   @ApiProperty({
+    description: 'รหัสผู้เห็นชอบผ่านเรื่อง',
+    required: false,
+    example: '66019'
+  })
+  @IsOptional()
+  @IsString()
+  staffEmployeeCode?: string;
+
+  @ApiProperty({
     description: 'ความเห็น',
     required: false,
     example: 'รายละเอียดความเห็น',
@@ -805,6 +814,15 @@ export class UpdateApprovalDto {
   @IsOptional()
   @IsString()
   finalStaff?: string;
+
+  @ApiProperty({
+    description: 'รหัสผู้อนุมัติ (ขั้นตอนสุดท้าย)',
+    required: false,
+    example: '66019'
+  })
+  @IsOptional()
+  @IsString()
+  finalStaffEmployeeCode?: string;
 
   @ApiProperty({
     description: 'วันที่ลงนาม',
