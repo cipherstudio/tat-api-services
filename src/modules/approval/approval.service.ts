@@ -150,6 +150,11 @@ export class ApprovalService {
       isRelatedToMe,
     } = queryOptions || {};
 
+    // Validate pagination parameters
+    const validatedPage = Math.max(1, Math.floor(Number(page)) || 1);
+    const validatedLimit = Math.max(1, Math.min(100, Math.floor(Number(limit)) || 10));
+    const validatedOffset = (validatedPage - 1) * validatedLimit;
+
     // Prepare conditions
     const conditions: Record<string, any> = {};
 
@@ -173,15 +178,15 @@ export class ApprovalService {
     // Add soft delete condition
     conditions.deleted_at = null;
 
-    // Convert orderBy from camelCase to snake_case if needed
+    // Convert orderBy from camelCase to snake_case if needed and ensure table prefix
     const dbOrderBy =
       orderBy === 'createdAt'
-        ? 'created_at'
+        ? 'approval.created_at'
         : orderBy === 'updatedAt'
-          ? 'updated_at'
-          : orderBy;
-
-    const offset = (page - 1) * limit;
+          ? 'approval.updated_at'
+          : orderBy.startsWith('approval.') 
+            ? orderBy 
+            : `approval.${orderBy}`;
 
     let approvalStatusLabelId: number = null;
     if (latestApprovalStatus) {
@@ -318,12 +323,9 @@ export class ApprovalService {
           'approval_status_labels.created_at as currentStatusCreatedAt',
           'OP_MASTER_T.PMT_NAME_T as employeeName',
         )
-        .orderBy(
-          isRelatedToMe ? `approval.${dbOrderBy}` : dbOrderBy,
-          orderDir.toLowerCase() as 'asc' | 'desc',
-        )
-        .limit(limit)
-        .offset(offset),
+        .orderBy(dbOrderBy, orderDir.toLowerCase() as 'asc' | 'desc')
+        .limit(validatedLimit)
+        .offset(validatedOffset),
     ]);
 
     const total = Number(countResult?.count || 0);
@@ -383,10 +385,10 @@ export class ApprovalService {
       data: filteredData,
       meta: {
         total: total, // ใช้ total จาก database query (รวม LIKE conditions และ latestApprovalStatus)
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-        lastPage: Math.ceil(total / limit),
+        page: validatedPage,
+        limit: validatedLimit,
+        totalPages: Math.ceil(total / validatedLimit),
+        lastPage: Math.ceil(total / validatedLimit),
       },
     };
 
