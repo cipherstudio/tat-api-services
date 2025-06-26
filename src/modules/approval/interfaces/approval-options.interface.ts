@@ -103,6 +103,16 @@ export interface ApprovalFilterOptions extends BaseFilterOptions {
    * })
    */
   isRelatedToMe?: boolean;
+
+  /**
+   * Filter by whether the approval is related to the user
+   * @TypeProperty({
+   *   type: 'boolean',
+   *   isOptional: true,
+   *   description: 'Filter by whether the approval is related to the user'
+   * })
+   */
+  isMyApproval?: boolean;
 }
 
 /**

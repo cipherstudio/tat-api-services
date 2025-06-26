@@ -161,6 +161,12 @@ export class ApprovalController {
     description: 'Filter by whether the approval is related to the user',
   })
   @ApiQuery({
+    name: 'isMyApproval',
+    type: Boolean,
+    required: false,
+    description: 'Filter by whether the approval is related to the user',
+  })
+  @ApiQuery({
     name: 'includes',
     type: [String],
     required: false,
@@ -184,6 +190,7 @@ export class ApprovalController {
     @Query('approvalRequestStartDate') approvalRequestStartDate?: string,
     @Query('approvalRequestEndDate') approvalRequestEndDate?: string,
     @Query('isRelatedToMe') isRelatedToMe?: boolean,
+    @Query('isMyApproval') isMyApproval?: boolean,
     @Query('includes') includes?: string[],
   ) {
     const queryOptions: ApprovalQueryOptions = {
@@ -202,10 +209,11 @@ export class ApprovalController {
       approvalRequestStartDate,
       approvalRequestEndDate,
       isRelatedToMe,
+      isMyApproval,
       includes,
     };
 
-    return this.approvalService.findAll(queryOptions);
+    return this.approvalService.findAll(queryOptions, req.user.id, req.user.employeeCode);
   }
 
   @Get('status')
