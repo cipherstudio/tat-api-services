@@ -17,6 +17,7 @@ import { ApprovalDetailResponseDto } from './dto/approval-detail-response.dto';
 import { UpdateClothingExpenseDatesDto } from './dto/update-clothing-expense-dates.dto';
 import { CheckClothingExpenseEligibilityDto } from './dto/check-clothing-expense-eligibility.dto';
 import { ClothingExpenseEligibilityResponseDto } from './dto/clothing-expense-eligibility-response.dto';
+import { FilesService } from '../files/files.service';
 //import { ApprovalWorkLocationDto } from './dto/approval-work-location.dto';
 
 @Injectable()
@@ -28,6 +29,7 @@ export class ApprovalService {
     private readonly approvalRepository: ApprovalRepository,
     private readonly cacheService: RedisCacheService,
     private readonly knexService: KnexService,
+    private readonly filesService: FilesService,
   ) {}
 
   private async generateIncrementId(): Promise<string> {
@@ -803,6 +805,10 @@ export class ApprovalService {
       throw new NotFoundException(`Approval with ID ${id} not found`);
     }
 
+    // Get current attachment IDs before update for potential cleanup
+    const oldAttachmentId = approval.attachmentId;
+    const oldSignatureAttachmentId = approval.signatureAttachmentId;
+
     // Start a transaction
     const trx = await this.knexService.knex.transaction();
 
@@ -1482,6 +1488,33 @@ export class ApprovalService {
       // Commit the transaction
       await trx.commit();
 
+      // Clean up old files after successful update
+      // Delete old attachment file if it's different from the new one
+      if (oldAttachmentId && updateDto.attachmentId && oldAttachmentId !== updateDto.attachmentId) {
+        try {
+          await this.filesService.remove(oldAttachmentId);
+        } catch (error) {
+          console.warn(`Warning: Failed to delete old attachment file ${oldAttachmentId}:`, error.message);
+        }
+      }
+
+      // Delete old signature attachment file if it's different from the new one
+      if (oldSignatureAttachmentId && updateDto.signatureAttachmentId && oldSignatureAttachmentId !== updateDto.signatureAttachmentId) {
+        try {
+          await this.filesService.remove(oldSignatureAttachmentId);
+        } catch (error) {
+          console.warn(`Warning: Failed to delete old signature attachment file ${oldSignatureAttachmentId}:`, error.message);
+        }
+      }
+
+      // Invalidate the cache
+      await this.cacheService.del(
+        this.cacheService.generateKey(this.CACHE_PREFIX, id),
+      );
+      await this.cacheService.del(
+        this.cacheService.generateListKey(this.CACHE_PREFIX),
+      );
+
       return updatedApprovalRecord;
     } catch (error) {
       // Rollback the transaction in case of error
@@ -1496,9 +1529,30 @@ export class ApprovalService {
       throw new NotFoundException(`Approval with ID ${id} not found`);
     }
 
+    // Store attachment IDs before soft deletion
+    const attachmentId = approval.attachmentId;
+    const signatureAttachmentId = approval.signatureAttachmentId;
+
     const result = await this.approvalRepository.softDelete(id);
     if (!result) {
       throw new NotFoundException(`Approval with ID ${id} not found`);
+    }
+
+    // Delete associated files after successful soft deletion
+    if (attachmentId) {
+      try {
+        await this.filesService.remove(attachmentId);
+      } catch (error) {
+        console.warn(`Warning: Failed to delete attachment file ${attachmentId}:`, error.message);
+      }
+    }
+
+    if (signatureAttachmentId) {
+      try {
+        await this.filesService.remove(signatureAttachmentId);
+      } catch (error) {
+        console.warn(`Warning: Failed to delete signature attachment file ${signatureAttachmentId}:`, error.message);
+      }
     }
 
     // Remove from cache
