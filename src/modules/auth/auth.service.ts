@@ -113,6 +113,11 @@ export class AuthService {
       role: user.role,
     };
 
+    const existingUser = await this.usersService.findByEmail(user.email);
+    if (!existingUser) {
+      throw new NotFoundException('User not found');
+    }
+
     return {
       access_token: this.jwtService.sign(payload),
       refresh_token: this.jwtService.sign(payload, {
@@ -124,6 +129,7 @@ export class AuthService {
         fullName: user.pmtNameT,
         role: user.role,
         position: user.posPositionname,
+        employeeCode: existingUser.pmtCode,
       },
     };
   }
