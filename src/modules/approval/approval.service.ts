@@ -269,6 +269,10 @@ export class ApprovalService {
       query = query.where('approval.id', 0); // This will return no results
     }
 
+    // join file table (attachment_id, signature_attachment_id)
+    query = query.leftJoin('files as f', 'approval.attachment_id', 'f.id');
+    query = query.leftJoin('files as sf', 'approval.signature_attachment_id', 'sf.id');
+
     // Get approvals with pagination
     const [countResult, approvals] = await Promise.all([
       query.clone().count('* as count').first(),
@@ -324,6 +328,10 @@ export class ApprovalService {
           'asl.label as latestApprovalStatus',
           'asl.updated_at as latestStatusCreatedAt',
           'OP_MASTER_T.PMT_NAME_T as employeeName',
+          'f.original_name as attachmentFileName',
+          'f.path as attachmentFilePath',
+          'sf.original_name as signatureAttachmentFileName',
+          'sf.path as signatureAttachmentFilePath',
         )
         .orderBy(dbOrderBy, orderDir.toLowerCase() as 'asc' | 'desc')
         .limit(validatedLimit)
