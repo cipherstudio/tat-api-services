@@ -2,10 +2,10 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Currency } from '../entities/currency.entity';
 import { CreateCurrencyDto } from '../dto/create-currency.dto';
 import { UpdateCurrencyDto } from '../dto/update-currency.dto';
-import { CurrencyQueryOptions } from '../interfaces/currency-options.interface';
 import { PaginatedResult } from '../../../common/interfaces/pagination.interface';
 import { RedisCacheService } from '../../cache/redis-cache.service';
 import { CurrencyRepository } from '../repositories/currency.repository';
+import { CurrencyQueryDto } from '../dto/currency-query.dto';
 
 @Injectable()
 export class CurrencyService {
@@ -31,7 +31,7 @@ export class CurrencyService {
   }
 
   async findAll(
-    queryOptions?: CurrencyQueryOptions,
+    queryOptions?: Partial<CurrencyQueryDto>,
   ): Promise<PaginatedResult<Currency>> {
     const {
       page = 1,

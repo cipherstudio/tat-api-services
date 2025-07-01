@@ -1,30 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsString, IsDate } from 'class-validator';
+import { IsOptional, IsString, IsDate, IsNumber } from 'class-validator';
 import { Type } from 'class-transformer';
+import { CommonQueryDto } from '../../../common/dto/common-query.dtp';
 
-export class DomesticMovingAllowancesQueryDto {
-  @ApiProperty({ required: false })
-  @IsNumber()
-  @IsOptional()
-  @Type(() => Number)
-  page?: number;
-
-  @ApiProperty({ required: false })
-  @IsNumber()
-  @IsOptional()
-  @Type(() => Number)
-  limit?: number;
-
-  @ApiProperty({ required: false })
-  @IsString()
-  @IsOptional()
-  orderBy?: string;
-
-  @ApiProperty({ required: false })
-  @IsString()
-  @IsOptional()
-  orderDir?: 'ASC' | 'DESC';
-
+export class DomesticMovingAllowancesQueryDto extends CommonQueryDto {
   @ApiProperty({ required: false })
   @IsNumber()
   @IsOptional()
@@ -43,7 +22,11 @@ export class DomesticMovingAllowancesQueryDto {
   @Type(() => Number)
   rateBaht?: number;
 
-  @ApiProperty({ required: false, description: 'Search term for distance (will find records where the distance falls within the range)' })
+  @ApiProperty({
+    required: false,
+    description:
+      'Search term for distance (will find records where the distance falls within the range)',
+  })
   @IsString()
   @IsOptional()
   searchTerm?: string;
@@ -71,4 +54,4 @@ export class DomesticMovingAllowancesQueryDto {
   @IsOptional()
   @Type(() => Date)
   updatedBefore?: Date;
-} 
+}

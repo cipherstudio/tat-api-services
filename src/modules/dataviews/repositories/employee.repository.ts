@@ -99,6 +99,7 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
     data: (Employee & ViewPosition4ot & OpLevelSalR)[];
     meta: { total: number; limit: number; offset: number; lastPage: number };
   }> {
+    console.log('query', query);
     let baseBuilder = this.knex('OP_MASTER_T')
       .leftJoin('OP_LEVEL_SAL_R', (builder) => {
         builder.on(
@@ -166,7 +167,7 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
         'VIEW_POSITION_4OT.*',
         'EMPLOYEE.*',
         this.knex.raw(
-          'row_number() over (partition by "OP_MASTER_T"."PMT_CODE" order by "OP_MASTER_T"."PMT_CODE" asc) as "rn"',
+          `row_number() over (partition by "OP_MASTER_T"."PMT_CODE" order by "OP_MASTER_T"."PMT_CODE" ${query?.orderDir ?? 'asc'} ) as "rn"`,
         ),
       ])
       .as('sub');

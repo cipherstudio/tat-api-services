@@ -23,18 +23,32 @@ import { AccommodationRates } from '../entities/accommodation-rates.entity';
 @ApiTags('Master Data')
 @Controller('master-data/accommodation-rates')
 export class AccommodationRatesController {
-  constructor(private readonly accommodationRatesService: AccommodationRatesService) {}
+  constructor(
+    private readonly accommodationRatesService: AccommodationRatesService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a new accommodation rate' })
-  @ApiResponse({ status: 201, description: 'The accommodation rate has been successfully created.', type: AccommodationRates })
-  create(@Body() createAccommodationRatesDto: CreateAccommodationRatesDto): Promise<AccommodationRates> {
+  @ApiResponse({
+    status: 201,
+    description: 'The accommodation rate has been successfully created.',
+    type: AccommodationRates,
+  })
+  create(
+    @Body() createAccommodationRatesDto: CreateAccommodationRatesDto,
+  ): Promise<AccommodationRates> {
     return this.accommodationRatesService.create(createAccommodationRatesDto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all accommodation rates with pagination and filters' })
-  @ApiResponse({ status: 200, description: 'Return all accommodation rates.', type: [AccommodationRates] })
+  @ApiOperation({
+    summary: 'Get all accommodation rates with pagination and filters',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Return all accommodation rates.',
+    type: [AccommodationRates],
+  })
   @ApiQuery({
     name: 'page',
     type: Number,
@@ -144,10 +158,14 @@ export class AccommodationRatesController {
     @Query('rateMode') rateMode?: 'CHOICE' | 'ACTUAL_ONLY' | 'UNLIMITED',
     @Query('countryType') countryType?: 'A' | 'B',
     @Query('searchTerm') searchTerm?: string,
-    @Query('createdAfter', new ValidationPipe({ transform: true })) createdAfter?: Date,
-    @Query('createdBefore', new ValidationPipe({ transform: true })) createdBefore?: Date,
-    @Query('updatedAfter', new ValidationPipe({ transform: true })) updatedAfter?: Date,
-    @Query('updatedBefore', new ValidationPipe({ transform: true })) updatedBefore?: Date,
+    @Query('createdAfter', new ValidationPipe({ transform: true }))
+    createdAfter?: Date,
+    @Query('createdBefore', new ValidationPipe({ transform: true }))
+    createdBefore?: Date,
+    @Query('updatedAfter', new ValidationPipe({ transform: true }))
+    updatedAfter?: Date,
+    @Query('updatedBefore', new ValidationPipe({ transform: true }))
+    updatedBefore?: Date,
   ) {
     const queryOptions: AccommodationRatesQueryDto = {
       page,
@@ -181,7 +199,10 @@ export class AccommodationRatesController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateAccommodationRatesDto: UpdateAccommodationRatesDto,
   ): Promise<AccommodationRates> {
-    return this.accommodationRatesService.update(id, updateAccommodationRatesDto);
+    return this.accommodationRatesService.update(
+      id,
+      updateAccommodationRatesDto,
+    );
   }
 
   @Delete(':id')
@@ -189,4 +210,4 @@ export class AccommodationRatesController {
   remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     return this.accommodationRatesService.remove(id);
   }
-} 
+}

@@ -1,8 +1,15 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsBoolean, IsNumber, Min } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
+import {
+  IsOptional,
+  IsString,
+  IsBoolean,
+  IsNumber,
+  Min,
+} from 'class-validator';
+import { CommonQueryDto } from '../../../common/dto/common-query.dtp';
 
-export class QueryOrganizationStructureDto {
+export class QueryOrganizationStructureDto extends CommonQueryDto {
   @ApiPropertyOptional({
     description: 'รหัสหน่วยงานหลัก (เช่น 100000, 200000)',
   })
@@ -93,4 +100,4 @@ export class QueryOrganizationStructureDto {
   @Min(1)
   @Type(() => Number)
   employeeLimit?: number = 10;
-} 
+}

@@ -1,30 +1,7 @@
-import { IsOptional, IsString, IsNumber } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsOptional, IsString } from 'class-validator';
+import { CommonQueryDto } from '../../../common/dto/common-query.dtp';
 
-export class CurrencyQueryDto {
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  page?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  limit?: number;
-
-  @IsOptional()
-  @IsString()
-  orderBy?:
-    | 'currencyTh'
-    | 'currencyCodeTh'
-    | 'currencyEn'
-    | 'currencyCodeEn'
-    | 'id';
-
-  @IsOptional()
-  @IsString()
-  orderDir?: 'ASC' | 'DESC';
-
+export class CurrencyQueryDto extends CommonQueryDto {
   @IsOptional()
   @IsString()
   currencyTh?: string;

@@ -1,7 +1,8 @@
 import { IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { CommonQueryDto } from '../../../common/dto/common-query.dtp';
 
-export class MasterdataLabelsQueryDto {
+export class MasterdataLabelsQueryDto extends CommonQueryDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
@@ -29,14 +30,6 @@ export class MasterdataLabelsQueryDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
-  page?: number;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  limit?: number;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
   @IsString()
-  search?: string;
+  searchTerm?: string;
 }

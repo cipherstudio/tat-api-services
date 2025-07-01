@@ -17,24 +17,37 @@ import { DomesticMovingAllowancesService } from '../services/domestic-moving-all
 import { CreateDomesticMovingAllowancesDto } from '../dto/create-domestic-moving-allowances.dto';
 import { UpdateDomesticMovingAllowancesDto } from '../dto/update-domestic-moving-allowances.dto';
 import { DomesticMovingAllowancesQueryDto } from '../dto/domestic-moving-allowances-query.dto';
-import { PaginatedResult } from '../../../common/interfaces/pagination.interface';
 import { DomesticMovingAllowances } from '../entities/domestic-moving-allowances.entity';
 
 @ApiTags('Master Data')
 @Controller('master-data/domestic-moving-allowances')
 export class DomesticMovingAllowancesController {
-  constructor(private readonly domesticMovingAllowancesService: DomesticMovingAllowancesService) {}
+  constructor(
+    private readonly domesticMovingAllowancesService: DomesticMovingAllowancesService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a new domestic moving allowance' })
-  @ApiResponse({ status: 201, description: 'The domestic moving allowance has been successfully created.', type: DomesticMovingAllowances })
-  create(@Body() createDto: CreateDomesticMovingAllowancesDto): Promise<DomesticMovingAllowances> {
+  @ApiResponse({
+    status: 201,
+    description: 'The domestic moving allowance has been successfully created.',
+    type: DomesticMovingAllowances,
+  })
+  create(
+    @Body() createDto: CreateDomesticMovingAllowancesDto,
+  ): Promise<DomesticMovingAllowances> {
     return this.domesticMovingAllowancesService.create(createDto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all domestic moving allowances with pagination and filters' })
-  @ApiResponse({ status: 200, description: 'Return all domestic moving allowances.', type: [DomesticMovingAllowances] })
+  @ApiOperation({
+    summary: 'Get all domestic moving allowances with pagination and filters',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Return all domestic moving allowances.',
+    type: [DomesticMovingAllowances],
+  })
   @ApiQuery({
     name: 'page',
     type: Number,
@@ -81,7 +94,8 @@ export class DomesticMovingAllowancesController {
     name: 'searchTerm',
     type: String,
     required: false,
-    description: 'Search term for distance (will find records where the distance falls within the range)',
+    description:
+      'Search term for distance (will find records where the distance falls within the range)',
   })
   @ApiQuery({
     name: 'createdAfter',
@@ -112,16 +126,23 @@ export class DomesticMovingAllowancesController {
     @Query('limit', new ValidationPipe({ transform: true })) limit?: number,
     @Query('orderBy') orderBy?: DomesticMovingAllowancesQueryDto['orderBy'],
     @Query('orderDir') orderDir?: 'ASC' | 'DESC',
-    @Query('distanceStartKm', new ValidationPipe({ transform: true })) distanceStartKm?: number,
-    @Query('distanceEndKm', new ValidationPipe({ transform: true })) distanceEndKm?: number,
-    @Query('rateBaht', new ValidationPipe({ transform: true })) rateBaht?: number,
+    @Query('distanceStartKm', new ValidationPipe({ transform: true }))
+    distanceStartKm?: number,
+    @Query('distanceEndKm', new ValidationPipe({ transform: true }))
+    distanceEndKm?: number,
+    @Query('rateBaht', new ValidationPipe({ transform: true }))
+    rateBaht?: number,
     @Query('searchTerm') searchTerm?: string,
-    @Query('createdAfter', new ValidationPipe({ transform: true })) createdAfter?: Date,
-    @Query('createdBefore', new ValidationPipe({ transform: true })) createdBefore?: Date,
-    @Query('updatedAfter', new ValidationPipe({ transform: true })) updatedAfter?: Date,
-    @Query('updatedBefore', new ValidationPipe({ transform: true })) updatedBefore?: Date,
+    @Query('createdAfter', new ValidationPipe({ transform: true }))
+    createdAfter?: Date,
+    @Query('createdBefore', new ValidationPipe({ transform: true }))
+    createdBefore?: Date,
+    @Query('updatedAfter', new ValidationPipe({ transform: true }))
+    updatedAfter?: Date,
+    @Query('updatedBefore', new ValidationPipe({ transform: true }))
+    updatedBefore?: Date,
   ) {
-    const queryOptions: DomesticMovingAllowancesQueryDto = {
+    const queryOptions: Partial<DomesticMovingAllowancesQueryDto> = {
       page,
       limit,
       orderBy,
@@ -134,18 +155,23 @@ export class DomesticMovingAllowancesController {
       createdBefore,
       updatedAfter,
       updatedBefore,
+      offset: 0,
     };
 
     return this.domesticMovingAllowancesService.findAll(queryOptions);
   }
 
   @Get(':id')
-  findById(@Param('id', ParseIntPipe) id: number): Promise<DomesticMovingAllowances> {
+  findById(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<DomesticMovingAllowances> {
     return this.domesticMovingAllowancesService.findById(id);
   }
 
   @Get('distance/:distance')
-  findByDistance(@Param('distance', ParseIntPipe) distance: number): Promise<DomesticMovingAllowances> {
+  findByDistance(
+    @Param('distance', ParseIntPipe) distance: number,
+  ): Promise<DomesticMovingAllowances> {
     return this.domesticMovingAllowancesService.findByDistance(distance);
   }
 
@@ -162,4 +188,4 @@ export class DomesticMovingAllowancesController {
   remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     return this.domesticMovingAllowancesService.remove(id);
   }
-} 
+}

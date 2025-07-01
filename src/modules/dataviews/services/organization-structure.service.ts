@@ -15,7 +15,7 @@ export class OrganizationStructureService {
   ) {}
 
   async getOrganizationStructure(
-    query: QueryOrganizationStructureDto,
+    query: Partial<QueryOrganizationStructureDto>,
   ): Promise<OrganizationStructurePaginate> {
     // ตั้งค่า default values
     const queryWithDefaults: QueryOrganizationStructureDto = {
@@ -29,11 +29,16 @@ export class OrganizationStructureService {
       employeeSearchTerm: query.employeeSearchTerm,
       employeePage: query.employeePage ?? 1,
       employeeLimit: query.employeeLimit ?? 10,
+      page: query.page ?? 1,
+      limit: query.limit ?? 10,
+      orderBy: query.orderBy ?? 'id',
+      orderDir: query.orderDir ?? 'ASC',
+      offset: query.offset ?? 0,
     };
 
     // สร้าง cache key จาก query parameters
     const cacheKey = this.buildCacheKey(queryWithDefaults);
-    
+
     // ลองดึงจาก cache ก่อน
     const cached = await this.cacheService.get<OrganizationStructure>(cacheKey);
     if (cached) {
@@ -47,8 +52,11 @@ export class OrganizationStructureService {
     }
 
     // ดึงข้อมูลจากฐานข้อมูล
-    const structure = await this.organizationStructureRepository.getOrganizationStructure(queryWithDefaults);
-    
+    const structure =
+      await this.organizationStructureRepository.getOrganizationStructure(
+        queryWithDefaults,
+      );
+
     // เก็บใน cache (cache นาน 30 นาที)
     await this.cacheService.set(cacheKey, structure, 1800);
 
@@ -61,9 +69,11 @@ export class OrganizationStructureService {
     };
   }
 
-  async getOrganizationByCode(code: string): Promise<OrganizationStructurePaginate> {
-    const query: QueryOrganizationStructureDto = {};
-    
+  async getOrganizationByCode(
+    code: string,
+  ): Promise<OrganizationStructurePaginate> {
+    const query: Partial<QueryOrganizationStructureDto> = {};
+
     // ตรวจสอบว่าเป็นรหัสระดับไหน
     if (this.isMainOrganization(code)) {
       query.mainOrganizationCode = code;
@@ -78,13 +88,15 @@ export class OrganizationStructureService {
     }
 
     query.includeEmployees = true;
-    
+
     const result = await this.getOrganizationStructure(query);
     return result;
   }
 
-  async searchOrganizations(searchTerm: string): Promise<OrganizationStructurePaginate> {
-    const query: QueryOrganizationStructureDto = {
+  async searchOrganizations(
+    searchTerm: string,
+  ): Promise<OrganizationStructurePaginate> {
+    const query: Partial<QueryOrganizationStructureDto> = {
       searchTerm,
       includeEmployees: true,
       onlyWithEmployees: false,
@@ -94,7 +106,7 @@ export class OrganizationStructureService {
   }
 
   async getOrganizationsWithEmployees(): Promise<OrganizationStructurePaginate> {
-    const query: QueryOrganizationStructureDto = {
+    const query: Partial<QueryOrganizationStructureDto> = {
       includeEmployees: true,
       onlyWithEmployees: true,
     };
@@ -110,7 +122,7 @@ export class OrganizationStructureService {
     totalEmployees: number;
   }> {
     const cacheKey = 'organization_statistics';
-    
+
     // ลองดึงจาก cache ก่อน
     const cached = await this.cacheService.get<{
       totalMainOrganizations: number;
@@ -123,7 +135,7 @@ export class OrganizationStructureService {
       return cached;
     }
 
-    const query: QueryOrganizationStructureDto = {
+    const query: Partial<QueryOrganizationStructureDto> = {
       includeEmployees: true,
     };
 
@@ -146,17 +158,23 @@ export class OrganizationStructureService {
 
   private buildCacheKey(query: QueryOrganizationStructureDto): string {
     const parts = ['org_structure'];
-    
-    if (query.mainOrganizationCode) parts.push(`main_${query.mainOrganizationCode}`);
+
+    if (query.mainOrganizationCode)
+      parts.push(`main_${query.mainOrganizationCode}`);
     if (query.departmentCode) parts.push(`dept_${query.departmentCode}`);
     if (query.divisionCode) parts.push(`div_${query.divisionCode}`);
     if (query.sectionCode) parts.push(`sect_${query.sectionCode}`);
     if (query.searchTerm) parts.push(`search_${query.searchTerm}`);
-    if (query.includeEmployees !== undefined) parts.push(`emp_${query.includeEmployees}`);
-    if (query.onlyWithEmployees !== undefined) parts.push(`only_${query.onlyWithEmployees}`);
-    if (query.employeeSearchTerm) parts.push(`emp_search_${query.employeeSearchTerm}`);
-    if (query.employeePage !== undefined) parts.push(`emp_page_${query.employeePage}`);
-    if (query.employeeLimit !== undefined) parts.push(`emp_limit_${query.employeeLimit}`);
+    if (query.includeEmployees !== undefined)
+      parts.push(`emp_${query.includeEmployees}`);
+    if (query.onlyWithEmployees !== undefined)
+      parts.push(`only_${query.onlyWithEmployees}`);
+    if (query.employeeSearchTerm)
+      parts.push(`emp_search_${query.employeeSearchTerm}`);
+    if (query.employeePage !== undefined)
+      parts.push(`emp_page_${query.employeePage}`);
+    if (query.employeeLimit !== undefined)
+      parts.push(`emp_limit_${query.employeeLimit}`);
 
     return parts.join('_');
   }
@@ -167,7 +185,9 @@ export class OrganizationStructureService {
   }
 
   private isDepartment(code: string): boolean {
-    return code.endsWith('0000') && !code.endsWith('00000') && code.length === 6;
+    return (
+      code.endsWith('0000') && !code.endsWith('00000') && code.length === 6
+    );
   }
 
   private isDivision(code: string): boolean {
@@ -184,4 +204,4 @@ export class OrganizationStructureService {
     await this.cacheService.del(pattern);
     await this.cacheService.del('organization_statistics');
   }
-} 
+}

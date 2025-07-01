@@ -106,7 +106,7 @@ export class CurrencyController {
   findAll(
     @Query('page', new ValidationPipe({ transform: true })) page?: number,
     @Query('limit', new ValidationPipe({ transform: true })) limit?: number,
-    @Query('orderBy') orderBy?: CurrencyQueryDto['orderBy'],
+    @Query('orderBy') orderBy?: string,
     @Query('orderDir') orderDir?: 'ASC' | 'DESC',
     @Query('currencyTh') currencyTh?: string,
     @Query('currencyCodeTh') currencyCodeTh?: string,
@@ -114,7 +114,7 @@ export class CurrencyController {
     @Query('currencyCodeEn') currencyCodeEn?: string,
     @Query('searchTerm') searchTerm?: string,
   ) {
-    const queryOptions: CurrencyQueryDto = {
+    const queryOptions: Partial<CurrencyQueryDto> = {
       page,
       limit,
       orderBy,
@@ -124,6 +124,7 @@ export class CurrencyController {
       currencyEn,
       currencyCodeEn,
       searchTerm,
+      offset: 0,
     };
     return this.currencyService.findAll(queryOptions);
   }

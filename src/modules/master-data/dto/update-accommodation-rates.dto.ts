@@ -2,7 +2,10 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsNumber, IsEnum, IsOptional } from 'class-validator';
 
 export class UpdateAccommodationRatesDto {
-  @ApiProperty({ description: 'Travel type (DOMESTIC/INTERNATIONAL)', required: false })
+  @ApiProperty({
+    description: 'Travel type (DOMESTIC/INTERNATIONAL)',
+    required: false,
+  })
   @IsEnum(['DOMESTIC', 'INTERNATIONAL'])
   @IsOptional()
   travelType?: 'DOMESTIC' | 'INTERNATIONAL';
@@ -27,7 +30,10 @@ export class UpdateAccommodationRatesDto {
   @IsOptional()
   positionGroupName?: string;
 
-  @ApiProperty({ description: 'Rate mode (CHOICE/ACTUAL_ONLY/UNLIMITED)', required: false })
+  @ApiProperty({
+    description: 'Rate mode (CHOICE/ACTUAL_ONLY/UNLIMITED)',
+    required: false,
+  })
   @IsEnum(['CHOICE', 'ACTUAL_ONLY', 'UNLIMITED'])
   @IsOptional()
   rateMode?: 'CHOICE' | 'ACTUAL_ONLY' | 'UNLIMITED';
@@ -51,4 +57,4 @@ export class UpdateAccommodationRatesDto {
   @IsNumber()
   @IsOptional()
   doubleRoomPercentage?: number;
-} 
+}

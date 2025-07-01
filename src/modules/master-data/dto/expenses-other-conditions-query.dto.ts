@@ -1,38 +1,9 @@
-import { IsOptional, IsString, IsNumber, IsDate, IsEnum } from 'class-validator';
+import { IsOptional, IsString, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import { CommonQueryDto } from '../../../common/dto/common-query.dtp';
 
-export class ExpensesOtherConditionsQueryDto {
-  @ApiProperty({ description: 'Page number', required: false })
-  @IsNumber()
-  @IsOptional()
-  @Type(() => Number)
-  page?: number;
-
-  @ApiProperty({ description: 'Items per page', required: false })
-  @IsNumber()
-  @IsOptional()
-  @Type(() => Number)
-  limit?: number;
-
-  @ApiProperty({ 
-    description: 'Field to order by',
-    enum: ['id', 'expensesOtherId', 'positionName', 'positionCode', 'levelCode', 'scope', 'maxAmount', 'createdAt', 'updatedAt'],
-    required: false 
-  })
-  @IsEnum(['id', 'expensesOtherId', 'positionName', 'positionCode', 'levelCode', 'scope', 'maxAmount', 'createdAt', 'updatedAt'])
-  @IsOptional()
-  orderBy?: 'id' | 'expensesOtherId' | 'positionName' | 'positionCode' | 'levelCode' | 'scope' | 'maxAmount' | 'createdAt' | 'updatedAt';
-
-  @ApiProperty({ 
-    description: 'Order direction',
-    enum: ['ASC', 'DESC'],
-    required: false 
-  })
-  @IsEnum(['ASC', 'DESC'])
-  @IsOptional()
-  orderDir?: 'ASC' | 'DESC';
-
+export class ExpensesOtherConditionsQueryDto extends CommonQueryDto {
   @ApiProperty({ description: 'ชื่อตำแหน่ง', required: false })
   @IsString()
   @IsOptional()
@@ -48,10 +19,10 @@ export class ExpensesOtherConditionsQueryDto {
   @IsOptional()
   levelCode?: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'ขอบเขต',
     enum: ['domestic', 'international'],
-    required: false 
+    required: false,
   })
   @IsEnum(['domestic', 'international'])
   @IsOptional()
@@ -81,4 +52,4 @@ export class ExpensesOtherConditionsQueryDto {
   @IsOptional()
   @Type(() => Date)
   updatedBefore?: Date;
-} 
+}

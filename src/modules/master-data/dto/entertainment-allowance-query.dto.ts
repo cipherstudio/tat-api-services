@@ -1,20 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsOptional, IsNumber, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
+import { CommonQueryDto } from '../../../common/dto/common-query.dtp';
 
-export class EntertainmentAllowanceQueryDto {
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  page?: number;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  limit?: number;
-
+export class EntertainmentAllowanceQueryDto extends CommonQueryDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()

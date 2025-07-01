@@ -1,30 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, IsNumber, IsDate, IsEnum, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsOptional, IsString, IsDate, IsBoolean } from 'class-validator';
+import { CommonQueryDto } from '../../../common/dto/common-query.dtp';
 
-export class ProvincesQueryDto {
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  page?: number;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  limit?: number;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  orderBy?: string;
-
-  @ApiProperty({ required: false, enum: ['ASC', 'DESC'] })
-  @IsOptional()
-  @IsEnum(['ASC', 'DESC'])
-  orderDir?: 'ASC' | 'DESC';
-
+export class ProvincesQueryDto extends CommonQueryDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
@@ -69,4 +48,4 @@ export class ProvincesQueryDto {
   @IsDate()
   @Type(() => Date)
   updatedBefore?: Date;
-} 
+}

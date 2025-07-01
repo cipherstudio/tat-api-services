@@ -1,8 +1,9 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type, Transform } from 'class-transformer';
 import { IsOptional, IsNumber } from 'class-validator';
+import { CommonQueryDto } from '../../../common/dto/common-query.dtp';
 
-export class QueryEmployeeDto {
+export class QueryEmployeeDto extends CommonQueryDto {
   @ApiPropertyOptional({ description: 'รหัสพนักงาน' })
   @IsOptional()
   code?: string;
@@ -30,37 +31,11 @@ export class QueryEmployeeDto {
   @Type(() => Number)
   @IsNumber()
   minSalary?: number;
+
   @ApiPropertyOptional({ description: 'ช่วงเงินเดือนสูงสุด' })
   @IsOptional()
   @Transform(({ value }) => (value === '' ? undefined : value))
   @Type(() => Number)
   @IsNumber()
   maxSalary?: number;
-  @ApiPropertyOptional({
-    description: 'จำนวนรายการต่อหน้า (pagination)',
-    type: Number,
-    default: 10,
-  })
-  @IsOptional()
-  @Transform(({ value }) => (value === '' ? undefined : value))
-  @Type(() => Number)
-  @IsNumber()
-  limit: number = 10;
-  @ApiPropertyOptional({
-    description: 'ข้ามกี่รายการ (pagination offset)',
-    type: Number,
-    default: 0,
-  })
-  @IsOptional()
-  @Transform(({ value }) => (value === '' ? undefined : value))
-  @Type(() => Number)
-  @IsNumber()
-  offset: number = 0;
-  @ApiPropertyOptional({ description: 'หน้าที่ต้องการ (page)', default: 1 })
-  @IsOptional()
-  @Transform(({ value }) => (value === '' ? undefined : value))
-  @Type(() => Number)
-  @IsNumber()
-  page?: number;
-  // เพิ่ม field อื่น ๆ ตามต้องการ
 }

@@ -1,30 +1,15 @@
-import { IsOptional, IsString, IsBoolean, IsNumber, IsArray, IsDate } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsBoolean,
+  IsArray,
+  IsDate,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import { CommonQueryDto } from '../../../common/dto/common-query.dtp';
 
-export class QueryOfficeInternationalDto {
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  page?: number;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  limit?: number;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  orderBy?: string;
-
-  @ApiProperty({ required: false, enum: ['ASC', 'DESC'] })
-  @IsOptional()
-  @IsString()
-  orderDir?: 'ASC' | 'DESC';
-
+export class QueryOfficeInternationalDto extends CommonQueryDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsBoolean()
