@@ -91,7 +91,7 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
     let employeeQuery = this.knex('OP_ORGANIZE_R')
       .leftJoin('OP_POSITION_NO_T', this.knex.raw('OP_ORGANIZE_R.POG_CODE = TRIM(OP_POSITION_NO_T.PPN_ORGANIZE)'))
       .leftJoin('OP_MASTER_T', this.knex.raw('TRIM(OP_POSITION_NO_T.PPN_NUMBER) = TRIM(OP_MASTER_T.PMT_POS_NO)'))
-      .leftJoin('OP_POS_EXECUTIVE_R', this.knex.raw('TRIM(OP_MASTER_T.PMT_POS_EX) = TRIM(OP_POS_EXECUTIVE_R.PPE_CODE)'))
+      .leftJoin('VIEW_POSITION_4OT', this.knex.raw('TRIM(OP_MASTER_T.PMT_POS_NO) = TRIM(VIEW_POSITION_4OT.POS_POSITIONCODE)'))
       .leftJoin('EMPLOYEE', 'OP_MASTER_T.PMT_CODE', 'EMPLOYEE.CODE')
       .select([
         'OP_ORGANIZE_R.POG_CODE',
@@ -103,7 +103,7 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
         'OP_MASTER_T.PMT_NAME_T',
         'OP_MASTER_T.PMT_NAME_E',
         'OP_MASTER_T.PMT_LEVEL_CODE',
-        'OP_POS_EXECUTIVE_R.PPE_DESC_T',
+        'VIEW_POSITION_4OT.POS_POSITIONNAME',
       ])
       .whereIn('OP_ORGANIZE_R.POG_CODE', organizationCodes)
       .whereNotNull('OP_MASTER_T.PMT_CODE')
@@ -113,7 +113,7 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
       employeeQuery = employeeQuery.where((builder) => {
         builder
           .where('EMPLOYEE.NAME', 'like', `%${query.employeeSearchTerm}%`)
-          .orWhere('OP_POS_EXECUTIVE_R.PPE_DESC_T', 'like', `%${query.employeeSearchTerm}%`);
+          .orWhere('VIEW_POSITION_4OT.POS_POSITIONNAME', 'like', `%${query.employeeSearchTerm}%`);
       });
     }
 
@@ -297,7 +297,7 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
         pmtNameE: emp.pmtNameE,
         pmtPosNo: emp.pmtPosNo,
         pmtLevelCode: emp.pmtLevelCode,
-        positionName: emp.ppeDescT || '',
+        positionName: emp.posPositionname || '',
       });
     });
 
