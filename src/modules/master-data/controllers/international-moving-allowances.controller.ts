@@ -17,7 +17,7 @@ import { InternationalMovingAllowancesService } from '../services/international-
 import { CreateInternationalMovingAllowancesDto } from '../dto/create-international-moving-allowances.dto';
 import { UpdateInternationalMovingAllowancesDto } from '../dto/update-international-moving-allowances.dto';
 import { InternationalMovingAllowancesQueryDto } from '../dto/international-moving-allowances-query.dto';
-import { PaginatedResult } from '../../../common/interfaces/pagination.interface';
+// import { PaginatedResult } from '../../../common/interfaces/pagination.interface';
 import { InternationalMovingAllowances } from '../entities/international-moving-allowances.entity';
 
 @ApiTags('Master Data')
