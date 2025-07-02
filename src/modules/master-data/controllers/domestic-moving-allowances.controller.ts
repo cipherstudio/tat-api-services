@@ -125,7 +125,7 @@ export class DomesticMovingAllowancesController {
     @Query('page', new ValidationPipe({ transform: true })) page?: number,
     @Query('limit', new ValidationPipe({ transform: true })) limit?: number,
     @Query('orderBy') orderBy?: DomesticMovingAllowancesQueryDto['orderBy'],
-    @Query('orderDir') orderDir?: 'ASC' | 'DESC',
+    @Query('orderDir') orderDir?: 'asc' | 'desc',
     @Query('distanceStartKm', new ValidationPipe({ transform: true }))
     distanceStartKm?: number,
     @Query('distanceEndKm', new ValidationPipe({ transform: true }))

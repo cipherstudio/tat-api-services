@@ -18,7 +18,7 @@ export class HolidayWorkRatesService {
     const pageRaw = Number(query.page);
     const limit = !isNaN(limitRaw) && limitRaw > 0 ? limitRaw : 10;
     const page = !isNaN(pageRaw) && pageRaw > 0 ? pageRaw : 1;
-    const { step_level, salary, sort } = query;
+    const { step_level, salary, orderBy, orderDir } = query;
     const filter: any = {};
     if (step_level !== undefined) filter.step_level = step_level;
     if (salary !== undefined) filter.salary = salary;
@@ -26,8 +26,8 @@ export class HolidayWorkRatesService {
       page,
       limit,
       filter,
-      sort || 'step_level',
-      'asc',
+      orderBy || 'step_level',
+      orderDir,
     );
   }
 

@@ -107,7 +107,7 @@ export class CurrencyController {
     @Query('page', new ValidationPipe({ transform: true })) page?: number,
     @Query('limit', new ValidationPipe({ transform: true })) limit?: number,
     @Query('orderBy') orderBy?: string,
-    @Query('orderDir') orderDir?: 'ASC' | 'DESC',
+    @Query('orderDir') orderDir?: 'asc' | 'desc',
     @Query('currencyTh') currencyTh?: string,
     @Query('currencyCodeTh') currencyCodeTh?: string,
     @Query('currencyEn') currencyEn?: string,

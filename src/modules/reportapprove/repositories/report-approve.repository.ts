@@ -156,6 +156,8 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
     dto.documentNumber = await this.generateDocumentNumber();
     dto.status = 1; //default status is draft
 
+    console.log('dto', dto);
+
     const snakeData = await toSnakeCase(dto);
     const row = await this.knex('report_approve')
       .insert(snakeData)

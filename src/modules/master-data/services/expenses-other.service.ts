@@ -17,28 +17,37 @@ export class ExpensesOtherService {
     private readonly cacheService: RedisCacheService,
   ) {}
 
-  async create(createExpensesOtherDto: CreateExpensesOtherDto): Promise<ExpensesOther> {
-    const savedExpensesOther = await this.repository.create(createExpensesOtherDto);
+  async create(
+    createExpensesOtherDto: CreateExpensesOtherDto,
+  ): Promise<ExpensesOther> {
+    const savedExpensesOther = await this.repository.create(
+      createExpensesOtherDto,
+    );
 
     // Cache the new expenses-other
     await this.cacheService.set(
       this.cacheService.generateKey(this.CACHE_PREFIX, savedExpensesOther.id),
       savedExpensesOther,
-      this.CACHE_TTL
+      this.CACHE_TTL,
     );
 
     // Invalidate the list cache
-    await this.cacheService.del(this.cacheService.generateListKey(this.CACHE_PREFIX));
+    await this.cacheService.del(
+      this.cacheService.generateListKey(this.CACHE_PREFIX),
+    );
 
     return savedExpensesOther;
   }
 
-  async findAll(queryOptions?: ExpensesOtherQueryOptions): Promise<PaginatedResult<ExpensesOther>> {
+  async findAll(
+    queryOptions?: ExpensesOtherQueryOptions,
+  ): Promise<PaginatedResult<ExpensesOther>> {
     const {
+      offset = 0,
       page = 1,
       limit = 10,
       orderBy = 'created_at',
-      orderDir = 'DESC',
+      orderDir = 'desc',
       name,
       searchTerm,
       createdAfter,
@@ -59,17 +68,23 @@ export class ExpensesOtherService {
       createdBefore ? `createdBefore:${createdBefore.toISOString()}` : null,
       updatedAfter ? `updatedAfter:${updatedAfter.toISOString()}` : null,
       updatedBefore ? `updatedBefore:${updatedBefore.toISOString()}` : null,
-    ].filter(Boolean).join(':');
+    ]
+      .filter(Boolean)
+      .join(':');
 
-    const cacheKey = this.cacheService.generateListKey(this.CACHE_PREFIX, cacheParams);
-    const cachedResult = await this.cacheService.get<PaginatedResult<ExpensesOther>>(cacheKey);
+    const cacheKey = this.cacheService.generateListKey(
+      this.CACHE_PREFIX,
+      cacheParams,
+    );
+    const cachedResult =
+      await this.cacheService.get<PaginatedResult<ExpensesOther>>(cacheKey);
     if (cachedResult) {
       return cachedResult;
     }
 
     // Prepare conditions
     const conditions: Record<string, any> = {};
-    
+
     if (name) {
       conditions.name = name;
     }
@@ -91,12 +106,13 @@ export class ExpensesOtherService {
     }
 
     const result = await this.repository.findWithPaginationAndSearch(
+      offset,
       page,
       limit,
       conditions,
       orderBy,
       orderDir.toLowerCase() as 'asc' | 'desc',
-      searchTerm
+      searchTerm,
     );
 
     // Cache the result
@@ -108,7 +124,8 @@ export class ExpensesOtherService {
   async findById(id: number): Promise<ExpensesOther> {
     // Try to get from cache first
     const cacheKey = this.cacheService.generateKey(this.CACHE_PREFIX, id);
-    const cachedExpensesOther = await this.cacheService.get<ExpensesOther>(cacheKey);
+    const cachedExpensesOther =
+      await this.cacheService.get<ExpensesOther>(cacheKey);
     if (cachedExpensesOther) {
       return cachedExpensesOther;
     }
@@ -124,7 +141,10 @@ export class ExpensesOtherService {
     return expensesOther;
   }
 
-  async update(id: number, updateExpensesOtherDto: UpdateExpensesOtherDto): Promise<ExpensesOther> {
+  async update(
+    id: number,
+    updateExpensesOtherDto: UpdateExpensesOtherDto,
+  ): Promise<ExpensesOther> {
     const expensesOther = await this.findById(id);
     if (!expensesOther) {
       throw new NotFoundException(`Expenses other with ID ${id} not found`);
@@ -138,7 +158,9 @@ export class ExpensesOtherService {
     await this.cacheService.set(cacheKey, updatedExpensesOther, this.CACHE_TTL);
 
     // Invalidate the list cache
-    await this.cacheService.del(this.cacheService.generateListKey(this.CACHE_PREFIX));
+    await this.cacheService.del(
+      this.cacheService.generateListKey(this.CACHE_PREFIX),
+    );
 
     return updatedExpensesOther;
   }
@@ -150,8 +172,12 @@ export class ExpensesOtherService {
     }
 
     // Remove from cache
-    await this.cacheService.del(this.cacheService.generateKey(this.CACHE_PREFIX, id));
+    await this.cacheService.del(
+      this.cacheService.generateKey(this.CACHE_PREFIX, id),
+    );
     // Invalidate the list cache
-    await this.cacheService.del(this.cacheService.generateListKey(this.CACHE_PREFIX));
+    await this.cacheService.del(
+      this.cacheService.generateListKey(this.CACHE_PREFIX),
+    );
   }
-} 
+}

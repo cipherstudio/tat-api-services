@@ -2,7 +2,7 @@ import {
   BasePaginationOptions,
   BaseFilterOptions,
   BaseIncludeOptions,
-  BaseQueryOptions,
+  // BaseQueryOptions,
 } from '../../../common/interfaces/query-options.interface.js';
 
 /**
@@ -103,7 +103,8 @@ export interface OfficeInternationalFilterOptions extends BaseFilterOptions {
  *   extends: ['BasePaginationOptions']
  * })
  */
-export interface OfficeInternationalPaginationOptions extends BasePaginationOptions {}
+export interface OfficeInternationalPaginationOptions
+  extends BasePaginationOptions {}
 
 /**
  * Office international-specific include options
@@ -126,8 +127,8 @@ export interface OfficeInternationalIncludeOptions extends BaseIncludeOptions {}
 export interface OfficeInternationalQueryOptions {
   page?: number;
   limit?: number;
-  orderBy?: 'id' | 'name' | 'region' | 'pogCode' | 'countryId' | 'currencyId' | 'createdAt' | 'updatedAt';
-  orderDir?: 'ASC' | 'DESC';
+  orderBy?: string;
+  orderDir?: 'asc' | 'desc';
   name?: string;
   region?: string;
   pogCode?: string;

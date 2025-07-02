@@ -18,27 +18,32 @@ export class ProvincesService {
   ) {}
 
   async create(createProvincesDto: CreateProvincesDto): Promise<Provinces> {
-    const savedProvinces = await this.provincesRepository.create(createProvincesDto);
+    const savedProvinces =
+      await this.provincesRepository.create(createProvincesDto);
 
     // Cache the new province
     await this.cacheService.set(
       this.cacheService.generateKey(this.CACHE_PREFIX, savedProvinces.id),
       savedProvinces,
-      this.CACHE_TTL
+      this.CACHE_TTL,
     );
 
     // Invalidate the list cache
-    await this.cacheService.del(this.cacheService.generateListKey(this.CACHE_PREFIX));
+    await this.cacheService.del(
+      this.cacheService.generateListKey(this.CACHE_PREFIX),
+    );
 
     return savedProvinces;
   }
 
-  async findAll(queryOptions?: ProvincesQueryDto): Promise<PaginatedResult<Provinces>> {
+  async findAll(
+    queryOptions?: ProvincesQueryDto,
+  ): Promise<PaginatedResult<Provinces>> {
     const {
       page = 1,
       limit = 10,
       orderBy = 'created_at',
-      orderDir = 'DESC',
+      orderDir = 'desc',
       nameEn,
       nameTh,
       isPerimeter,
@@ -63,17 +68,23 @@ export class ProvincesService {
       createdBefore ? `createdBefore:${createdBefore.toISOString()}` : null,
       updatedAfter ? `updatedAfter:${updatedAfter.toISOString()}` : null,
       updatedBefore ? `updatedBefore:${updatedBefore.toISOString()}` : null,
-    ].filter(Boolean).join(':');
+    ]
+      .filter(Boolean)
+      .join(':');
 
-    const cacheKey = this.cacheService.generateListKey(this.CACHE_PREFIX, cacheParams);
-    const cachedResult = await this.cacheService.get<PaginatedResult<Provinces>>(cacheKey);
+    const cacheKey = this.cacheService.generateListKey(
+      this.CACHE_PREFIX,
+      cacheParams,
+    );
+    const cachedResult =
+      await this.cacheService.get<PaginatedResult<Provinces>>(cacheKey);
     if (cachedResult) {
       return cachedResult;
     }
 
     // Prepare conditions
     const conditions: Record<string, any> = {};
-    
+
     if (nameEn) {
       conditions.name_en = nameEn;
     }
@@ -108,7 +119,7 @@ export class ProvincesService {
       conditions,
       orderBy,
       orderDir.toLowerCase() as 'asc' | 'desc',
-      searchTerm
+      searchTerm,
     );
 
     // Cache the result
@@ -136,7 +147,10 @@ export class ProvincesService {
     return provinces;
   }
 
-  async update(id: number, updateProvincesDto: UpdateProvincesDto): Promise<Provinces> {
+  async update(
+    id: number,
+    updateProvincesDto: UpdateProvincesDto,
+  ): Promise<Provinces> {
     const provinces = await this.findById(id);
     if (!provinces) {
       throw new NotFoundException(`Provinces with ID ${id} not found`);
@@ -150,7 +164,9 @@ export class ProvincesService {
     await this.cacheService.set(cacheKey, updatedProvinces, this.CACHE_TTL);
 
     // Invalidate the list cache
-    await this.cacheService.del(this.cacheService.generateListKey(this.CACHE_PREFIX));
+    await this.cacheService.del(
+      this.cacheService.generateListKey(this.CACHE_PREFIX),
+    );
 
     return updatedProvinces;
   }
@@ -162,8 +178,12 @@ export class ProvincesService {
     }
 
     // Remove from cache
-    await this.cacheService.del(this.cacheService.generateKey(this.CACHE_PREFIX, id));
+    await this.cacheService.del(
+      this.cacheService.generateKey(this.CACHE_PREFIX, id),
+    );
     // Invalidate the list cache
-    await this.cacheService.del(this.cacheService.generateListKey(this.CACHE_PREFIX));
+    await this.cacheService.del(
+      this.cacheService.generateListKey(this.CACHE_PREFIX),
+    );
   }
-} 
+}

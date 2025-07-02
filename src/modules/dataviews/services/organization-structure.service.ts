@@ -32,7 +32,7 @@ export class OrganizationStructureService {
       page: query.page ?? 1,
       limit: query.limit ?? 10,
       orderBy: query.orderBy ?? 'id',
-      orderDir: query.orderDir ?? 'ASC',
+      orderDir: query.orderDir ?? 'asc',
       offset: query.offset ?? 0,
     };
 

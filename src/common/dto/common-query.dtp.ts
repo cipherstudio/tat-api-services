@@ -6,7 +6,7 @@ export class CommonQueryDto {
   @ApiPropertyOptional({ description: 'การเรียงลำดับ', default: 'asc' })
   @IsOptional()
   @IsString()
-  orderDir?: 'ASC' | 'DESC' = 'ASC';
+  orderDir?: 'asc' | 'desc' = 'asc';
 
   @ApiPropertyOptional({ description: 'การเรียงลำดับ' })
   @IsOptional()

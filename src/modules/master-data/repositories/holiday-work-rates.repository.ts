@@ -15,7 +15,7 @@ export class HolidayWorkRatesRepository extends KnexBaseRepository<HolidayWorkRa
     limit: number = 10,
     conditions: Record<string, any> = {},
     orderBy: string = 'step_level',
-    direction: 'asc' | 'desc' = 'asc',
+    direction: 'asc' | 'desc' = 'desc',
   ) {
     const filter = { ...conditions };
 

@@ -1,4 +1,13 @@
-import { Controller, Get, Patch, Body, Param, Query, ValidationPipe, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Body,
+  Param,
+  Query,
+  ValidationPipe,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags, ApiQuery } from '@nestjs/swagger';
 import { ExpensesVehicle } from '../entities/expenses-vehicle.entity';
 import { UpdateExpensesVehicleDto } from '../dto/expenses-vehicle.dto';
@@ -88,16 +97,21 @@ export class ExpensesVehicleController {
     @Query('page', new ValidationPipe({ transform: true })) page?: number,
     @Query('limit', new ValidationPipe({ transform: true })) limit?: number,
     @Query('orderBy') orderBy?: ExpensesVehicleQueryDto['orderBy'],
-    @Query('orderDir') orderDir?: 'ASC' | 'DESC',
+    @Query('orderDir') orderDir?: 'asc' | 'desc',
     @Query('code') code?: string,
     @Query('title') title?: string,
     @Query('searchTerm') searchTerm?: string,
-    @Query('createdAfter', new ValidationPipe({ transform: true })) createdAfter?: Date,
-    @Query('createdBefore', new ValidationPipe({ transform: true })) createdBefore?: Date,
-    @Query('updatedAfter', new ValidationPipe({ transform: true })) updatedAfter?: Date,
-    @Query('updatedBefore', new ValidationPipe({ transform: true })) updatedBefore?: Date,
+    @Query('createdAfter', new ValidationPipe({ transform: true }))
+    createdAfter?: Date,
+    @Query('createdBefore', new ValidationPipe({ transform: true }))
+    createdBefore?: Date,
+    @Query('updatedAfter', new ValidationPipe({ transform: true }))
+    updatedAfter?: Date,
+    @Query('updatedBefore', new ValidationPipe({ transform: true }))
+    updatedBefore?: Date,
   ): Promise<PaginatedResult<ExpensesVehicle>> {
     const queryOptions: ExpensesVehicleQueryDto = {
+      offset: (page - 1) * limit,
       page,
       limit,
       orderBy,
@@ -128,4 +142,4 @@ export class ExpensesVehicleController {
   ): Promise<ExpensesVehicle> {
     return this.service.update(id, updateDto);
   }
-} 
+}

@@ -18,34 +18,45 @@ export class OfficeInternationalService {
     private readonly cacheService: RedisCacheService,
   ) {}
 
-  async create(createOfficeInternationalDto: CreateOfficeInternationalDto): Promise<OfficeInternational> {
-    const savedOfficeInternational = await this.repository.create(createOfficeInternationalDto);
+  async create(
+    createOfficeInternationalDto: CreateOfficeInternationalDto,
+  ): Promise<OfficeInternational> {
+    const savedOfficeInternational = await this.repository.create(
+      createOfficeInternationalDto,
+    );
 
     // Cache the new office international
     await this.cacheService.set(
-      this.cacheService.generateKey(this.CACHE_PREFIX, savedOfficeInternational.id),
+      this.cacheService.generateKey(
+        this.CACHE_PREFIX,
+        savedOfficeInternational.id,
+      ),
       savedOfficeInternational,
-      this.CACHE_TTL
+      this.CACHE_TTL,
     );
 
     // Invalidate the list cache
-    await this.cacheService.del(this.cacheService.generateListKey(this.CACHE_PREFIX));
+    await this.cacheService.del(
+      this.cacheService.generateListKey(this.CACHE_PREFIX),
+    );
 
     return savedOfficeInternational;
   }
 
-  async findAll(options: OfficeInternationalQueryOptions): Promise<PaginatedResult<OfficeInternational>> {
-    const { 
-      page = 1, 
-      limit = 10, 
-      name, 
+  async findAll(
+    options: OfficeInternationalQueryOptions,
+  ): Promise<PaginatedResult<OfficeInternational>> {
+    const {
+      page = 1,
+      limit = 10,
+      name,
       region,
       pogCode,
       countryId,
       currencyId,
       searchTerm,
       orderBy = 'created_at',
-      orderDir = 'DESC',
+      orderDir = 'desc',
       createdAfter,
       createdBefore,
       updatedAfter,
@@ -68,17 +79,25 @@ export class OfficeInternationalService {
       createdBefore ? `createdBefore:${createdBefore.toISOString()}` : null,
       updatedAfter ? `updatedAfter:${updatedAfter.toISOString()}` : null,
       updatedBefore ? `updatedBefore:${updatedBefore.toISOString()}` : null,
-    ].filter(Boolean).join(':');
+    ]
+      .filter(Boolean)
+      .join(':');
 
-    const cacheKey = this.cacheService.generateListKey(this.CACHE_PREFIX, cacheParams);
-    const cachedResult = await this.cacheService.get<PaginatedResult<OfficeInternational>>(cacheKey);
+    const cacheKey = this.cacheService.generateListKey(
+      this.CACHE_PREFIX,
+      cacheParams,
+    );
+    const cachedResult =
+      await this.cacheService.get<PaginatedResult<OfficeInternational>>(
+        cacheKey,
+      );
     if (cachedResult) {
       return cachedResult;
     }
 
     // Prepare conditions
     const conditions: Record<string, any> = {};
-    
+
     if (name) {
       conditions.name = name;
     }
@@ -121,7 +140,7 @@ export class OfficeInternationalService {
       conditions,
       orderBy,
       orderDir.toLowerCase() as 'asc' | 'desc',
-      searchTerm
+      searchTerm,
     );
 
     // Cache the result
@@ -133,14 +152,17 @@ export class OfficeInternationalService {
   async findById(id: number): Promise<OfficeInternational> {
     // Try to get from cache first
     const cacheKey = this.cacheService.generateKey(this.CACHE_PREFIX, id);
-    const cachedOfficeInternational = await this.cacheService.get<OfficeInternational>(cacheKey);
+    const cachedOfficeInternational =
+      await this.cacheService.get<OfficeInternational>(cacheKey);
     if (cachedOfficeInternational) {
       return cachedOfficeInternational;
     }
 
     const officeInternational = await this.repository.findById(id);
     if (!officeInternational) {
-      throw new NotFoundException(`Office International with ID ${id} not found`);
+      throw new NotFoundException(
+        `Office International with ID ${id} not found`,
+      );
     }
 
     // Cache the result
@@ -149,10 +171,15 @@ export class OfficeInternationalService {
     return officeInternational;
   }
 
-  async update(id: number, updateOfficeInternationalDto: UpdateOfficeInternationalDto): Promise<OfficeInternational> {
+  async update(
+    id: number,
+    updateOfficeInternationalDto: UpdateOfficeInternationalDto,
+  ): Promise<OfficeInternational> {
     const officeInternational = await this.findById(id);
     if (!officeInternational) {
-      throw new NotFoundException(`Office International with ID ${id} not found`);
+      throw new NotFoundException(
+        `Office International with ID ${id} not found`,
+      );
     }
 
     await this.repository.update(id, updateOfficeInternationalDto);
@@ -160,10 +187,16 @@ export class OfficeInternationalService {
 
     // Update cache
     const cacheKey = this.cacheService.generateKey(this.CACHE_PREFIX, id);
-    await this.cacheService.set(cacheKey, updatedOfficeInternational, this.CACHE_TTL);
+    await this.cacheService.set(
+      cacheKey,
+      updatedOfficeInternational,
+      this.CACHE_TTL,
+    );
 
     // Invalidate the list cache
-    await this.cacheService.del(this.cacheService.generateListKey(this.CACHE_PREFIX));
+    await this.cacheService.del(
+      this.cacheService.generateListKey(this.CACHE_PREFIX),
+    );
 
     return updatedOfficeInternational;
   }
@@ -171,12 +204,18 @@ export class OfficeInternationalService {
   async remove(id: number): Promise<void> {
     const result = await this.repository.delete(id);
     if (!result) {
-      throw new NotFoundException(`Office International with ID ${id} not found`);
+      throw new NotFoundException(
+        `Office International with ID ${id} not found`,
+      );
     }
 
     // Remove from cache
-    await this.cacheService.del(this.cacheService.generateKey(this.CACHE_PREFIX, id));
+    await this.cacheService.del(
+      this.cacheService.generateKey(this.CACHE_PREFIX, id),
+    );
     // Invalidate the list cache
-    await this.cacheService.del(this.cacheService.generateListKey(this.CACHE_PREFIX));
+    await this.cacheService.del(
+      this.cacheService.generateListKey(this.CACHE_PREFIX),
+    );
   }
 }

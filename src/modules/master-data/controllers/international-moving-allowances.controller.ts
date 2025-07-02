@@ -23,18 +23,34 @@ import { InternationalMovingAllowances } from '../entities/international-moving-
 @ApiTags('Master Data')
 @Controller('master-data/international-moving-allowances')
 export class InternationalMovingAllowancesController {
-  constructor(private readonly internationalMovingAllowancesService: InternationalMovingAllowancesService) {}
+  constructor(
+    private readonly internationalMovingAllowancesService: InternationalMovingAllowancesService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a new international moving allowance' })
-  @ApiResponse({ status: 201, description: 'The international moving allowance has been successfully created.', type: InternationalMovingAllowances })
-  create(@Body() createDto: CreateInternationalMovingAllowancesDto): Promise<InternationalMovingAllowances> {
+  @ApiResponse({
+    status: 201,
+    description:
+      'The international moving allowance has been successfully created.',
+    type: InternationalMovingAllowances,
+  })
+  create(
+    @Body() createDto: CreateInternationalMovingAllowancesDto,
+  ): Promise<InternationalMovingAllowances> {
     return this.internationalMovingAllowancesService.create(createDto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all international moving allowances with pagination and filters' })
-  @ApiResponse({ status: 200, description: 'Return all international moving allowances.', type: [InternationalMovingAllowances] })
+  @ApiOperation({
+    summary:
+      'Get all international moving allowances with pagination and filters',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Return all international moving allowances.',
+    type: [InternationalMovingAllowances],
+  })
   @ApiQuery({
     name: 'page',
     type: Number,
@@ -116,19 +132,27 @@ export class InternationalMovingAllowancesController {
   findAll(
     @Query('page', new ValidationPipe({ transform: true })) page?: number,
     @Query('limit', new ValidationPipe({ transform: true })) limit?: number,
-    @Query('orderBy') orderBy?: InternationalMovingAllowancesQueryDto['orderBy'],
-    @Query('orderDir') orderDir?: 'ASC' | 'DESC',
+    @Query('orderBy')
+    orderBy?: InternationalMovingAllowancesQueryDto['orderBy'],
+    @Query('orderDir') orderDir?: 'asc' | 'desc',
     @Query('office') office?: string,
     @Query('currency') currency?: string,
-    @Query('directorSalary', new ValidationPipe({ transform: true })) directorSalary?: number,
-    @Query('deputyDirectorSalary', new ValidationPipe({ transform: true })) deputyDirectorSalary?: number,
+    @Query('directorSalary', new ValidationPipe({ transform: true }))
+    directorSalary?: number,
+    @Query('deputyDirectorSalary', new ValidationPipe({ transform: true }))
+    deputyDirectorSalary?: number,
     @Query('searchTerm') searchTerm?: string,
-    @Query('createdAfter', new ValidationPipe({ transform: true })) createdAfter?: Date,
-    @Query('createdBefore', new ValidationPipe({ transform: true })) createdBefore?: Date,
-    @Query('updatedAfter', new ValidationPipe({ transform: true })) updatedAfter?: Date,
-    @Query('updatedBefore', new ValidationPipe({ transform: true })) updatedBefore?: Date,
+    @Query('createdAfter', new ValidationPipe({ transform: true }))
+    createdAfter?: Date,
+    @Query('createdBefore', new ValidationPipe({ transform: true }))
+    createdBefore?: Date,
+    @Query('updatedAfter', new ValidationPipe({ transform: true }))
+    updatedAfter?: Date,
+    @Query('updatedBefore', new ValidationPipe({ transform: true }))
+    updatedBefore?: Date,
   ) {
     const queryOptions: InternationalMovingAllowancesQueryDto = {
+      offset: (page - 1) * limit,
       page,
       limit,
       orderBy,
@@ -148,12 +172,16 @@ export class InternationalMovingAllowancesController {
   }
 
   @Get(':id')
-  findById(@Param('id', ParseIntPipe) id: number): Promise<InternationalMovingAllowances> {
+  findById(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<InternationalMovingAllowances> {
     return this.internationalMovingAllowancesService.findById(id);
   }
 
   @Get('office/:office')
-  findByOffice(@Param('office') office: string): Promise<InternationalMovingAllowances | undefined> {
+  findByOffice(
+    @Param('office') office: string,
+  ): Promise<InternationalMovingAllowances | undefined> {
     return this.internationalMovingAllowancesService.findByOffice(office);
   }
 
@@ -170,4 +198,4 @@ export class InternationalMovingAllowancesController {
   remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     return this.internationalMovingAllowancesService.remove(id);
   }
-} 
+}
