@@ -347,6 +347,8 @@ export class ApprovalService {
 
     // Get date ranges for each approval
     let dateRanges = [];
+    let clothingExpenses = [];
+    let budgets = [];
 
     if (approvalIds.length > 0) {
       // Get all date ranges for each approval
@@ -360,6 +362,52 @@ export class ApprovalService {
       });
 
       dateRanges = await Promise.all(dateRangePromises);
+
+      // Get all clothing expenses for each approval with file information
+      const clothingExpensePromises = approvalIds.map(async (approvalId) => {
+        const clothingExpensesForApproval = await this.knexService
+          .knex('approval_clothing_expense as ace')
+          .leftJoin('files as f', 'ace.attachment_id', 'f.id')
+          .select(
+            'ace.approval_id as approvalId',
+            'ace.clothing_file_checked as clothingFileChecked',
+            'ace.clothing_amount as clothingAmount',
+            'ace.clothing_reason as clothingReason',
+            'ace.attachment_id as attachmentId',
+            'ace.reporting_date as reportingDate',
+            'ace.next_claim_date as nextClaimDate',
+            'ace.work_end_date as workEndDate',
+            'f.original_name as attachmentFileName',
+            'f.path as attachmentFilePath'
+          )
+          .where('ace.approval_id', approvalId);
+        return clothingExpensesForApproval;
+      });
+
+      clothingExpenses = await Promise.all(clothingExpensePromises);
+
+      // Get all budgets for each approval with file information
+      const budgetPromises = approvalIds.map(async (approvalId) => {
+        const budgetsForApproval = await this.knexService
+          .knex('approval_budgets as ab')
+          .leftJoin('files as f', 'ab.attachment_id', 'f.id')
+          .select(
+            'ab.approval_id as approvalId',
+            'ab.budget_type as budgetType',
+            'ab.item_type as itemType',
+            'ab.reservation_code as reservationCode',
+            'ab.department',
+            'ab.budget_code as budgetCode',
+            'ab.attachment_id as attachmentId',
+            'f.original_name as attachmentFileName',
+            'f.path as attachmentFilePath'
+          )
+          .where('ab.approval_id', approvalId);
+        return budgetsForApproval;
+      });
+
+      budgets = await Promise.all(budgetPromises);
+
     }
 
     // Create a map of date ranges by approval ID
@@ -381,6 +429,12 @@ export class ApprovalService {
     const data = approvals.map((approval) => ({
       ...approval,
       approvalDateRanges: dateRangeMap.get(approval.id) || [],
+      clothingExpenses: clothingExpenses.find((expenseArray) => 
+        expenseArray.length > 0 && expenseArray[0]?.approvalId === approval.id
+      ) || [],
+      approvalBudgets: budgets.find((budgetArray) => 
+        budgetArray.length > 0 && budgetArray[0]?.approvalId === approval.id
+      ) || [],
     }));
 
     // Apply additional filters (searchTerm only)
@@ -758,6 +812,7 @@ export class ApprovalService {
           'work_end_date as workEndDate',
           'increment_id as incrementId',
           'destination_country as destinationCountry',
+          'attachment_id as clothingAttachmentId',
         );
       staffMember.clothingExpenses = clothingExpenses;
     }
@@ -785,6 +840,7 @@ export class ApprovalService {
         'reservation_code as reservationCode',
         'department',
         'budget_code as budgetCode',
+        'attachment_id as budgetAttachmentId',
       );
 
     // Combine all the data
@@ -1347,6 +1403,7 @@ export class ApprovalService {
                         work_end_date: workEndDate, // ไม่ต้องส่ง เอามาจาก step 1
                         increment_id: approval.incrementId,
                         destination_country: destinationCountry ?? null,
+                        attachment_id: expense.attachmentId ?? null,
                         updated_at: new Date(),
                       });
                   } else {
@@ -1363,6 +1420,7 @@ export class ApprovalService {
                       work_end_date: workEndDate, // ไม่ต้องส่ง เอามาจาก step 1
                       increment_id: approval.incrementId,
                       destination_country: destinationCountry ?? null,
+                      attachment_id: expense.attachmentId ?? null,
                       created_at: new Date(),
                       updated_at: new Date(),
                     });
@@ -1434,7 +1492,15 @@ export class ApprovalService {
           'Processing budgets:',
           JSON.stringify(updateDto.budgets, null, 2),
         );
+        
+        // Get old budget attachment IDs before deletion
+        const oldBudgetAttachments = await trx('approval_budgets')
+          .where('approval_id', id)
+          .select('attachment_id')
+          .whereNotNull('attachment_id');
+        
         await trx('approval_budgets').where('approval_id', id).delete();
+        
         for (const budget of updateDto.budgets) {
           if (budget && typeof budget === 'object') {
             await trx('approval_budgets').insert({
@@ -1444,8 +1510,16 @@ export class ApprovalService {
               reservation_code: budget.reservation_code,
               department: budget.department,
               budget_code: budget.budget_code,
+              attachment_id: budget.attachment_id ?? null,
             });
           }
+        }
+        
+        // Store old budget attachment IDs for cleanup after transaction
+        const oldBudgetAttachmentIds = oldBudgetAttachments.map(att => att.attachment_id);
+        if (oldBudgetAttachmentIds.length > 0) {
+          // Store for cleanup after successful transaction
+          await this.cleanupOldBudgetFiles(oldBudgetAttachmentIds, updateDto.budgets);
         }
       }
 
@@ -1949,5 +2023,27 @@ export class ApprovalService {
       createdAt: statusLabel.created_at,
       updatedAt: statusLabel.updated_at,
     };
+  }
+
+  private async cleanupOldBudgetFiles(oldAttachmentIds: number[], newBudgets: any[]): Promise<void> {
+    // Get new attachment IDs from the updated budgets
+    const newAttachmentIds = newBudgets
+      .filter(budget => budget && budget.attachment_id)
+      .map(budget => budget.attachment_id);
+    
+    // Find attachment IDs that are no longer used
+    const attachmentsToDelete = oldAttachmentIds.filter(
+      oldId => !newAttachmentIds.includes(oldId)
+    );
+    
+    // Delete old files that are no longer referenced
+    for (const attachmentId of attachmentsToDelete) {
+      try {
+        await this.filesService.remove(attachmentId);
+        console.log(`Successfully deleted old budget attachment file: ${attachmentId}`);
+      } catch (error) {
+        console.warn(`Warning: Failed to delete old budget attachment file ${attachmentId}:`, error.message);
+      }
+    }
   }
 }

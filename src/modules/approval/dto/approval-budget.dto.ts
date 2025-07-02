@@ -46,4 +46,12 @@ export class ApprovalBudgetDto {
   @IsString()
   @IsOptional()
   budget_code?: string;
+
+  @ApiProperty({
+    description: 'รหัสไฟล์',
+    example: '1',
+    required: false
+  })
+  @IsOptional()
+  attachment_id?: number;
 } 

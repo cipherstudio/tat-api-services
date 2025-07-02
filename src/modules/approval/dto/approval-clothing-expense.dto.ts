@@ -75,6 +75,15 @@ export class ApprovalClothingExpenseDto {
   destinationCountry?: string;
 
   @ApiProperty({
+    description: 'Attachment ID',
+    required: false,
+    example: 1
+  })
+  @IsOptional()
+  @IsNumber()
+  attachmentId?: number;
+
+  @ApiProperty({
     description: 'ID of the staff member',
     required: false,
     example: 1

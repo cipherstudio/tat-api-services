@@ -263,6 +263,31 @@ export interface Approval {
     startDate: string;
     endDate: string;
   }>;
+
+  /**
+   * Array of clothing expenses
+   */
+  clothingExpenses?: Array<{
+    clothingFileChecked: boolean;
+    clothingAmount: number;
+    clothingReason: string;
+    attachmentId: number;
+    reportingDate: string;
+    nextClaimDate: string;
+    workEndDate: string;
+  }>;
+
+  /**
+   * Array of budgets
+   */
+  approvalBudgets?: Array<{
+    budgetType: string;
+    itemType: string;
+    reservationCode: string;
+    department: string;
+    budgetCode: string;
+    attachmentId: string;
+  }>;
 }
 
 // Snake case to camel case mapping for database results

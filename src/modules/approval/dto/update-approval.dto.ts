@@ -580,6 +580,7 @@ export class UpdateApprovalDto {
             clothingFileChecked: true,
             clothingAmount: 1000,
             clothingReason: 'Business trip',
+            attachmentId: 1,
             // "reportingDate": "2024-03-20",
             // "nextClaimDate": "2024-03-25",
             // "workEndDate": "2024-03-25"
@@ -707,6 +708,7 @@ export class UpdateApprovalDto {
         reservation_code: 'RES001',
         department: 'แผนกเทคโนโลยีสารสนเทศ',
         budget_code: 'BUD001',
+        attachment_id: 1,
       },
     ],
   })
