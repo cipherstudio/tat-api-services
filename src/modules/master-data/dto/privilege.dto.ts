@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsNotEmpty, IsString } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsString, IsEnum, IsOptional } from 'class-validator';
+import { ConfidentialLevel } from '../entities/privilege.entity';
 
 export class CreatePrivilegeDto {
   @ApiProperty({
@@ -25,6 +26,17 @@ export class CreatePrivilegeDto {
   @IsNotEmpty()
   @IsBoolean()
   isOutsiderEquivalent: boolean;
+
+  @ApiProperty({
+    description: 'The confidential level access for this privilege',
+    enum: ConfidentialLevel,
+    enumName: 'ConfidentialLevel',
+    example: ConfidentialLevel.NORMAL,
+    required: false,
+  })
+  @IsOptional()
+  @IsEnum(ConfidentialLevel)
+  confidentialLevel?: ConfidentialLevel;
 }
 
 export class UpdatePrivilegeDto {
@@ -51,4 +63,15 @@ export class UpdatePrivilegeDto {
   @IsNotEmpty()
   @IsBoolean()
   isOutsiderEquivalent: boolean;
+
+  @ApiProperty({
+    description: 'The confidential level access for this privilege',
+    enum: ConfidentialLevel,
+    enumName: 'ConfidentialLevel',
+    example: ConfidentialLevel.NORMAL,
+    required: false,
+  })
+  @IsOptional()
+  @IsEnum(ConfidentialLevel)
+  confidentialLevel?: ConfidentialLevel;
 } 

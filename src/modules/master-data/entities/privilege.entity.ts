@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
 
+export enum ConfidentialLevel {
+  NORMAL = 'NORMAL',
+  CONFIDENTIAL = 'CONFIDENTIAL',
+  SECRET = 'SECRET',
+  TOP_SECRET = 'TOP_SECRET',
+}
+
 export interface Privilege {
   /**
    * The unique identifier for the privilege
@@ -22,6 +29,11 @@ export interface Privilege {
   isOutsiderEquivalent: boolean;
 
   /**
+   * The confidential level access for this privilege
+   */
+  confidentialLevel: ConfidentialLevel;
+
+  /**
    * When the privilege was created
    */
   createdAt: Date;
@@ -38,6 +50,7 @@ export const privilegeColumnMap = {
   name: 'name',
   is_committee_position: 'isCommitteePosition',
   is_outsider_equivalent: 'isOutsiderEquivalent',
+  confidential_level: 'confidentialLevel',
   created_at: 'createdAt',
   updated_at: 'updatedAt',
 };
@@ -48,6 +61,7 @@ export const privilegeReverseColumnMap = {
   name: 'name',
   isCommitteePosition: 'is_committee_position',
   isOutsiderEquivalent: 'is_outsider_equivalent',
+  confidentialLevel: 'confidential_level',
   createdAt: 'created_at',
   updatedAt: 'updated_at',
 }; 

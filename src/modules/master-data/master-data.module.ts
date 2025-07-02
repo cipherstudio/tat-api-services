@@ -27,7 +27,6 @@ import { EntertainmentAllowanceService } from './services/entertainment-allowanc
 import { ApprovalClothingExpenseService } from './services/approval-clothing-expense.service';
 import { PrivilegeService } from './services/privilege.service.js';
 import { MasterdataLabelsService } from './services/masterdata-labels.service';
-import { ConfidentialAccessControlService } from './services/confidential-access-control.service';
 
 // Import controllers
 import { CountriesController } from './controllers/countries.controller.js';
@@ -54,7 +53,6 @@ import { EntertainmentAllowanceController } from './controllers/entertainment-al
 import { ApprovalClothingExpenseController } from './controllers/approval-clothing-expense.controller';
 import { PrivilegeController } from './controllers/privilege.controller.js';
 import { MasterdataLabelsController } from './controllers/masterdata-labels.controller';
-import { ConfidentialAccessControlController } from './controllers/confidential-access-control.controller';
 
 // Import repositories
 import { CountriesRepository } from './repositories/countries.repository.js';
@@ -81,7 +79,6 @@ import { EntertainmentAllowanceRepository } from './repositories/entertainment-a
 import { ApprovalClothingExpenseRepository } from './repositories/approval-clothing-expense.repository';
 import { PrivilegeRepository } from './repositories/privilege.repository.js';
 import { MasterdataLabelsRepository } from './repositories/masterdata-labels.repository';
-import { ConfidentialAccessControlRepository } from './repositories/confidential-access-control.repository';
 
 // Import entities
 import { HolidayWorkRate } from './entities/holiday-work-rates.entity';
@@ -115,7 +112,6 @@ import { MasterdataLabel } from './entities/masterdata-labels.entity';
     ApprovalClothingExpenseController,
     PrivilegeController,
     MasterdataLabelsController,
-    ConfidentialAccessControlController,
   ],
   providers: [
     // Services
@@ -143,7 +139,6 @@ import { MasterdataLabel } from './entities/masterdata-labels.entity';
     ApprovalClothingExpenseService,
     PrivilegeService,
     MasterdataLabelsService,
-    ConfidentialAccessControlService,
     // Repositories
     CountriesRepository,
     PlacesRepository,
@@ -169,7 +164,6 @@ import { MasterdataLabel } from './entities/masterdata-labels.entity';
     ApprovalClothingExpenseRepository,
     PrivilegeRepository,
     MasterdataLabelsRepository,
-    ConfidentialAccessControlRepository,
     // Shared services
     RedisCacheService,
     HolidayWorkRate,
@@ -201,7 +195,6 @@ import { MasterdataLabel } from './entities/masterdata-labels.entity';
     ApprovalClothingExpenseService,
     PrivilegeService,
     MasterdataLabelsService,
-    ConfidentialAccessControlService,
   ],
 })
 export class MasterDataModule {}
