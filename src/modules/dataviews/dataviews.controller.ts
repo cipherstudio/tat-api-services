@@ -149,12 +149,12 @@ export class DataviewsController {
   @ApiOperation({
     summary: 'ค้นหาข้อมูล AB_HOLIDAY ด้วยเงื่อนไข',
     description:
-      'สามารถกรองข้อมูล AB_HOLIDAY ตาม holidayDate, pogCode, limit, offset ได้',
+      'สามารถกรองข้อมูล AB_HOLIDAY ตาม dateRanges (หลาย range), holidayDate (วันเดียว), pogCode, limit, offset ได้',
   })
   @ApiQuery({
     name: 'holidayDate',
     required: false,
-    description: 'HOLIDAY_DATE',
+    description: 'HOLIDAY_DATE (single date for backward compatibility)',
     type: String,
     format: 'date-time',
   })
