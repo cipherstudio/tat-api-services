@@ -89,7 +89,7 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
       meta: {
         total,
         limit: query.limit ?? 10,
-        offset: query.offset ?? 0,
+        offset: query.offset ?? (query.page - 1) * query.limit,
         lastPage: total === 0 ? 0 : Math.ceil(total / (query.limit ?? 10)) - 1,
       },
     };
@@ -182,7 +182,7 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
     const finalQuery = this.knex(subquery)
       .where('rn', 1)
       .limit(query.limit ?? 10)
-      .offset(query.offset ?? 0);
+      .offset((query?.page - 1) * query.limit);
 
     const dbEntities = await finalQuery;
     const data = await Promise.all(
@@ -194,7 +194,7 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
       meta: {
         total,
         limit: query.limit ?? 10,
-        offset: query.offset ?? 0,
+        offset: (query?.page - 1) * query.limit,
         lastPage: total === 0 ? 0 : Math.ceil(total / (query.limit ?? 10)) - 1,
       },
     };
