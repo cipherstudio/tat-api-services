@@ -132,9 +132,18 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
     }
     if (query.searchTerm) {
       baseBuilder = baseBuilder.where(
-        'EMPLOYEE.NAME',
+        'OP_MASTER_T.PMT_NAME_T',
         'like',
         `%${query.searchTerm}%`,
+      );
+      baseBuilder = baseBuilder.orWhere(
+        'OP_MASTER_T.PMT_NAME_E',
+        'like',
+        `%${query.searchTerm}%`,
+      );
+      baseBuilder = baseBuilder.orWhereRaw(
+        'RTRIM("OP_MASTER_T"."PMT_CODE") = ?',
+        [query.searchTerm],
       );
     }
     if (query.sex) baseBuilder = baseBuilder.where('EMPLOYEE.SEX', query.sex);
