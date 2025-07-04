@@ -35,6 +35,7 @@ import { UpdateClothingExpenseDatesDto } from './dto/update-clothing-expense-dat
 import { CheckClothingExpenseEligibilityDto } from './dto/check-clothing-expense-eligibility.dto';
 import { ClothingExpenseEligibilityResponseDto } from './dto/clothing-expense-eligibility-response.dto';
 import { ApprovalStatusLabelResponseDto } from './entities/approval-status-label.entity';
+import { UpdateApprovalContinuousDto } from './dto/update-approval-continuous.dto';
 //import { ApprovalWorkLocationDto } from './dto/approval-work-location.dto';
 
 interface RequestWithUser extends Request {
@@ -328,5 +329,21 @@ export class ApprovalController {
     return this.approvalService.checkClothingExpenseEligibility(
       checkEligibilityDto,
     );
+  }
+
+  @Post('approvals-continuous/:id')
+  @ApiOperation({
+    summary: 'Update approval continuous',
+    description: 'Update approval continuous by ID',
+  })
+  @ApiBody({ type: UpdateApprovalContinuousDto })
+  @ApiResponse({ status: 200, description: 'Approval continuous updated successfully' })
+  @ApiResponse({ status: 404, description: 'Approval continuous not found' })
+  updateApprovalContinuous(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateDto: UpdateApprovalContinuousDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.approvalService.updateApprovalContinuous(id, updateDto, req.user.id);
   }
 }

@@ -19,6 +19,7 @@ import { CheckClothingExpenseEligibilityDto } from './dto/check-clothing-expense
 import { ClothingExpenseEligibilityResponseDto } from './dto/clothing-expense-eligibility-response.dto';
 import { FilesService } from '../files/files.service';
 //import { ApprovalWorkLocationDto } from './dto/approval-work-location.dto';
+import { UpdateApprovalContinuousDto } from './dto/update-approval-continuous.dto';
 
 @Injectable()
 export class ApprovalService {
@@ -1596,7 +1597,6 @@ export class ApprovalService {
           employee_code: updateDto.staffEmployeeCode,
           approval_continuous_status_id: approvalContinuousStatusId.id,
           created_by: userId,
-          updated_by: userId,
           signer_name: updateDto.signerName,
           signer_date: updateDto.signerDate,
           document_ending: updateDto.documentEnding,
@@ -2129,6 +2129,151 @@ export class ApprovalService {
       } catch (error) {
         console.warn(`Warning: Failed to delete old budget attachment file ${attachmentId}:`, error.message);
       }
+    }
+  }
+
+  async updateApprovalContinuous(
+    id: number,
+    updateDto: UpdateApprovalContinuousDto,
+    userId: number,
+  ): Promise<void> {
+    // Check if approval_continuous exists and has PENDING status
+    const existingContinuous = await this.knexService
+      .knex('approval_continuous as ac')
+      .leftJoin('approval_continuous_status as acs', 'ac.approval_continuous_status_id', 'acs.id')
+      .where('ac.id', id)
+      .select(
+        'ac.*',
+        'acs.status_code as statusCode'
+      )
+      .first();
+
+    if (!existingContinuous) {
+      throw new NotFoundException(`Approval continuous with ID ${id} not found`);
+    }
+
+    if (existingContinuous.statusCode !== 'PENDING') {
+      throw new NotFoundException(`Approval continuous with ID ${id} cannot be updated. Only PENDING status can be updated.`);
+    }
+
+    // Start a transaction
+    const trx = await this.knexService.knex.transaction();
+
+    try {
+      const updateData: any = {};
+
+      // Update status if provided
+      if (updateDto.statusCode) {
+        const approvalContinuousStatusId = await this.knexService
+          .knex('approval_continuous_status')
+          .where('status_code', updateDto.statusCode)
+          .select('id')
+          .first();
+
+        if (!approvalContinuousStatusId) {
+          throw new NotFoundException(`Approval continuous status with code ${updateDto.statusCode} not found`);
+        }
+
+        updateData.approval_continuous_status_id = approvalContinuousStatusId.id;
+      }
+
+      // get approval_continuous_status_id of PENDING
+      const approvalContinuousStatusIdPending = await this.knexService
+          .knex('approval_continuous_status')
+          .where('status_code', 'PENDING')
+          .select('id')
+          .first();
+
+      if (updateDto.statusCode === 'APPROVED') {
+
+        if (updateDto.useFileSignature !== undefined) {
+          updateData.use_file_signature = updateDto.useFileSignature;
+        }
+        if (updateDto.signatureAttachmentId !== undefined) {
+          updateData.signature_attachment_id = updateDto.signatureAttachmentId;
+        }
+        if (updateDto.useSystemSignature !== undefined) {
+          updateData.use_system_signature = updateDto.useSystemSignature;
+        }
+        if (updateDto.comments !== undefined) {
+          updateData.comments = updateDto.comments;
+        }
+
+        // Add updated_by and updated_at
+        updateData.updated_by = userId;
+        updateData.updated_at = new Date();
+
+        // Update the record
+        await trx('approval_continuous')
+          .where('id', id)
+          .update(updateData);
+
+        // update approval.continuous_employee_code
+        await trx('approval')
+          .where('id', existingContinuous.approval_id)
+          .update({
+            continuous_employee_code: updateDto.employeeCode,
+          });
+
+        // insert approval_continuous // employee คนถัดไป
+        await trx('approval_continuous').insert({
+          approval_id: existingContinuous.approval_id,
+          employee_code: updateDto.employeeCode,
+          signer_name: updateDto.signerName,
+          signer_date: updateDto.signerDate,
+          approval_continuous_status_id: approvalContinuousStatusIdPending.id,
+          created_by: userId,
+        });
+
+      } else if (updateDto.statusCode === 'REJECTED') {
+        
+        if (updateDto.comments !== undefined) {
+          updateData.comments = updateDto.comments;
+        }
+
+        // Add updated_by and updated_at
+        updateData.updated_by = userId;
+        updateData.updated_at = new Date();
+
+        // update the status of approval_continuous
+        await trx('approval_continuous')
+          .where('id', id)
+          .update(updateData);
+
+        // update approval.continuous_employee_code ต้นเรื่อง
+        await trx('approval')
+          .where('id', existingContinuous.approval_id)
+          .update({
+            continuous_employee_code: existingContinuous.employee_code,
+          });
+
+        // insert approval_continuous // employee ต้นเรื่อง
+        await trx('approval_continuous').insert({
+          approval_id: existingContinuous.approval_id,
+          employee_code: existingContinuous.employee_code,
+          signer_name: existingContinuous.name,
+          signer_date: updateDto.signerDate,
+          approval_continuous_status_id: approvalContinuousStatusIdPending.id,
+          created_by: userId,
+        });
+      }
+      
+      // Update approval_continuous_status_id
+      // Commit the transaction
+      await trx.commit();
+
+      // Invalidate the cache for the related approval
+      await this.cacheService.del(
+        this.cacheService.generateKey(this.CACHE_PREFIX, existingContinuous.approval_id),
+      );
+      await this.cacheService.del(
+        this.cacheService.generateListKey(this.CACHE_PREFIX),
+      );
+
+    } catch (error) {
+      // Rollback the transaction in case of error
+      await trx.rollback();
+      throw error;
     }
   }
 }
