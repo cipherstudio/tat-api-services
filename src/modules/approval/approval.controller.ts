@@ -35,6 +35,7 @@ import { UpdateClothingExpenseDatesDto } from './dto/update-clothing-expense-dat
 import { CheckClothingExpenseEligibilityDto } from './dto/check-clothing-expense-eligibility.dto';
 import { ClothingExpenseEligibilityResponseDto } from './dto/clothing-expense-eligibility-response.dto';
 import { ApprovalStatusLabelResponseDto } from './entities/approval-status-label.entity';
+import { ApprovalStatisticsResponseDto } from './dto/approval-statistics-response.dto';
 //import { ApprovalWorkLocationDto } from './dto/approval-work-location.dto';
 
 interface RequestWithUser extends Request {
@@ -228,6 +229,20 @@ export class ApprovalController {
   })
   getStatusLabels(): Promise<ApprovalStatusLabelResponseDto[]> {
     return this.approvalService.findAllStatusLabels();
+  }
+
+  @Get('statistics')
+  @ApiOperation({
+    summary: 'Get approval statistics',
+    description: 'Retrieve approval statistics for dashboard with counts by status and travel type',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Success',
+    type: ApprovalStatisticsResponseDto,
+  })
+  getStatistics(@Req() req: RequestWithUser): Promise<ApprovalStatisticsResponseDto> {
+    return this.approvalService.getStatistics(req.user.id);
   }
 
   @Get(':id')

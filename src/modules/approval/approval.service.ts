@@ -17,6 +17,7 @@ import { ApprovalDetailResponseDto } from './dto/approval-detail-response.dto';
 import { UpdateClothingExpenseDatesDto } from './dto/update-clothing-expense-dates.dto';
 import { CheckClothingExpenseEligibilityDto } from './dto/check-clothing-expense-eligibility.dto';
 import { ClothingExpenseEligibilityResponseDto } from './dto/clothing-expense-eligibility-response.dto';
+import { ApprovalStatisticsResponseDto, TravelTypeBreakdownDto, StatusBreakdownDto, SummaryDto, BreakdownDto, StatisticsDataDto } from './dto/approval-statistics-response.dto';
 import { FilesService } from '../files/files.service';
 //import { ApprovalWorkLocationDto } from './dto/approval-work-location.dto';
 
@@ -2023,6 +2024,172 @@ export class ApprovalService {
       createdAt: statusLabel.created_at,
       updatedAt: statusLabel.updated_at,
     };
+  }
+
+  async getStatistics(userId: number): Promise<ApprovalStatisticsResponseDto> {
+    const cacheKey = `${this.CACHE_PREFIX}:statistics:${userId}`;
+    const CACHE_TTL = 300; // 5 minutes
+
+    // Try to get from cache first
+    const cached = await this.cacheService.get<string>(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
+    try {
+      // Define interface for raw statistics result
+      interface RawStatResult {
+        status_code: string;
+        travel_type: string;
+        count: string;
+      }
+
+      // Get all approvals first to process manually (temporary solution)
+      const allApprovals = await this.knexService
+        .knex('approval')
+        .where('approval.user_id', userId)
+        .whereNull('approval.deleted_at')
+        .select(
+          'approval.travel_type',
+          'approval.approval_status_label_id',
+          'approval.id'
+        );
+
+      // Get status labels separately
+      const statusLabels = await this.knexService
+        .knex('approval_status_labels')
+        .select('id', 'status_code');
+
+      // Create a map for quick lookup
+      const statusMap = new Map(statusLabels.map(s => [s.id, s.status_code]));
+
+      // Process data manually to create statistics
+      const statsMap = new Map<string, number>();
+      
+      allApprovals.forEach((approval) => {
+        const statusCode = statusMap.get(approval.approval_status_label_id) || 'UNKNOWN';
+        const travelType = approval.travel_type || 'unknown';
+        const key = `${statusCode}|${travelType}`;
+        
+        statsMap.set(key, (statsMap.get(key) || 0) + 1);
+      });
+
+      // Convert map to array format expected by the rest of the code
+      const rawStats: RawStatResult[] = Array.from(statsMap.entries()).map(([key, count]) => {
+        const [status_code, travel_type] = key.split('|');
+        return {
+          status_code,
+          travel_type,
+          count: count.toString()
+        };
+      });
+
+      // Initialize the structure with all required travel types
+      const initTravelTypeBreakdown = (): TravelTypeBreakdownDto => ({
+        'temporary-domestic': 0,
+        'temporary-international': 0,
+        'temporary-both': 0,
+        'domestic': 0,
+        'international': 0,
+        'training-domestic': 0,
+        'training-international': 0,
+        'unknown': 0,
+      });
+
+      const initStatusBreakdown = (): StatusBreakdownDto => ({
+        total: 0,
+        byTravelType: initTravelTypeBreakdown(),
+      });
+
+      // Initialize breakdown structure
+      const breakdown: BreakdownDto = {
+        draft: initStatusBreakdown(),
+        pending: initStatusBreakdown(),
+        approved: initStatusBreakdown(),
+        rejected: initStatusBreakdown(),
+      };
+
+      const summary: SummaryDto = {
+        total: 0,
+        draft: 0,
+        pending: 0,
+        approved: 0,
+        rejected: 0,
+      };
+
+      // Process raw statistics
+      rawStats.forEach((stat) => {
+        const statusCode = stat.status_code?.toLowerCase() || 'unknown';
+        const travelType = stat.travel_type || 'unknown';
+        const count = parseInt(stat.count) || 0;
+
+        // Map status codes to breakdown keys
+        let statusKey: keyof BreakdownDto;
+        switch (statusCode) {
+          case 'draft':
+            statusKey = 'draft';
+            summary.draft += count;
+            break;
+          case 'pending':
+            statusKey = 'pending';
+            summary.pending += count;
+            break;
+          case 'approved':
+            statusKey = 'approved';
+            summary.approved += count;
+            break;
+          case 'rejected':
+            statusKey = 'rejected';
+            summary.rejected += count;
+            break;
+          default:
+            // If unknown status, treat as draft
+            statusKey = 'draft';
+            summary.draft += count;
+        }
+
+        // Map travel types
+        let travelTypeKey: keyof TravelTypeBreakdownDto;
+        switch (travelType) {
+          case 'temporary-domestic':
+          case 'temporary-international':
+          case 'temporary-both':
+          case 'domestic':
+          case 'international':
+          case 'training-domestic':
+          case 'training-international':
+            travelTypeKey = travelType as keyof TravelTypeBreakdownDto;
+            break;
+          default:
+            travelTypeKey = 'unknown';
+        }
+
+        // Update breakdown
+        breakdown[statusKey].total += count;
+        breakdown[statusKey].byTravelType[travelTypeKey] += count;
+        summary.total += count;
+      });
+
+      const response: ApprovalStatisticsResponseDto = {
+        success: true,
+        data: {
+          summary,
+          breakdown,
+        },
+      };
+
+      // Cache the result
+      await this.cacheService.set(
+        cacheKey,
+        JSON.stringify(response),
+        CACHE_TTL,
+      );
+
+      return response;
+    } catch (error) {
+      console.error('Error getting approval statistics:', error);
+      throw new Error('Failed to retrieve approval statistics');
+    }
   }
 
   private async cleanupOldBudgetFiles(oldAttachmentIds: number[], newBudgets: any[]): Promise<void> {
