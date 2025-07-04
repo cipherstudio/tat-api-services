@@ -256,8 +256,9 @@ export class ApprovalController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateApprovalDto: UpdateApprovalDto,
+    @Req() req: RequestWithUser,
   ) {
-    return this.approvalService.update(id, updateApprovalDto);
+    return this.approvalService.update(id, updateApprovalDto, req.user.id);
   }
 
   @Patch(':id/status')

@@ -349,6 +349,7 @@ export class ApprovalService {
     let dateRanges = [];
     let clothingExpenses = [];
     let budgets = [];
+    let continuousApproval = [];
 
     if (approvalIds.length > 0) {
       // Get all date ranges for each approval
@@ -408,6 +409,32 @@ export class ApprovalService {
 
       budgets = await Promise.all(budgetPromises);
 
+        // get continuous approval
+      const continuousApprovalPromises = approvalIds.map(async (approvalId) => {
+                 const continuousApproval = await this.knexService
+           .knex('approval_continuous as ac')
+           .where('ac.approval_id', approvalId)
+           .leftJoin('approval_continuous_status as acs', 'ac.approval_continuous_status_id', 'acs.id')
+           .select(
+             'ac.id', 
+             'ac.approval_id as approvalId',
+             'ac.employee_code as employeeCode', 
+             'ac.signer_name as signerName', 
+             'ac.signer_date as signerDate', 
+             'ac.document_ending as documentEnding', 
+             'ac.document_ending_wording as documentEndingWording', 
+             'ac.use_file_signature as useFileSignature', 
+             'ac.signature_attachment_id as signatureAttachmentId', 
+             'ac.use_system_signature as useSystemSignature', 
+             'ac.comments as comments',
+             'acs.status_code as statusCode',
+             'acs.label as statusLabel'
+           )
+        return continuousApproval;
+      });
+
+      continuousApproval = await Promise.all(continuousApprovalPromises);
+
     }
 
     // Create a map of date ranges by approval ID
@@ -434,6 +461,9 @@ export class ApprovalService {
       ) || [],
       approvalBudgets: budgets.find((budgetArray) => 
         budgetArray.length > 0 && budgetArray[0]?.approvalId === approval.id
+      ) || [],
+      continuousApproval: continuousApproval.find((continuousApprovalArray) => 
+        continuousApprovalArray.length > 0 && continuousApprovalArray[0]?.approvalId === approval.id
       ) || [],
     }));
 
@@ -843,19 +873,42 @@ export class ApprovalService {
         'attachment_id as budgetAttachmentId',
       );
 
-    // Combine all the data
-    const response: ApprovalDetailResponseDto = {
-      ...approvalDto,
-      statusHistory,
-      //currentStatus: statusHistory[0]?.status || 'ฉบับร่าง',
-      travelDateRanges,
-      approvalContents,
-      tripEntries,
-      staffMembers,
-      otherExpenses,
-      conditions,
-      budgets,
-    };
+          // get continuous approval
+      const continuousApproval = await this.knexService
+        .knex('approval_continuous as ac')
+        .where('ac.approval_id', id)
+        .select(
+          'ac.id', 
+          'ac.employee_code as employeeCode', 
+          'ac.signer_name as signerName', 
+          'ac.signer_date as signerDate', 
+          'ac.document_ending as documentEnding', 
+          'ac.document_ending_wording as documentEndingWording', 
+          'ac.use_file_signature as useFileSignature', 
+          'ac.signature_attachment_id as signatureAttachmentId', 
+          'ac.use_system_signature as useSystemSignature', 
+          'ac.comments as comments',
+
+          'acs.status_code as statusCode',
+          'acs.label as statusLabel'
+        )
+        .leftJoin('approval_continuous_status as acs', 'ac.approval_continuous_status_id', 'acs.id')
+        .first();
+
+          // Combine all the data
+      const response: ApprovalDetailResponseDto = {
+        ...approvalDto,
+        statusHistory,
+        //currentStatus: statusHistory[0]?.status || 'ฉบับร่าง',
+        travelDateRanges,
+        approvalContents,
+        tripEntries,
+        staffMembers,
+        otherExpenses,
+        conditions,
+        budgets,
+        continuousApproval: continuousApproval || [],
+      };
 
     // Cache the result
     await this.cacheService.set(cacheKey, response, this.CACHE_TTL);
@@ -863,7 +916,7 @@ export class ApprovalService {
     return response;
   }
 
-  async update(id: number, updateDto: UpdateApprovalDto): Promise<Approval> {
+  async update(id: number, updateDto: UpdateApprovalDto, userId: number): Promise<Approval> {
     const approval = await this.findById(id);
     if (!approval) {
       throw new NotFoundException(`Approval with ID ${id} not found`);
@@ -906,6 +959,7 @@ export class ApprovalService {
         urgency_level: updateDto.urgencyLevel,
         staff: updateDto.staff,
         staff_employee_code: updateDto.staffEmployeeCode,
+        continuous_employee_code: updateDto.staffEmployeeCode,
         comments: updateDto.comments,
         approval_date: updateDto.approvalDate,
         final_staff: updateDto.finalStaff,
@@ -1043,6 +1097,9 @@ export class ApprovalService {
           .where('approval_id', id)
           .delete();
         await trx('approval_entertainment_expense')
+          .where('approval_id', id)
+          .delete();
+        await trx('approval_continuous')
           .where('approval_id', id)
           .delete();
         //await trx('approval_clothing_expense').where('approval_id', id).delete();
@@ -1521,6 +1578,34 @@ export class ApprovalService {
           // Store for cleanup after successful transaction
           await this.cleanupOldBudgetFiles(oldBudgetAttachmentIds, updateDto.budgets);
         }
+      }
+
+      // Process continuous approval
+      if (updateDto.signerName) {
+        // get approval continuous status id
+        const approvalContinuousStatusId = await this.knexService
+          .knex('approval_continuous_status')
+          .where('status_code', 'PENDING')
+          .select('id')
+          .first();
+        if (!approvalContinuousStatusId) {
+          throw new NotFoundException('Approval continuous status not found');
+        }
+        await trx('approval_continuous').insert({
+          approval_id: id,
+          employee_code: updateDto.staffEmployeeCode,
+          approval_continuous_status_id: approvalContinuousStatusId.id,
+          created_by: userId,
+          updated_by: userId,
+          signer_name: updateDto.signerName,
+          signer_date: updateDto.signerDate,
+          document_ending: updateDto.documentEnding,
+          document_ending_wording: updateDto.documentEndingWording,
+          use_file_signature: updateDto.useFileSignature,
+          signature_attachment_id: updateDto.signatureAttachmentId,
+          use_system_signature: updateDto.useSystemSignature,
+          comments: updateDto.comments,
+        });
       }
 
       // Process JSON fields

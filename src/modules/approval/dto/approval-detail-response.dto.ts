@@ -605,4 +605,20 @@ export class ApprovalDetailResponseDto implements Approval {
 
   @ApiProperty({ description: 'Current status of the approval' })
   currentStatus: string;
+
+  @ApiProperty({ description: 'Continuous approval' })
+  continuousApproval: {
+    id: number;
+    employeeCode: string;
+    signerName: string;
+    signerDate: string;
+    documentEnding: string;
+    documentEndingWording: string;
+    useFileSignature: boolean;
+    signatureAttachmentId: number;
+    useSystemSignature: boolean;
+    comments: string;
+    statusCode: string;
+    statusLabel: string;
+  }[];
 } 
