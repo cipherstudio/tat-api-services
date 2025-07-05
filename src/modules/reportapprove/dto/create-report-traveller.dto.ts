@@ -1,14 +1,16 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsOptional, IsNumber } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsOptional, IsNumber } from 'class-validator';
 
 export class CreateReportTravellerDto {
   @ApiProperty({ example: 'RPT-2024-001' })
-  @IsNotEmpty()
-  @IsString()
-  report_id: string;
+  // @IsNotEmpty()
+  @IsOptional()
+  @IsNumber()
+  report_id?: number;
 
   @ApiProperty({ example: 'John Doe' })
-  @IsNotEmpty()
+  // @IsNotEmpty()
+  @IsOptional()
   @IsString()
   name: string;
 
@@ -26,4 +28,9 @@ export class CreateReportTravellerDto {
   @IsOptional()
   @IsString()
   type?: string;
+
+  @ApiProperty({ example: 'EMP001' })
+  @IsOptional()
+  @IsString()
+  traveller_code?: string;
 }

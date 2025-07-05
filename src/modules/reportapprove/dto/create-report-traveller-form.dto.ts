@@ -1,22 +1,16 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsNotEmpty,
-  IsString,
-  IsOptional,
-  IsNumber,
-  IsDate,
-} from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsOptional, IsNumber, IsDate } from 'class-validator';
 
 export class CreateReportTravellerFormDto {
-  @ApiProperty({ example: 1 })
-  @IsNotEmpty()
+  // @ApiProperty({ example: 1 })
+  // @IsNotEmpty()
   @IsNumber()
-  traveler_id: number;
+  traveler_id?: number;
 
-  @ApiProperty({ example: 'RPT-2024-001' })
-  @IsNotEmpty()
+  // @ApiProperty({ example: 'RPT-2024-001' })
+  // @IsNotEmpty()
   @IsString()
-  report_id: string;
+  report_id?: string;
 
   @ApiProperty({ example: 'Developer' })
   @IsOptional()
@@ -36,12 +30,12 @@ export class CreateReportTravellerFormDto {
   @ApiProperty({ example: 'TO-2024-001' })
   @IsOptional()
   @IsString()
-  travel_order?: string;
+  travelOrder?: string;
 
   @ApiProperty({ example: '2024-07-01' })
   @IsOptional()
   @IsDate()
-  travel_order_date?: Date;
+  travelOrderDate?: Date;
 
   @ApiProperty({ example: 'Jane Doe, Bob Smith' })
   @IsOptional()
@@ -61,55 +55,55 @@ export class CreateReportTravellerFormDto {
   @ApiProperty({ example: 'Bangkok' })
   @IsOptional()
   @IsString()
-  departure_place?: string;
+  departurePlace?: string;
 
   @ApiProperty({ example: '2024-07-02' })
   @IsOptional()
   @IsDate()
-  departure_date?: Date;
+  departureDate?: Date;
 
   @ApiProperty({ example: '08:00' })
   @IsOptional()
   @IsString()
-  departure_time?: string;
+  departureTime?: string;
 
   @ApiProperty({ example: 'Bangkok' })
   @IsOptional()
   @IsString()
-  return_place?: string;
+  returnPlace?: string;
 
   @ApiProperty({ example: '2024-07-05' })
   @IsOptional()
   @IsDate()
-  return_date?: Date;
+  returnDate?: Date;
 
   @ApiProperty({ example: '18:00' })
   @IsOptional()
   @IsString()
-  return_time?: string;
+  returnTime?: string;
 
   @ApiProperty({ example: '5 days 10 hours' })
   @IsOptional()
   @IsString()
-  total_time?: string;
+  totalTime?: string;
 
   @ApiProperty({ example: 'Business trip details' })
   @IsOptional()
   @IsString()
-  travel_details?: string;
+  travelDetails?: string;
 
   @ApiProperty({ example: 50000.0 })
   @IsOptional()
   @IsNumber()
-  gran_total?: number;
+  granTotal?: number;
 
   @ApiProperty({ example: 40000.0 })
   @IsOptional()
   @IsNumber()
-  request_approve_amount?: number;
+  requestApproveAmount?: number;
 
   @ApiProperty({ example: 10000.0 })
   @IsOptional()
   @IsNumber()
-  remain_amount?: number;
+  remainAmount?: number;
 }

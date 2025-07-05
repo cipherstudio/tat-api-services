@@ -7,7 +7,7 @@ exports.up = function (knex) {
   return knex.schema
     .createTable('report_traveller', function (table) {
       table.increments('traveler_id').primary();
-      table.string('report_id').notNullable();
+      table.integer('report_id').notNullable();
       table.string('name');
       table.string('position');
       table.string('level');
@@ -19,9 +19,9 @@ exports.up = function (knex) {
     .then(function () {
       // Then create report_traveller_form table
       return knex.schema.createTable('report_traveller_form', function (table) {
-        table.string('form_id').primary();
+        table.increments('form_id').primary();
         table.integer('traveler_id').notNullable();
-        table.string('report_id').notNullable();
+        table.integer('report_id').notNullable();
         table.string('job');
         table.string('department');
         table.date('date');

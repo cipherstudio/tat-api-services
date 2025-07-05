@@ -3,8 +3,8 @@
  * @returns { Promise<void> }
  */
 exports.up = function (knex) {
-  return knex.schema.alterTable('approval_clothing_expense', (table) => {
-    table.integer('attachment_id').nullable();
+  return knex.schema.alterTable('report_traveller', function (table) {
+    table.string('traveller_code').nullable();
   });
 };
 
@@ -13,7 +13,7 @@ exports.up = function (knex) {
  * @returns { Promise<void> }
  */
 exports.down = function (knex) {
-  return knex.schema.alterTable('approval_clothing_expense', (table) => {
-    table.dropColumn('attachment_id');
+  return knex.schema.alterTable('report_traveller', function (table) {
+    table.dropColumn('traveller_code');
   });
 };
