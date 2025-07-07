@@ -2444,6 +2444,7 @@ export class ApprovalService {
             signer_date: updateDto.signerDate,
             approval_continuous_status_id: approvalContinuousStatusIdPending.id,
             created_by: userId,
+            updated_by: userId,
           });
         }
 
