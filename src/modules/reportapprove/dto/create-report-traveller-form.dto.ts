@@ -3,14 +3,19 @@ import { IsString, IsOptional, IsNumber, IsDate } from 'class-validator';
 
 export class CreateReportTravellerFormDto {
   // @ApiProperty({ example: 1 })
+  // @IsOptional()
+  @IsNumber()
+  formId?: number;
+
+  // @ApiProperty({ example: 1 })
   // @IsNotEmpty()
   @IsNumber()
-  traveler_id?: number;
+  travelerId?: number;
 
   // @ApiProperty({ example: 'RPT-2024-001' })
   // @IsNotEmpty()
   @IsString()
-  report_id?: string;
+  reportId?: number;
 
   @ApiProperty({ example: 'Developer' })
   @IsOptional()

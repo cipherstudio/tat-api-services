@@ -5,6 +5,7 @@ import { ReportApproveRepository } from './repositories/report-approve.repositor
 import { RedisCacheModule } from '../cache/redis-cache.module';
 import { RedisCacheService } from '../cache/redis-cache.service';
 import { ReportTravellerFormRepository } from './repositories/report-traveller-form.repository';
+import { ReportDailyTravelDetailRepository } from './repositories/report-daily-travel-detail.repository';
 
 @Module({
   imports: [RedisCacheModule],
@@ -14,6 +15,7 @@ import { ReportTravellerFormRepository } from './repositories/report-traveller-f
     ReportApproveRepository,
     RedisCacheService,
     ReportTravellerFormRepository,
+    ReportDailyTravelDetailRepository,
   ],
   exports: [ReportApproveService],
 })

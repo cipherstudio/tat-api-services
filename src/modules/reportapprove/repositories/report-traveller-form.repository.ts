@@ -51,15 +51,30 @@ export class ReportTravellerFormRepository extends KnexBaseRepository<ReportTrav
   }
 
   async updateOne(
-    form_id: string,
+    form_id: number,
     dto: Partial<CreateReportTravellerFormDto>,
   ): Promise<ReportTravellerForm> {
-    const data = await toSnakeCase(dto);
-    const [updated] = await this.knex('report_traveller_form')
-      .where({ form_id })
-      .update(data)
-      .returning('*');
-    return toCamelCase<ReportTravellerForm>(updated);
+    try {
+      const data = await toSnakeCase(dto);
+      const { traveller, ...restForm } = data;
+      console.log('🚀 ~ ReportTravellerFormRepository ~ restForm:', restForm);
+      if (traveller) {
+        await this.knex('report_traveller')
+          .where({ traveler_id: traveller.traveler_id })
+          .update(await toSnakeCase(traveller));
+      }
+      const updated = await this.knex('report_traveller_form')
+        .where({ form_id })
+        .update({
+          ...restForm,
+          updated_at: new Date(),
+        });
+
+      return toCamelCase<ReportTravellerForm>(updated);
+    } catch (error) {
+      console.log('🚀 ~ ReportTravellerFormRepository ~ error:', error);
+      throw error;
+    }
   }
 
   // Accepts array of { formDto, travellerDto }
@@ -82,7 +97,7 @@ export class ReportTravellerFormRepository extends KnexBaseRepository<ReportTrav
   }
 
   async updateMany(
-    updates: { form_id: string; data: Partial<CreateReportTravellerFormDto> }[],
+    updates: { form_id: number; data: Partial<CreateReportTravellerFormDto> }[],
   ): Promise<ReportTravellerForm[]> {
     const results: ReportTravellerForm[] = [];
     for (const { form_id, data } of updates) {

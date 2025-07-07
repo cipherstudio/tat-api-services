@@ -7,7 +7,7 @@ export class ReportTraveller {
   traveler_id: number;
 
   @ApiProperty({ example: 'RPT-2024-001' })
-  report_id: string;
+  report_id: number;
 
   @ApiProperty({ example: 'John Doe' })
   name: string;

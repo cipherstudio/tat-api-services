@@ -49,6 +49,11 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_traveller_form.traveler_id',
         'report_traveller.traveler_id',
       )
+      .leftJoin(
+        'report_daily_travel_detail',
+        'report_traveller_form.form_id',
+        'report_daily_travel_detail.form_id',
+      )
       .leftJoin('OP_MASTER_T', (builder) => {
         builder.on(
           'report_approve.creator_code',
@@ -131,6 +136,17 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_traveller.created_at as traveller_created_at',
         'report_traveller.updated_at as traveller_updated_at',
         'report_traveller.traveller_code as traveller_code',
+        'report_traveller.traveler_id as traveller_traveler_id',
+        // report_daily_travel_detail columns
+        'report_daily_travel_detail.detail_id as daily_travel_detail_id',
+        'report_daily_travel_detail.form_id as daily_travel_detail_form_id',
+        'report_daily_travel_detail.departure_place as daily_travel_detail_departure_place',
+        'report_daily_travel_detail.departure_date as daily_travel_detail_departure_date',
+        'report_daily_travel_detail.departure_time as daily_travel_detail_departure_time',
+        'report_daily_travel_detail.return_place as daily_travel_detail_return_place',
+        'report_daily_travel_detail.return_date as daily_travel_detail_return_date',
+        'report_daily_travel_detail.return_time as daily_travel_detail_return_time',
+        'report_daily_travel_detail.travel_details as daily_travel_detail_travel_details',
       )
       .orderBy(`report_approve.${snakeCaseOrderBy}`, direction)
       .offset(offset)
@@ -139,7 +155,7 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
     // 3. แปลงข้อมูลเป็น camelCase
     const data = await Promise.all(rows.map((row) => toCamelCase<any>(row)));
 
-    // 4. Group ข้อมูลให้ report_traveller_form เป็น array (และ embed traveller)
+    // 4. Group ข้อมูลให้ report_traveller_form เป็น array (และ embed traveller, dailyTravelDetails)
     const grouped = {};
     for (const row of data) {
       const id = row.id;
@@ -167,42 +183,65 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
       }
       // ถ้ามี form_id แสดงว่ามีข้อมูลฟอร์ม
       if (row.formId) {
-        grouped[id].reportTravellerForm.push({
-          formId: row.formId,
-          travelerId: row.travelerId,
-          reportId: row.reportId,
-          job: row.job,
-          department: row.department,
-          date: row.date ? this.toOracleDateString(row.date) : null,
-          travelOrder: row.travelOrder,
-          travelOrderDate: row.travelOrderDate,
-          companions: row.companions,
-          destination: row.destination,
-          location: row.location,
-          departurePlace: row.departurePlace,
-          departureDate: row.departureDate,
-          departureTime: row.departureTime,
-          returnPlace: row.returnPlace,
-          returnDate: row.returnDate,
-          returnTime: row.returnTime,
-          totalTime: row.totalTime,
-          travelDetails: row.travelDetails,
-          granTotal: row.granTotal,
-          requestApproveAmount: row.requestApproveAmount,
-          remainAmount: row.remainAmount,
-          createdAt: row.formCreatedAt,
-          updatedAt: row.formUpdatedAt,
-          traveller: {
-            name: row.travellerName,
-            position: row.travellerPosition,
-            level: row.travellerLevel,
-            type: row.travellerType,
-            reportId: row.travellerReportId,
-            createdAt: row.travellerCreatedAt,
-            updatedAt: row.travellerUpdatedAt,
-            code: row.travellerCode,
-          },
-        });
+        // หา form ใน array เดิม
+        let form = grouped[id].reportTravellerForm.find(
+          (f) => f.formId === row.formId,
+        );
+        if (!form) {
+          form = {
+            formId: row.formId,
+            travelerId: row.travelerId,
+            reportId: row.reportId,
+            job: row.job,
+            department: row.department,
+            date: row.date ? this.toOracleDateString(row.date) : null,
+            travelOrder: row.travelOrder,
+            travelOrderDate: row.travelOrderDate,
+            companions: row.companions,
+            destination: row.destination,
+            location: row.location,
+            departurePlace: row.departurePlace,
+            departureDate: row.departureDate,
+            departureTime: row.departureTime,
+            returnPlace: row.returnPlace,
+            returnDate: row.returnDate,
+            returnTime: row.returnTime,
+            totalTime: row.totalTime,
+            travelDetails: row.travelDetails,
+            granTotal: row.granTotal,
+            requestApproveAmount: row.requestApproveAmount,
+            remainAmount: row.remainAmount,
+            createdAt: row.formCreatedAt,
+            updatedAt: row.formUpdatedAt,
+            traveller: {
+              name: row.travellerName,
+              position: row.travellerPosition,
+              level: row.travellerLevel,
+              type: row.travellerType,
+              reportId: row.travellerReportId,
+              createdAt: row.travellerCreatedAt,
+              updatedAt: row.travellerUpdatedAt,
+              code: row.travellerCode,
+              travelerId: row.travellerTravelerId,
+            },
+            dailyTravelDetails: [],
+          };
+          grouped[id].reportTravellerForm.push(form);
+        }
+        // ถ้ามี dailyTravelDetailId ให้ push เข้า array
+        if (row.dailyTravelDetailId) {
+          form.dailyTravelDetails.push({
+            detailId: row.dailyTravelDetailId,
+            formId: row.dailyTravelDetailFormId,
+            departurePlace: row.dailyTravelDetailDeparturePlace,
+            departureDate: row.dailyTravelDetailDepartureDate,
+            departureTime: row.dailyTravelDetailDepartureTime,
+            returnPlace: row.dailyTravelDetailReturnPlace,
+            returnDate: row.dailyTravelDetailReturnDate,
+            returnTime: row.dailyTravelDetailReturnTime,
+            travelDetails: row.dailyTravelDetailTravelDetails,
+          });
+        }
       }
     }
 
@@ -235,6 +274,11 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_traveller',
         'report_traveller_form.traveler_id',
         'report_traveller.traveler_id',
+      )
+      .leftJoin(
+        'report_daily_travel_detail',
+        'report_traveller_form.form_id',
+        'report_daily_travel_detail.form_id',
       )
       .leftJoin('OP_MASTER_T', (builder) => {
         builder.on(
@@ -298,6 +342,17 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_traveller.created_at as traveller_created_at',
         'report_traveller.updated_at as traveller_updated_at',
         'report_traveller.traveller_code as traveller_code',
+        'report_traveller.traveler_id as traveller_traveler_id',
+        // report_daily_travel_detail columns
+        'report_daily_travel_detail.detail_id as daily_travel_detail_id',
+        'report_daily_travel_detail.form_id as daily_travel_detail_form_id',
+        'report_daily_travel_detail.departure_place as daily_travel_detail_departure_place',
+        'report_daily_travel_detail.departure_date as daily_travel_detail_departure_date',
+        'report_daily_travel_detail.departure_time as daily_travel_detail_departure_time',
+        'report_daily_travel_detail.return_place as daily_travel_detail_return_place',
+        'report_daily_travel_detail.return_date as daily_travel_detail_return_date',
+        'report_daily_travel_detail.return_time as daily_travel_detail_return_time',
+        'report_daily_travel_detail.travel_details as daily_travel_detail_travel_details',
       )
       .where('report_approve.id', id);
 
@@ -305,8 +360,7 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
       throw new NotFoundException('Record not found');
 
     const data = await Promise.all(rows.map((row) => toCamelCase<any>(row)));
-    // Group ข้อมูลให้ report_traveller_form เป็น array (และ embed traveller)
-    // เนื่องจาก id เดียว จะมี row เดียวใน grouped
+    // Group ข้อมูลให้ report_traveller_form เป็น array (และ embed traveller, dailyTravelDetails)
     const row = data[0];
     const result = {
       id: row.id,
@@ -327,52 +381,75 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
       creatorPosition: row.creatorPosition,
       reportTravellerForm: [],
     };
+    // Group formId -> form object
+    const formMap = new Map();
     for (const r of data) {
       if (r.formId) {
-        result.reportTravellerForm.push({
-          formId: r.formId,
-          travelerId: r.travelerId,
-          reportId: r.formReportId,
-          job: r.job,
-          department: r.department,
-          date: r.date ? this.toOracleDateString(r.date) : null,
-          travelOrder: r.travelOrder,
-          travelOrderDate: r.travelOrderDate
-            ? this.toOracleDateString(r.travelOrderDate)
-            : null,
-          companions: r.companions,
-          destination: r.destination,
-          location: r.location,
-          departurePlace: r.departurePlace,
-          departureDate: r.departureDate
-            ? this.toOracleDateString(r.departureDate)
-            : null,
-          departureTime: r.departureTime,
-          returnPlace: r.returnPlace,
-          returnDate: r.returnDate
-            ? this.toOracleDateString(r.returnDate)
-            : null,
-          returnTime: r.returnTime,
-          totalTime: r.totalTime,
-          travelDetails: r.travelDetails,
-          granTotal: r.granTotal,
-          requestApproveAmount: r.requestApproveAmount,
-          remainAmount: r.remainAmount,
-          createdAt: r.formCreatedAt,
-          updatedAt: r.formUpdatedAt,
-          traveller: {
-            name: r.travellerName,
-            position: r.travellerPosition,
-            level: r.travellerLevel,
-            type: r.travellerType,
-            reportId: r.travellerReportId,
-            createdAt: r.travellerCreatedAt,
-            updatedAt: r.travellerUpdatedAt,
-            code: r.travellerCode,
-          },
-        });
+        let form = formMap.get(r.formId);
+        if (!form) {
+          form = {
+            formId: r.formId,
+            travelerId: r.travelerId,
+            reportId: r.formReportId,
+            job: r.job,
+            department: r.department,
+            date: r.date ? this.toOracleDateString(r.date) : null,
+            travelOrder: r.travelOrder,
+            travelOrderDate: r.travelOrderDate
+              ? this.toOracleDateString(r.travelOrderDate)
+              : null,
+            companions: r.companions,
+            destination: r.destination,
+            location: r.location,
+            departurePlace: r.departurePlace,
+            departureDate: r.departureDate
+              ? this.toOracleDateString(r.departureDate)
+              : null,
+            departureTime: r.departureTime,
+            returnPlace: r.returnPlace,
+            returnDate: r.returnDate
+              ? this.toOracleDateString(r.returnDate)
+              : null,
+            returnTime: r.returnTime,
+            totalTime: r.totalTime,
+            travelDetails: r.travelDetails,
+            granTotal: r.granTotal,
+            requestApproveAmount: r.requestApproveAmount,
+            remainAmount: r.remainAmount,
+            createdAt: r.formCreatedAt,
+            updatedAt: r.formUpdatedAt,
+            traveller: {
+              name: r.travellerName,
+              position: r.travellerPosition,
+              level: r.travellerLevel,
+              type: r.travellerType,
+              reportId: r.travellerReportId,
+              createdAt: r.travellerCreatedAt,
+              updatedAt: r.travellerUpdatedAt,
+              code: r.travellerCode,
+              travelerId: r.travellerTravelerId,
+            },
+            dailyTravelDetails: [],
+          };
+          formMap.set(r.formId, form);
+        }
+        // push dailyTravelDetail ถ้ามี
+        if (r.dailyTravelDetailId) {
+          form.dailyTravelDetails.push({
+            detailId: r.dailyTravelDetailId,
+            formId: r.dailyTravelDetailFormId,
+            departurePlace: r.dailyTravelDetailDeparturePlace,
+            departureDate: r.dailyTravelDetailDepartureDate,
+            departureTime: r.dailyTravelDetailDepartureTime,
+            returnPlace: r.dailyTravelDetailReturnPlace,
+            returnDate: r.dailyTravelDetailReturnDate,
+            returnTime: r.dailyTravelDetailReturnTime,
+            travelDetails: r.dailyTravelDetailTravelDetails,
+          });
+        }
       }
     }
+    result.reportTravellerForm = Array.from(formMap.values());
     return result;
   }
 

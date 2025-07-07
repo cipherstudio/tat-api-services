@@ -4,12 +4,14 @@ import { CreateReportApproveDto } from '../dto/create-report-approve.dto';
 import { UpdateReportApproveDto } from '../dto/update-report-approve.dto';
 import { ReportApproveQueryDto } from '../dto/report-approve-query.dto';
 import { ReportTravellerFormRepository } from '../repositories/report-traveller-form.repository';
+import { ReportDailyTravelDetailRepository } from '../repositories/report-daily-travel-detail.repository';
 
 @Injectable()
 export class ReportApproveService {
   constructor(
     private readonly reportApproveRepo: ReportApproveRepository,
     private readonly reportTravellerFormRepo: ReportTravellerFormRepository,
+    private readonly reportDailyTravelDetailRepo: ReportDailyTravelDetailRepository,
   ) {}
 
   async findAll(query: ReportApproveQueryDto) {
@@ -56,29 +58,24 @@ export class ReportApproveService {
 
     if (Array.isArray(reportTravellerForm)) {
       for (const form of reportTravellerForm) {
-        form.report_id = id + '';
+        form.reportId = id;
         const traveller_code = form.travelerCode;
-
         delete form.travelerCode;
-        // Try to find existing form by unique keys (e.g., traveler_id + report_id)
         let existing = null;
-        if (form.form_id) {
-          existing = await this.reportTravellerFormRepo
-            .knex('report_traveller_form')
-            .where({ form_id: form.form_id })
-            .first();
-        } else if (form.traveler_id && form.report_id) {
+        if (form.travelerId && form.reportId) {
           existing = await this.reportTravellerFormRepo
             .knex('report_traveller_form')
             .where({
-              traveler_id: form.traveler_id,
-              report_id: form.report_id,
+              traveler_id: form.travelerId,
+              report_id: form.reportId,
             })
             .first();
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { formId, ...restForm } = form;
         const data = {
-          ...form,
+          ...restForm,
           date: form.date ? this.toOracleDate(form.date) : null,
           travelOrderDate: form.travelOrderDate
             ? this.toOracleDate(form.travelOrderDate)
@@ -91,18 +88,83 @@ export class ReportApproveService {
             : null,
         };
         if (existing) {
-          await this.reportTravellerFormRepo.updateOne(existing.form_id, data);
+          const { dailyTravelDetails, ...restForm } = data;
+          await this.reportTravellerFormRepo.updateOne(
+            existing.form_id,
+            restForm,
+          );
+          // --- dailyTravelDetails sync ---
+          if (dailyTravelDetails) {
+            // 1. หา detailId ทั้งหมดที่ส่งมา
+            const incomingIds = dailyTravelDetails
+              .filter((d) => d.detailId)
+              .map((d) => d.detailId);
+            // 2. หา detail ปัจจุบันใน DB
+            const currentDetails =
+              await this.reportDailyTravelDetailRepo.findByFormId(
+                existing.form_id,
+              );
+            const currentIds = currentDetails.map((d) => d.detailId);
+            // 3. ลบ detail ที่ไม่มีใน incoming
+            for (const id of currentIds) {
+              if (!incomingIds.includes(id)) {
+                await this.reportDailyTravelDetailRepo.delete(id);
+              }
+            }
+            // 4. อัปเดตหรือสร้างใหม่
+            for (const detail of dailyTravelDetails) {
+              if (detail.detailId) {
+                await this.reportDailyTravelDetailRepo.updateOne(
+                  detail.detailId,
+                  {
+                    ...detail,
+                    departureDate: this.toOracleDate(detail.departureDate),
+                    returnDate: this.toOracleDate(detail.returnDate),
+                  },
+                );
+              } else {
+                await this.reportDailyTravelDetailRepo.createOne({
+                  ...detail,
+                  formId: +existing.form_id,
+                  departureDate: this.toOracleDate(detail.departureDate),
+                  returnDate: this.toOracleDate(detail.returnDate),
+                });
+              }
+            }
+          } else {
+            // ถ้าไม่มี dailyTravelDetails ส่งมาเลย ให้ลบทั้งหมด
+            const currentDetails =
+              await this.reportDailyTravelDetailRepo.findByFormId(
+                existing.form_id,
+              );
+            for (const d of currentDetails) {
+              await this.reportDailyTravelDetailRepo.delete(d.detailId);
+            }
+          }
         } else {
-          const { traveller, ...restForm } = data;
+          const { traveller, dailyTravelDetails, ...restForm } = data;
           // You may need to map traveller info if needed
-          await this.reportTravellerFormRepo.createOne(restForm, {
-            name: traveller.name,
-            position: traveller.position,
-            level: traveller.level,
-            type: traveller.type,
-            report_id: +form.report_id,
-            traveller_code: traveller_code,
-          });
+          const createdForm = await this.reportTravellerFormRepo.createOne(
+            restForm,
+            {
+              name: traveller.name,
+              position: traveller.position,
+              level: traveller.level,
+              type: traveller.type,
+              report_id: +form.reportId,
+              traveller_code: traveller_code,
+            },
+          );
+          if (dailyTravelDetails) {
+            for (const detail of dailyTravelDetails) {
+              await this.reportDailyTravelDetailRepo.createOne({
+                ...detail,
+                formId: +createdForm.form_id,
+                departureDate: this.toOracleDate(detail.departureDate),
+                returnDate: this.toOracleDate(detail.returnDate),
+              });
+            }
+          }
         }
       }
     }
@@ -117,7 +179,7 @@ export class ReportApproveService {
     return this.reportApproveRepo.softDelete(id);
   }
 
-  toOracleDateString(date) {
+  toOracleDateString(date: Date | string) {
     if (!date) return null;
     if (date instanceof Date) {
       return date.toISOString().slice(0, 10);
@@ -128,7 +190,7 @@ export class ReportApproveService {
     return date;
   }
 
-  toOracleDate(date) {
+  toOracleDate(date: Date | string) {
     if (!date) return null;
     if (date instanceof Date) return date;
     if (typeof date === 'string' && date.length >= 10) {

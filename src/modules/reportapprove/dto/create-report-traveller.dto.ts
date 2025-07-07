@@ -33,4 +33,9 @@ export class CreateReportTravellerDto {
   @IsOptional()
   @IsString()
   traveller_code?: string;
+
+  @ApiProperty({ example: 1 })
+  @IsOptional()
+  @IsNumber()
+  traveler_id?: number;
 }

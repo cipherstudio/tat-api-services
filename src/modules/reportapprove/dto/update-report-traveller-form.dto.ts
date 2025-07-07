@@ -8,6 +8,7 @@ import {
   IsString,
   ValidateNested,
 } from 'class-validator';
+import { UpdateReportDailyTravelDetailDto } from './report-daily-travel-detail.dto';
 
 export class UpdateReportTravellerFormDto extends PartialType(
   CreateReportTravellerFormDto,
@@ -27,4 +28,10 @@ export class UpdateReportTravellerFormDto extends PartialType(
   @IsOptional()
   @IsString()
   travelerCode?: string;
+
+  @ApiProperty({ type: [UpdateReportDailyTravelDetailDto] })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpdateReportDailyTravelDetailDto)
+  dailyTravelDetails?: UpdateReportDailyTravelDetailDto[];
 }

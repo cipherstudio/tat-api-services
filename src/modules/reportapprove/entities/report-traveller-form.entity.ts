@@ -4,13 +4,13 @@ import { ReportApprove } from './report-approve.entity';
 
 export class ReportTravellerForm {
   @ApiProperty({ example: 'FORM-2024-001' })
-  form_id: string;
+  form_id: number;
 
   @ApiProperty({ example: 1 })
   traveler_id: number;
 
   @ApiProperty({ example: 'RPT-2024-001' })
-  report_id: string;
+  report_id: number;
 
   @ApiProperty({ example: 'Developer' })
   job: string;
