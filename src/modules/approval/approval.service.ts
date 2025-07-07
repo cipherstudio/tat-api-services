@@ -1598,6 +1598,7 @@ export class ApprovalService {
           employee_code: updateDto.staffEmployeeCode,
           approval_continuous_status_id: approvalContinuousStatusId.id,
           created_by: userId,
+          updated_by: userId,
           signer_name: updateDto.signerName,
           signer_date: updateDto.signerDate,
           document_ending: updateDto.documentEnding,
@@ -2390,6 +2391,7 @@ export class ApprovalService {
           signer_date: updateDto.signerDate,
           approval_continuous_status_id: approvalContinuousStatusIdPending.id,
           created_by: userId,
+          updated_by: userId,
         });
 
       } else if (updateDto.statusCode === 'REJECTED') {
@@ -2422,6 +2424,7 @@ export class ApprovalService {
           signer_date: updateDto.signerDate,
           approval_continuous_status_id: approvalContinuousStatusIdPending.id,
           created_by: userId,
+          updated_by: userId,
         });
       }
       
