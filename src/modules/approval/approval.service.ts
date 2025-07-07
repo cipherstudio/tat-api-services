@@ -209,18 +209,32 @@ export class ApprovalService {
 
     // Add JOIN for isRelatedToMe filter
     if (isRelatedToMe) {
+      // query = query
+      //   .leftJoin(
+      //     'approval_staff_members',
+      //     'approval.id',
+      //     'approval_staff_members.approval_id',
+      //   )
+      //   .where('approval_staff_members.employee_code', employeeCode);
+
+      // ถ้าเราเป็นคนในคณะเดินทาง หรือมีส่วนในการอนุมัติส่งเรื่อง
       query = query
-        .join(
+        .leftJoin(
           'approval_staff_members',
           'approval.id',
           'approval_staff_members.approval_id',
         )
+        .leftJoin(
+          'approval_continuous as ac', function () {
+            this.on('approval.id', '=', 'ac.approval_id')
+                .andOnVal('ac.employee_code', '=', employeeCode)
+        })
         .where('approval_staff_members.employee_code', employeeCode);
     }
 
     // Add filter for my approval
     if (isMyApproval) {
-      query = query.where('approval.final_staff_employee_code', employeeCode);
+      query = query.where('approval.continuous_employee_code', employeeCode);
     }
 
     // Add JOIN for status labels (always join to get status information)
@@ -413,7 +427,7 @@ export class ApprovalService {
 
         // get continuous approval
       const continuousApprovalPromises = approvalIds.map(async (approvalId) => {
-                 const continuousApproval = await this.knexService
+        const continuousApproval = await this.knexService
            .knex('approval_continuous as ac')
            .where('ac.approval_id', approvalId)
            .leftJoin('approval_continuous_status as acs', 'ac.approval_continuous_status_id', 'acs.id')
@@ -875,7 +889,7 @@ export class ApprovalService {
         'attachment_id as budgetAttachmentId',
       );
 
-          // get continuous approval
+      // get continuous approval
       const continuousApproval = await this.knexService
         .knex('approval_continuous as ac')
         .where('ac.approval_id', id)
@@ -894,10 +908,9 @@ export class ApprovalService {
           'acs.status_code as statusCode',
           'acs.label as statusLabel'
         )
-        .leftJoin('approval_continuous_status as acs', 'ac.approval_continuous_status_id', 'acs.id')
-        .first();
+        .leftJoin('approval_continuous_status as acs', 'ac.approval_continuous_status_id', 'acs.id');
 
-          // Combine all the data
+      // Combine all the data
       const response: ApprovalDetailResponseDto = {
         ...approvalDto,
         statusHistory,
@@ -2393,6 +2406,46 @@ export class ApprovalService {
           created_by: userId,
           updated_by: userId,
         });
+        // get approval.continuous_employee_code
+        const approval = await trx('approval')
+          .where('id', existingContinuous.approval_id)
+          .select('continuous_employee_code')
+          .first();
+
+        // if employee code is final_staff_employee_code, update approval status to APPROVED
+        if (updateDto.employeeCode === approval.final_staff_employee_code) {
+          // get approval_status_label_id of APPROVED
+          const approvalStatusLabelIdApproved = await trx('approval_status_labels')
+            .where('status_code', 'APPROVED')
+            .select('id')
+            .first();
+
+          // update approval status to APPROVED
+          await trx('approval')
+            .where('id', existingContinuous.approval_id)
+            .update({
+              approval_status_label_id: approvalStatusLabelIdApproved.id,
+            });
+
+          // insert approval_status_history
+          await trx('approval_status_history').insert({
+            approval_status_label_id: approvalStatusLabelIdApproved.id,
+            user_id: userId,
+            approval_id: existingContinuous.approval_id,
+            created_at: new Date(),
+            updated_at: new Date()
+          });
+        } else {
+          // insert approval_continuous // employee คนถัดไป
+          await trx('approval_continuous').insert({
+            approval_id: existingContinuous.approval_id,
+            employee_code: updateDto.employeeCode,
+            signer_name: updateDto.signerName,
+            signer_date: updateDto.signerDate,
+            approval_continuous_status_id: approvalContinuousStatusIdPending.id,
+            created_by: userId,
+          });
+        }
 
       } else if (updateDto.statusCode === 'REJECTED') {
         

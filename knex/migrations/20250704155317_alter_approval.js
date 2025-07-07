@@ -4,7 +4,7 @@
  */
 exports.up = function(knex) {
   return knex.schema.alterTable('approval', function(table) {
-    table.integer('continuous_employee_code').nullable();
+    table.string('continuous_employee_code').nullable();
   });
 };
 
