@@ -209,12 +209,26 @@ export class ApprovalService {
 
     // Add JOIN for isRelatedToMe filter
     if (isRelatedToMe) {
+      // query = query
+      //   .leftJoin(
+      //     'approval_staff_members',
+      //     'approval.id',
+      //     'approval_staff_members.approval_id',
+      //   )
+      //   .where('approval_staff_members.employee_code', employeeCode);
+
+      // ถ้าเราเป็นคนในคณะเดินทาง หรือมีส่วนในการอนุมัติส่งเรื่อง
       query = query
-        .join(
+        .leftJoin(
           'approval_staff_members',
           'approval.id',
           'approval_staff_members.approval_id',
         )
+        .leftJoin(
+          'approval_continuous as ac', function () {
+            this.on('approval.id', '=', 'ac.approval_id')
+                .andOnVal('ac.employee_code', '=', employeeCode)
+        })
         .where('approval_staff_members.employee_code', employeeCode);
     }
 
@@ -413,7 +427,7 @@ export class ApprovalService {
 
         // get continuous approval
       const continuousApprovalPromises = approvalIds.map(async (approvalId) => {
-                 const continuousApproval = await this.knexService
+        const continuousApproval = await this.knexService
            .knex('approval_continuous as ac')
            .where('ac.approval_id', approvalId)
            .leftJoin('approval_continuous_status as acs', 'ac.approval_continuous_status_id', 'acs.id')
@@ -875,7 +889,7 @@ export class ApprovalService {
         'attachment_id as budgetAttachmentId',
       );
 
-          // get continuous approval
+      // get continuous approval
       const continuousApproval = await this.knexService
         .knex('approval_continuous as ac')
         .where('ac.approval_id', id)
@@ -894,10 +908,9 @@ export class ApprovalService {
           'acs.status_code as statusCode',
           'acs.label as statusLabel'
         )
-        .leftJoin('approval_continuous_status as acs', 'ac.approval_continuous_status_id', 'acs.id')
-        .first();
+        .leftJoin('approval_continuous_status as acs', 'ac.approval_continuous_status_id', 'acs.id');
 
-          // Combine all the data
+      // Combine all the data
       const response: ApprovalDetailResponseDto = {
         ...approvalDto,
         statusHistory,
