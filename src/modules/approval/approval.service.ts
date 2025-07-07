@@ -128,14 +128,6 @@ export class ApprovalService {
     userId?: number,
     employeeCode?: string,
   ): Promise<PaginatedResult<Approval>> {
-    // Try to get from cache first
-    const cacheKey = this.cacheService.generateListKey(this.CACHE_PREFIX);
-    const cachedResult =
-      await this.cacheService.get<PaginatedResult<Approval>>(cacheKey);
-    if (cachedResult) {
-      return cachedResult;
-    }
-
     const {
       page = 1,
       limit = 10,
@@ -154,6 +146,14 @@ export class ApprovalService {
       isRelatedToMe,
       isMyApproval,
     } = queryOptions || {};
+
+    // Try to get from cache first
+    const cacheKey = this.cacheService.generateListKey(this.CACHE_PREFIX, JSON.stringify(queryOptions));
+    const cachedResult =
+      await this.cacheService.get<PaginatedResult<Approval>>(cacheKey);
+    if (cachedResult) {
+      return cachedResult;
+    }
 
     // Validate pagination parameters
     const validatedPage = Math.max(1, Math.floor(Number(page)) || 1);
@@ -175,8 +175,8 @@ export class ApprovalService {
       conditions.confidentiality_level = confidentialityLevel;
     }
 
-    // user can see only their own approvals
-    if (userId && (!isRelatedToMe || !isMyApproval)) {
+    // user can see only their own approvals (unless they are checking for approvals to review)
+    if (userId && !isRelatedToMe && !isMyApproval) {
       conditions.user_id = userId;
     }
 
