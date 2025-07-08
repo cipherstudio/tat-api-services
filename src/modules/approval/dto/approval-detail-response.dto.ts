@@ -178,6 +178,18 @@ export class StaffMemberDto {
   organizationPosition: string;
 
   @ApiProperty({
+    description: 'ระดับสิทธิ์',
+    example: 'C5'
+  })
+  viewLevel: string;
+
+  @ApiProperty({
+    description: 'ตำแหน่งในองค์กร',
+    example: 'IT Department'
+  })
+  viewPosition: string;
+
+  @ApiProperty({
     description: 'สถานที่ทำงาน',
     type: [WorkLocationDto]
   })

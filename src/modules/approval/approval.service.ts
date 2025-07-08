@@ -684,6 +684,8 @@ export class ApprovalService {
     const staffMembers = await this.knexService
       .knex('approval_staff_members')
       .where('approval_id', id)
+      .leftJoin('OP_MASTER_T as omt', 'approval_staff_members.employee_code', 'omt.PMT_CODE')
+      .leftJoin('EMPLOYEE_TEMP as et', 'approval_staff_members.employee_code', 'et.CODE')
       .select(
         'id',
         'employee_code as employeeCode',
@@ -693,6 +695,8 @@ export class ApprovalService {
         'position',
         'right_equivalent as rightEquivalent',
         'organization_position as organizationPosition',
+        'omt.PMT_LEVEL_CODE as viewLevel',
+        'et.POSITION as viewPosition',
       );
 
     // Get work locations for each staff member
