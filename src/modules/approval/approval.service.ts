@@ -128,14 +128,6 @@ export class ApprovalService {
     userId?: number,
     employeeCode?: string,
   ): Promise<PaginatedResult<Approval>> {
-    // Try to get from cache first
-    const cacheKey = this.cacheService.generateListKey(this.CACHE_PREFIX);
-    const cachedResult =
-      await this.cacheService.get<PaginatedResult<Approval>>(cacheKey);
-    if (cachedResult) {
-      return cachedResult;
-    }
-
     const {
       page = 1,
       limit = 10,
@@ -154,6 +146,14 @@ export class ApprovalService {
       isRelatedToMe,
       isMyApproval,
     } = queryOptions || {};
+
+    // Try to get from cache first
+    const cacheKey = this.cacheService.generateListKey(this.CACHE_PREFIX, JSON.stringify(queryOptions));
+    const cachedResult =
+      await this.cacheService.get<PaginatedResult<Approval>>(cacheKey);
+    if (cachedResult) {
+      return cachedResult;
+    }
 
     // Validate pagination parameters
     const validatedPage = Math.max(1, Math.floor(Number(page)) || 1);
@@ -175,8 +175,8 @@ export class ApprovalService {
       conditions.confidentiality_level = confidentialityLevel;
     }
 
-    // user can see only their own approvals
-    if (userId && (!isRelatedToMe || !isMyApproval)) {
+    // user can see only their own approvals (unless they are checking for approvals to review)
+    if (userId && !isRelatedToMe && !isMyApproval) {
       conditions.user_id = userId;
     }
 
@@ -1615,6 +1615,7 @@ export class ApprovalService {
           employee_code: updateDto.staffEmployeeCode,
           approval_continuous_status_id: approvalContinuousStatusId.id,
           created_by: userId,
+          updated_by: userId,
           signer_name: updateDto.signerName,
           signer_date: updateDto.signerDate,
           document_ending: updateDto.documentEnding,
@@ -2399,6 +2400,16 @@ export class ApprovalService {
             continuous_employee_code: updateDto.employeeCode,
           });
 
+        // insert approval_continuous // employee คนถัดไป
+        await trx('approval_continuous').insert({
+          approval_id: existingContinuous.approval_id,
+          employee_code: updateDto.employeeCode,
+          signer_name: updateDto.signerName,
+          signer_date: updateDto.signerDate,
+          approval_continuous_status_id: approvalContinuousStatusIdPending.id,
+          created_by: userId,
+          updated_by: userId,
+        });
         // get approval.continuous_employee_code
         const approval = await trx('approval')
           .where('id', existingContinuous.approval_id)
@@ -2437,6 +2448,7 @@ export class ApprovalService {
             signer_date: updateDto.signerDate,
             approval_continuous_status_id: approvalContinuousStatusIdPending.id,
             created_by: userId,
+            updated_by: userId,
           });
         }
 
@@ -2470,6 +2482,7 @@ export class ApprovalService {
           signer_date: updateDto.signerDate,
           approval_continuous_status_id: approvalContinuousStatusIdPending.id,
           created_by: userId,
+          updated_by: userId,
         });
       }
       
