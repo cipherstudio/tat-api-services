@@ -62,6 +62,17 @@ export class ApprovalService {
     return `${prefix}${sequence.toString().padStart(5, '0')}`;
   }
 
+  private async generateApprovalPrintNumber(): Promise<string> {
+    // ex. 0001 : 25680708 : 1720
+    const now = new Date();
+    const beYear = now.getFullYear() + 543;
+    const currentMonth = (now.getMonth() + 1).toString().padStart(2, '0');
+    const currentDay = now.getDate().toString().padStart(2, '0');
+    const currentTime = now.getHours() * 100 + now.getMinutes();
+    const sequence = 1;
+    return `${sequence.toString().padStart(4, '0')} : ${beYear}${currentMonth}${currentDay} : ${currentTime}`;
+  }
+
   async create(
     createApprovalDto: CreateApprovalDto,
     userId: number,
@@ -72,6 +83,8 @@ export class ApprovalService {
     try {
       // Generate increment ID
       const incrementId = await this.generateIncrementId();
+      const approvalPrintNumber = await this.generateApprovalPrintNumber();
+      const expensePrintNumber = await this.generateApprovalPrintNumber(); // now use same approach
 
       // Get the approval status label ID
       const approvalStatusLabelId = await this.knexService
@@ -84,6 +97,8 @@ export class ApprovalService {
       const data = {
         ...createApprovalDto,
         incrementId,
+        approvalPrintNumber,
+        expensePrintNumber,
         userId,
         approvalStatusLabelId: approvalStatusLabelId.id,
       };
@@ -338,6 +353,8 @@ export class ApprovalService {
           'approval.use_file_signature as useFileSignature',
           'approval.signature_attachment_id as signatureAttachmentId',
           'approval.use_system_signature as useSystemSignature',
+          'approval.approval_print_number as approvalPrintNumber',
+          'approval.expense_print_number as expensePrintNumber',
           'approval.user_id as userId',
           'approval.created_at as createdAt',
           'approval.updated_at as updatedAt',
@@ -599,6 +616,8 @@ export class ApprovalService {
         'approval.created_at as createdAt',
         'approval.updated_at as updatedAt',
         'approval.deleted_at as deletedAt',
+        'approval.approval_print_number as approvalPrintNumber',
+        'approval.expense_print_number as expensePrintNumber',
         'asl.label as currentStatus',
       )
       .join(

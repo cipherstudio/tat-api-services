@@ -232,6 +232,16 @@ export interface Approval {
   useSystemSignature?: boolean;
 
   /**
+   * Approval print number
+   */
+  approvalPrintNumber?: string;
+
+  /**
+   * Expense print number
+   */
+  expensePrintNumber?: string;
+
+  /**
    * When the approval was created
    */
   createdAt: Date;
@@ -338,6 +348,8 @@ export const approvalColumnMap = {
   use_file_signature: 'useFileSignature',
   signature_attachment_id: 'signatureAttachmentId',
   use_system_signature: 'useSystemSignature',
+  approval_print_number: 'approvalPrintNumber',
+  expense_print_number: 'expensePrintNumber',
   created_at: 'createdAt',
   updated_at: 'updatedAt',
   deleted_at: 'deletedAt',
@@ -391,6 +403,8 @@ export const approvalReverseColumnMap = {
   useFileSignature: 'use_file_signature',
   signatureAttachmentId: 'signature_attachment_id',
   useSystemSignature: 'use_system_signature',
+  approvalPrintNumber: 'approval_print_number',
+  expensePrintNumber: 'expense_print_number',
   createdAt: 'created_at',
   updatedAt: 'updated_at',
   deletedAt: 'deleted_at',

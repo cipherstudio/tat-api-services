@@ -603,6 +603,20 @@ export class ApprovalDetailResponseDto implements Approval {
   })
   useSystemSignature?: boolean;
 
+  @ApiProperty({
+    description: 'หมายเลขใบบันทึกข้อความ',
+    required: false,
+    example: '0001 : 25680708 : 1720'
+  })
+  approvalPrintNumber?: string;
+  
+  @ApiProperty({
+    description: 'หมายเลขใบรายละเอียดค่าใช้จ่าย',
+    required: false,
+    example: '0001 : 25680708 : 1720'
+  })
+  expensePrintNumber?: string;
+
   @ApiProperty({ description: 'When the approval was created' })
   createdAt: Date;
 
