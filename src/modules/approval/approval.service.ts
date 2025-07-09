@@ -618,6 +618,7 @@ export class ApprovalService {
         'approval.deleted_at as deletedAt',
         'approval.approval_print_number as approvalPrintNumber',
         'approval.expense_print_number as expensePrintNumber',
+        'approval.continuous_employee_code as continuousEmployeeCode',
         'asl.label as currentStatus',
       )
       .join(
@@ -2544,6 +2545,435 @@ export class ApprovalService {
         this.cacheService.generateListKey(this.CACHE_PREFIX),
       );
 
+    } catch (error) {
+      // Rollback the transaction in case of error
+      await trx.rollback();
+      throw error;
+    }
+  }
+
+  async duplicate(id: number, userId: number): Promise<Approval> {
+    // Get the original approval
+    const originalApproval = await this.findById(id);
+    if (!originalApproval) {
+      throw new NotFoundException(`Approval with ID ${id} not found`);
+    }
+
+    // Start a transaction
+    const trx = await this.knexService.knex.transaction();
+
+    try {
+      // Generate new increment ID and print numbers
+      const incrementId = await this.generateIncrementId();
+      const approvalPrintNumber = await this.generateApprovalPrintNumber();
+      const expensePrintNumber = await this.generateApprovalPrintNumber();
+
+      // Get the approval status label ID for DRAFT
+      const approvalStatusLabelId = await this.knexService
+        .knex('approval_status_labels')
+        .where('status_code', 'DRAFT')
+        .select('id')
+        .first();
+
+      // Create new approval record with copied data
+      const newApprovalData = {
+        increment_id: incrementId,
+        record_type: originalApproval.recordType,
+        name: originalApproval.name,
+        employee_code: originalApproval.employeeCode,
+        travel_type: originalApproval.travelType,
+        international_sub_option: originalApproval.internationalSubOption,
+        approval_ref: originalApproval.id,
+        work_start_date: originalApproval.workStartDate,
+        work_end_date: originalApproval.workEndDate,
+        start_country: originalApproval.startCountry,
+        end_country: originalApproval.endCountry,
+        remarks: originalApproval.remarks,
+        num_travelers: originalApproval.numTravelers,
+        document_no: originalApproval.documentNo,
+        document_tel: originalApproval.documentTel,
+        document_to: originalApproval.documentTo,
+        document_title: originalApproval.documentTitle,
+        attachment_id: originalApproval.attachmentId,
+        form3_total_outbound: originalApproval.form3TotalOutbound,
+        form3_total_inbound: originalApproval.form3TotalInbound,
+        form3_total_amount: originalApproval.form3TotalAmount,
+        exceed_lodging_rights_checked: originalApproval.exceedLodgingRightsChecked,
+        exceed_lodging_rights_reason: originalApproval.exceedLodgingRightsReason,
+        form4_total_amount: originalApproval.form4TotalAmount,
+        form5_total_amount: originalApproval.form5TotalAmount,
+        approval_date: originalApproval.approvalDate,
+        staff: originalApproval.staff,
+        staff_employee_code: originalApproval.staffEmployeeCode,
+        final_staff_employee_code: originalApproval.finalStaffEmployeeCode,
+        confidentiality_level: originalApproval.confidentialityLevel,
+        urgency_level: originalApproval.urgencyLevel,
+        comments: originalApproval.comments,
+        final_staff: originalApproval.finalStaff,
+        signer_date: originalApproval.signerDate,
+        document_ending: originalApproval.documentEnding,
+        document_ending_wording: originalApproval.documentEndingWording,
+        signer_name: originalApproval.signerName,
+        use_file_signature: originalApproval.useFileSignature,
+        signature_attachment_id: originalApproval.signatureAttachmentId,
+        use_system_signature: originalApproval.useSystemSignature,
+        approval_print_number: approvalPrintNumber,
+        expense_print_number: expensePrintNumber,
+        user_id: userId,
+        approval_status_label_id: approvalStatusLabelId.id,
+        continuous_employee_code: originalApproval.continuousEmployeeCode,
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+
+      // Insert the new approval
+      const [newApproval] = await trx('approval')
+        .insert(newApprovalData)
+        .returning('*');
+
+      // Create the approval status history record
+      await trx('approval_status_history').insert({
+        approval_status_label_id: approvalStatusLabelId.id,
+        user_id: userId,
+        approval_id: newApproval.id,
+        created_at: new Date(),
+        updated_at: new Date(),
+      });
+
+      // Copy travel date ranges
+      if (originalApproval.travelDateRanges && originalApproval.travelDateRanges.length > 0) {
+        for (const dateRange of originalApproval.travelDateRanges) {
+          await trx('approval_date_ranges').insert({
+            approval_id: newApproval.id,
+            start_date: dateRange.start_date,
+            end_date: dateRange.end_date,
+          });
+        }
+      }
+
+      // Copy approval contents
+      if (originalApproval.approvalContents && originalApproval.approvalContents.length > 0) {
+        for (const content of originalApproval.approvalContents) {
+          await trx('approval_contents').insert({
+            approval_id: newApproval.id,
+            detail: content.detail,
+          });
+        }
+      }
+
+      // Copy trip entries and their date ranges
+      if (originalApproval.tripEntries && originalApproval.tripEntries.length > 0) {
+        for (const tripEntry of originalApproval.tripEntries) {
+          const [newTripEntry] = await trx('approval_trip_entries')
+            .insert({
+              approval_id: newApproval.id,
+              location: tripEntry.location,
+              destination: tripEntry.destination,
+              nearby_provinces: tripEntry.nearbyProvinces,
+              details: tripEntry.details,
+              destination_type: tripEntry.destinationType,
+              destination_id: tripEntry.destinationId,
+              destination_table: tripEntry.destinationTable,
+            })
+            .returning('id');
+
+           // Copy trip date ranges
+           if (tripEntry.tripDateRanges && tripEntry.tripDateRanges.length > 0) {
+             for (const dateRange of tripEntry.tripDateRanges) {
+               await trx('approval_trip_date_ranges').insert({
+                 approval_id: newApproval.id,
+                 approval_trip_entries_id: newTripEntry.id,
+                 start_date: dateRange.start_date,
+                 end_date: dateRange.end_date,
+               });
+             }
+           }
+        }
+      }
+
+      // Copy staff members and their related data
+      if (originalApproval.staffMembers && originalApproval.staffMembers.length > 0) {
+        for (const staffMember of originalApproval.staffMembers) {
+          const [newStaffMember] = await trx('approval_staff_members')
+            .insert({
+              approval_id: newApproval.id,
+              employee_code: staffMember.employeeCode,
+              type: staffMember.type,
+              name: staffMember.name,
+              role: staffMember.role,
+              position: staffMember.position,
+              right_equivalent: staffMember.rightEquivalent,
+              organization_position: staffMember.organizationPosition,
+              created_at: new Date(),
+              updated_at: new Date(),
+            })
+            .returning('id');
+
+          // Copy work locations and their related data
+          if (staffMember.workLocations && staffMember.workLocations.length > 0) {
+            for (const workLocation of staffMember.workLocations) {
+              const [newWorkLocation] = await trx('approval_work_locations')
+                .insert({
+                  approval_id: newApproval.id,
+                  staff_member_id: newStaffMember.id,
+                  location: workLocation.location,
+                  destination: workLocation.destination,
+                  nearby_provinces: workLocation.nearbyProvinces,
+                  details: workLocation.details,
+                  checked: workLocation.checked,
+                  destination_type: workLocation.destinationType,
+                  destination_id: workLocation.destinationId,
+                  destination_table: workLocation.destinationTable,
+                  created_at: new Date(),
+                  updated_at: new Date(),
+                })
+                .returning('id');
+
+               // Copy work location date ranges
+               if (workLocation.tripDateRanges && workLocation.tripDateRanges.length > 0) {
+                 for (const dateRange of workLocation.tripDateRanges) {
+                   await trx('approval_work_locations_date_ranges').insert({
+                     approval_id: newApproval.id,
+                     approval_work_locations_id: newWorkLocation.id,
+                     start_date: dateRange.start_date,
+                     end_date: dateRange.end_date,
+                     created_at: new Date(),
+                     updated_at: new Date(),
+                   });
+                 }
+               }
+
+              // Copy transportation expenses
+              if (workLocation.transportationExpenses && workLocation.transportationExpenses.length > 0) {
+                for (const expense of workLocation.transportationExpenses) {
+                  await trx('approval_transportation_expense').insert({
+                    approval_id: newApproval.id,
+                    staff_member_id: newStaffMember.id,
+                    work_location_id: newWorkLocation.id,
+                    travel_type: expense.travelType,
+                    expense_type: expense.expenseType,
+                    travel_method: expense.travelMethod,
+                    outbound_origin: expense.outbound?.origin,
+                    outbound_destination: expense.outbound?.destination,
+                    outbound_trips: expense.outbound?.trips,
+                    outbound_expense: expense.outbound?.expense,
+                    outbound_total: expense.outbound?.total,
+                    inbound_origin: expense.inbound?.origin,
+                    inbound_destination: expense.inbound?.destination,
+                    inbound_trips: expense.inbound?.trips,
+                    inbound_expense: expense.inbound?.expense,
+                    inbound_total: expense.inbound?.total,
+                    total_amount: expense.totalAmount,
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                  });
+                }
+              }
+
+              // Copy accommodation expenses
+              if (workLocation.accommodationExpenses && workLocation.accommodationExpenses.length > 0) {
+                for (const expense of workLocation.accommodationExpenses) {
+                  const [newAccommodationExpense] = await trx('approval_accommodation_expense')
+                    .insert({
+                      approval_id: newApproval.id,
+                      staff_member_id: newStaffMember.id,
+                      work_location_id: newWorkLocation.id,
+                      total_amount: expense.totalAmount,
+                      has_meal_out: expense.hasMealOut,
+                      has_meal_in: expense.hasMealIn,
+                      meal_out_amount: expense.mealOutAmount,
+                      meal_in_amount: expense.mealInAmount,
+                      meal_out_count: expense.mealOutCount,
+                      meal_in_count: expense.mealInCount,
+                      allowance_out_checked: expense.allowanceOutChecked,
+                      allowance_out_rate: expense.allowanceOutRate,
+                      allowance_out_days: expense.allowanceOutDays,
+                      allowance_out_total: expense.allowanceOutTotal,
+                      allowance_in_checked: expense.allowanceInChecked,
+                      allowance_in_rate: expense.allowanceInRate,
+                      allowance_in_days: expense.allowanceInDays,
+                      allowance_in_total: expense.allowanceInTotal,
+                      lodging_fixed_checked: expense.lodgingFixedChecked,
+                      lodging_double_checked: expense.lodgingDoubleChecked,
+                      lodging_single_checked: expense.lodgingSingleChecked,
+                      lodging_nights: expense.lodgingNights,
+                      lodging_rate: expense.lodgingRate,
+                      lodging_double_nights: expense.lodgingDoubleNights,
+                      lodging_double_rate: expense.lodgingDoubleRate,
+                      lodging_single_nights: expense.lodgingSingleNights,
+                      lodging_single_rate: expense.lodgingSingleRate,
+                      lodging_double_person: expense.lodgingDoublePerson,
+                      lodging_double_person_external: expense.lodgingDoublePersonExternal,
+                      lodging_total: expense.lodgingTotal,
+                      moving_cost_checked: expense.movingCostChecked,
+                      moving_cost_rate: expense.movingCostRate,
+                      created_at: new Date(),
+                      updated_at: new Date(),
+                    })
+                    .returning('id');
+
+                  // Copy accommodation transport expenses
+                  if (expense.accommodationTransportExpenses && expense.accommodationTransportExpenses.length > 0) {
+                    for (const transportExpense of expense.accommodationTransportExpenses) {
+                      await trx('approval_accommodation_transport_expense').insert({
+                        approval_id: newApproval.id,
+                        approval_accommodation_expense_id: newAccommodationExpense.id,
+                        type: transportExpense.type,
+                        amount: transportExpense.amount,
+                        checked: transportExpense.checked,
+                        flight_route: transportExpense.flightRoute,
+                        created_at: new Date(),
+                        updated_at: new Date(),
+                      });
+                    }
+                  }
+
+                  // Copy accommodation holiday expenses
+                  if (workLocation.accommodationHolidayExpenses && workLocation.accommodationHolidayExpenses.length > 0) {
+                    for (const holidayExpense of workLocation.accommodationHolidayExpenses) {
+                      await trx('approval_accommodation_holiday_expense').insert({
+                        approval_id: newApproval.id,
+                        approval_accommodation_expense_id: newAccommodationExpense.id,
+                        date: holidayExpense.date,
+                        thai_date: holidayExpense.thaiDate,
+                        checked: holidayExpense.checked,
+                        time: holidayExpense.time,
+                        hours: holidayExpense.hours,
+                        total: holidayExpense.total,
+                        note: holidayExpense.note,
+                        created_at: new Date(),
+                        updated_at: new Date(),
+                      });
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          // Copy entertainment expenses
+          if (staffMember.entertainmentExpenses && staffMember.entertainmentExpenses.length > 0) {
+            for (const expense of staffMember.entertainmentExpenses) {
+              await trx('approval_entertainment_expense').insert({
+                approval_id: newApproval.id,
+                staff_member_id: newStaffMember.id,
+                entertainment_short_checked: expense.entertainmentShortChecked,
+                entertainment_long_checked: expense.entertainmentLongChecked,
+                entertainment_amount: expense.entertainmentAmount,
+                created_at: new Date(),
+                updated_at: new Date(),
+              });
+            }
+          }
+
+          // Copy clothing expenses
+          if (staffMember.clothingExpenses && staffMember.clothingExpenses.length > 0) {
+            for (const expense of staffMember.clothingExpenses) {
+              await trx('approval_clothing_expense').insert({
+                approval_id: newApproval.id,
+                staff_member_id: newStaffMember.id,
+                employee_code: staffMember.employeeCode,
+                clothing_file_checked: expense.clothingFileChecked,
+                clothing_amount: expense.clothingAmount,
+                clothing_reason: expense.clothingReason,
+                reporting_date: expense.reportingDate,
+                next_claim_date: expense.nextClaimDate,
+                work_end_date: expense.workEndDate,
+                increment_id: newApproval.increment_id,
+                destination_country: expense.destinationCountry,
+                attachment_id: expense.attachmentId,
+                created_at: new Date(),
+                updated_at: new Date(),
+              });
+            }
+          }
+        }
+      }
+
+      // Copy other expenses
+      if (originalApproval.otherExpenses && originalApproval.otherExpenses.length > 0) {
+        for (const expense of originalApproval.otherExpenses) {
+          await trx('approval_other_expense').insert({
+            approval_id: newApproval.id,
+            type: expense.type,
+            amount: expense.amount,
+            position: expense.position,
+            reason: expense.reason,
+            acknowledged: expense.acknowledged,
+            created_at: new Date(),
+            updated_at: new Date(),
+          });
+        }
+      }
+
+      // Copy conditions
+      if (originalApproval.conditions && originalApproval.conditions.length > 0) {
+        for (const condition of originalApproval.conditions) {
+          await trx('approval_conditions').insert({
+            approval_id: newApproval.id,
+            text: condition.text,
+          });
+        }
+      }
+
+      // Copy budgets
+      if (originalApproval.budgets && originalApproval.budgets.length > 0) {
+        for (const budget of originalApproval.budgets) {
+          await trx('approval_budgets').insert({
+            approval_id: newApproval.id,
+            budget_type: budget.budget_type,
+            item_type: budget.item_type,
+            reservation_code: budget.reservation_code,
+            department: budget.department,
+            budget_code: budget.budget_code,
+            attachment_id: budget.attachment_id,
+          });
+        }
+      }
+
+      // Create the approval continuous record
+      // if (originalApproval.signerName) {
+      //   // get approval continuous status id
+      //   const approvalContinuousStatusId = await this.knexService
+      //     .knex('approval_continuous_status')
+      //     .where('status_code', 'PENDING')
+      //     .select('id')
+      //     .first();
+
+      //   // create approval continuous record
+      //   await trx('approval_continuous').insert({
+      //     approval_id: newApproval.id,
+      //     employee_code: originalApproval.staffEmployeeCode,
+      //     approval_continuous_status_id: approvalContinuousStatusId.id,
+      //     created_by: userId,
+      //     updated_by: userId,
+      //     signer_name: originalApproval.signerName,
+      //     signer_date: originalApproval.signerDate,
+      //     document_ending: originalApproval.documentEnding,
+      //     document_ending_wording: originalApproval.documentEndingWording,
+      //     use_file_signature: originalApproval.useFileSignature,
+      //     signature_attachment_id: originalApproval.signatureAttachmentId,
+      //     use_system_signature: originalApproval.useSystemSignature,
+      //     comments: originalApproval.comments,
+      //   });
+      // }
+
+      // Commit the transaction
+      await trx.commit();
+
+      // Cache the new approval
+      await this.cacheService.set(
+        this.cacheService.generateKey(this.CACHE_PREFIX, newApproval.id),
+        newApproval,
+        this.CACHE_TTL,
+      );
+
+      // Invalidate the list cache
+      await this.cacheService.del(
+        this.cacheService.generateListKey(this.CACHE_PREFIX),
+      );
+
+      return newApproval;
     } catch (error) {
       // Rollback the transaction in case of error
       await trx.rollback();

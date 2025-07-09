@@ -361,4 +361,18 @@ export class ApprovalController {
   ) {
     return this.approvalService.updateApprovalContinuous(id, updateDto, req.user.id);
   }
+
+  @Post('duplicate/:id')
+  @ApiOperation({
+    summary: 'Duplicate approval',
+    description: 'Create a duplicate of an existing approval record',
+  })
+  @ApiResponse({ status: 201, description: 'Approval duplicated successfully' })
+  @ApiResponse({ status: 404, description: 'Approval not found' })
+  duplicate(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.approvalService.duplicate(id, req.user.id);
+  }
 }
