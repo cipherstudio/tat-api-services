@@ -20,9 +20,86 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
     );
   }
 
-  async findByCode(code: string): Promise<Employee | undefined> {
-    const dbEntity = await super.findOne({ CODE: code }, 'CODE');
-    return dbEntity ? await toCamelCase<Employee>(dbEntity) : undefined;
+  async findByCode(
+    code: string,
+  ): Promise<
+    | (Employee & { salaryHistory?: { current?: any; previous?: any } })
+    | undefined
+  > {
+    // Query ข้อมูลหลักจาก OP_MASTER_T
+    const dbEntity = await this.knex('OP_MASTER_T')
+      .whereRaw('RTRIM("PMT_CODE") = ?', [code])
+      .leftJoin('EMPLOYEE', (builder) => {
+        builder.on(
+          'EMPLOYEE.CODE',
+          '=',
+          this.knex.raw('RTRIM("OP_MASTER_T"."PMT_CODE")'),
+        );
+      })
+      .first();
+
+    if (!dbEntity) return undefined;
+
+    // Query PS_PW_JOB เฉพาะ ACTION = 'PAY' และ ACTION_REASON = '001' และ EFFDT ล่าสุด 2 อัน
+    const salaryRows = await this.knex('PS_PW_JOB')
+      .whereRaw('RTRIM("EMPLID") = ?', [code])
+      .andWhere('ACTION', 'PAY')
+      .andWhere('ACTION_REASON', '001')
+      .leftJoin('OP_LEVEL_SAL_R', (builder) => {
+        builder.on(
+          'OP_LEVEL_SAL_R.PLV_CODE',
+          '=',
+          this.knex.raw('RTRIM("PS_PW_JOB"."STEP")'),
+        );
+      })
+      .leftJoin('holiday_work_rates', (builder) => {
+        builder.on(
+          'holiday_work_rates.salary',
+          '=',
+          'OP_LEVEL_SAL_R.PLV_SALARY',
+        );
+      })
+      .orderBy('EFFDT', 'desc')
+      .limit(2);
+
+    console.log(salaryRows);
+
+    // Helper function to enrich salaryRow with holidayWorkHour
+    const enrichWithHolidayWorkHour = async (salaryRow: any) => {
+      if (!salaryRow || !salaryRow['id']) return undefined;
+      const holidayWorkHour = await this.knex('holiday_work_hours')
+        .where('rate_id', salaryRow['id'])
+        .andWhere('hour', 1)
+        .first();
+      return {
+        ...salaryRow,
+        holidayWorkHour: holidayWorkHour
+          ? await toCamelCase(holidayWorkHour)
+          : null,
+      };
+    };
+
+    let salaryHistory: { current?: any; previous?: any } | undefined =
+      undefined;
+    if (salaryRows.length > 0) {
+      const current = await enrichWithHolidayWorkHour(salaryRows[0]);
+      const previous = salaryRows[1]
+        ? await enrichWithHolidayWorkHour(salaryRows[1])
+        : undefined;
+      if (current || previous) {
+        salaryHistory = {};
+        if (current) salaryHistory.current = await toCamelCase(current);
+        if (previous) salaryHistory.previous = await toCamelCase(previous);
+      } else {
+        salaryHistory = undefined;
+      }
+    }
+
+    const camelEntity = await toCamelCase<Employee>(dbEntity);
+    if (salaryHistory && camelEntity && typeof camelEntity === 'object') {
+      return Object.assign({}, camelEntity, { salaryHistory });
+    }
+    return camelEntity;
   }
 
   async findWithQuery(query: QueryEmployeeDto): Promise<{
