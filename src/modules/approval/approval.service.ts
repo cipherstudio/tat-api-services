@@ -1391,7 +1391,7 @@ export class ApprovalService {
                     } else {
                       const organize = await this.knexService
                         .knex('OP_ORGANIZE_R')
-                        .where('DEPTID', pwJob.DEPTID)
+                        .where('POG_CODE', pwJob.DEPTID)
                         .first();
 
                       if (organize.POG_TYPE == 3) {
@@ -1980,6 +1980,7 @@ export class ApprovalService {
       .where('EMPLID', employeeCode)
       .andWhere('ACTION', 'XFR')
       .andWhere('ACTION_REASON', '008')
+      .orderBy('EFFDT', 'desc')
       .first();
   }
 
@@ -1989,10 +1990,10 @@ export class ApprovalService {
     result: ClothingExpenseEligibilityResponseDto[],
     employeeCode: number,
   ): Promise<void> {
-    // เอา pwJob.DEPTID ไปเช็ค table OP_ORGANIZE_R ว่าเป็นหน่วยงานต่างประเทศไหม
+    // เอา pwJob.DEPTID ไปเช็ค table OP_ORGANIZE_R_TEMP ว่าเป็นหน่วยงานต่างประเทศไหม
     const organize = await this.knexService
       .knex('OP_ORGANIZE_R')
-      .where('DEPTID', pwJob.DEPTID)
+      .where('POG_CODE', pwJob.DEPTID)
       .first();
 
     if (organize.POG_TYPE == 3) {
@@ -2019,9 +2020,9 @@ export class ApprovalService {
           .first();
       } else if (destination.destinationTable === 'tatOffices') {
         currentDestination = await this.knexService
-          .knex('tat_offices')
-          .where('id', destination.destinationId)
-          .join('countries', 'tat_offices.country_id', 'countries.id')
+          .knex('office_international')
+          .where('office_international.id', destination.destinationId)
+          .join('countries', 'office_international.country_id', 'countries.id')
           .first();
       }
 
@@ -2044,6 +2045,7 @@ export class ApprovalService {
       }
     } else {
       // @todo ถ้าเป็น type อื่นๆ
+      this.updateEligibility(result, employeeCode, true);
     }
   }
 
