@@ -704,7 +704,7 @@ export class ApprovalService {
       .knex('approval_staff_members')
       .where('approval_id', id)
       .leftJoin('OP_MASTER_T as omt', 'approval_staff_members.employee_code', 'omt.PMT_CODE')
-      .leftJoin('EMPLOYEE_TEMP as et', 'approval_staff_members.employee_code', 'et.CODE')
+      .leftJoin('EMPLOYEE as et', 'approval_staff_members.employee_code', 'et.CODE')
       .select(
         'id',
         'employee_code as employeeCode',
@@ -918,8 +918,9 @@ export class ApprovalService {
         .where('ac.approval_id', id)
         .select(
           'ac.id', 
-          'ac.employee_code as employeeCode', 
-          'ac.signer_name as signerName', 
+          'ac.employee_code as employeeCode', // ผู้รับ
+          'et.POSITION as position', // ผู้รับ
+          'ac.signer_name as signerName', // ผู้รับ
           'ac.signer_date as signerDate', 
           'ac.document_ending as documentEnding', 
           'ac.document_ending_wording as documentEndingWording', 
@@ -927,11 +928,37 @@ export class ApprovalService {
           'ac.signature_attachment_id as signatureAttachmentId', 
           'ac.use_system_signature as useSystemSignature', 
           'ac.comments as comments',
+          'ac.created_at as createdAt', // วันที่สร้าง
+          'ac.updated_at as updatedAt', // วันที่ส่ง ปรับสถานะ
+
+          // ผู้ส่ง
+          'u.employee_code as createdEmployeeCode',
+          'et2.NAME as createdName',
+          'et2.POSITION as createdPosition',
 
           'acs.status_code as statusCode',
           'acs.label as statusLabel'
         )
-        .leftJoin('approval_continuous_status as acs', 'ac.approval_continuous_status_id', 'acs.id');
+        .leftJoin(
+          'approval_continuous_status as acs', 
+          'ac.approval_continuous_status_id', 
+          'acs.id')
+        .leftJoin(
+          'EMPLOYEE as et',
+          'ac.employee_code',
+          'et.CODE'
+        )
+        .leftJoin(
+          'users as u',
+          'ac.created_by',
+          'u.id'
+        )
+        .leftJoin(
+          'EMPLOYEE as et2',
+          'u.employee_code',
+          'et2.CODE'
+        )
+        .orderBy('ac.created_at', 'asc');
 
       // Combine all the data
       const response: ApprovalDetailResponseDto = {
@@ -1362,7 +1389,7 @@ export class ApprovalService {
                         this.calculateNextClaimDate(workStartDate);
                     } else {
                       const organize = await this.knexService
-                        .knex('OP_ORGANIZE_R_TEMP')
+                        .knex('OP_ORGANIZE_R')
                         .where('DEPTID', pwJob.DEPTID)
                         .first();
 
@@ -1948,7 +1975,7 @@ export class ApprovalService {
 
   private async getPwJob(employeeCode: number) {
     return await this.knexService
-      .knex('PS_PW_JOB_TEMP')
+      .knex('PS_PW_JOB')
       .where('EMPLID', employeeCode)
       .andWhere('ACTION', 'XFR')
       .andWhere('ACTION_REASON', '008')
@@ -1961,9 +1988,9 @@ export class ApprovalService {
     result: ClothingExpenseEligibilityResponseDto[],
     employeeCode: number,
   ): Promise<void> {
-    // เอา pwJob.DEPTID ไปเช็ค table OP_ORGANIZE_R_TEMP ว่าเป็นหน่วยงานต่างประเทศไหม
+    // เอา pwJob.DEPTID ไปเช็ค table OP_ORGANIZE_R ว่าเป็นหน่วยงานต่างประเทศไหม
     const organize = await this.knexService
-      .knex('OP_ORGANIZE_R_TEMP')
+      .knex('OP_ORGANIZE_R')
       .where('DEPTID', pwJob.DEPTID)
       .first();
 
