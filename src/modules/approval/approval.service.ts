@@ -1411,6 +1411,10 @@ export class ApprovalService {
 
               // Process clothing expenses for each staff member
               if (Array.isArray(staffMember.clothingExpenses)) {
+                if (typeof staffMember.employeeCode === 'string' && staffMember.employeeCode.includes('-')) {
+                  continue;
+                }
+
                 for (const expense of staffMember.clothingExpenses) {
                   // Check if record exists
                   const existingExpense = await trx('approval_clothing_expense')
@@ -1438,7 +1442,7 @@ export class ApprovalService {
                     // get work start date from first start date of traveldateranges
                     workStartDate = updateDto.travelDateRanges[0].start_date;
                     const pwJob = await this.getPwJob(
-                      Number(staffMember.employeeCode),
+                      staffMember.employeeCode,
                     );
                     if (!pwJob) {
                       nextClaimDate =
@@ -1527,7 +1531,7 @@ export class ApprovalService {
                   ) {
                     workStartDate = updateDto.workStartDate;
                     const pwJob = await this.getPwJob(
-                      Number(staffMember.employeeCode),
+                      staffMember.employeeCode,
                     );
                     if (!pwJob) {
                       nextClaimDate =
@@ -1612,10 +1616,9 @@ export class ApprovalService {
 
       // After processing all staff members, clean up old clothing expenses
       if (updateDto.staffMembers && Array.isArray(updateDto.staffMembers)) {
-        // Get all employee codes from current staff members
-        const currentEmployeeCodes = updateDto.staffMembers.map(
-          (staff) => staff.employeeCode,
-        );
+        const currentEmployeeCodes = updateDto.staffMembers
+          .map((staff) => staff.employeeCode)
+          .filter((code) => !(typeof code === 'string' && code.includes('-')));
 
         // Delete clothing expenses for employee codes that are no longer in the staff members list
         await trx('approval_clothing_expense')
@@ -1666,11 +1669,6 @@ export class ApprovalService {
 
       // Process budgets
       if (updateDto.budgets && Array.isArray(updateDto.budgets)) {
-        console.log(
-          'Processing budgets:',
-          JSON.stringify(updateDto.budgets, null, 2),
-        );
-        
         // Get old budget attachment IDs before deletion
         const oldBudgetAttachments = await trx('approval_budgets')
           .where('approval_id', id)
@@ -2029,7 +2027,11 @@ export class ApprovalService {
     }
   }
 
-  private async getPwJob(employeeCode: number) {
+  private async getPwJob(employeeCode: string | number) {
+    if (typeof employeeCode === 'string' && employeeCode.includes('-')) {
+      return null;
+    }
+    
     return await this.knexService
       .knex('PS_PW_JOB')
       .where('EMPLID', employeeCode)
@@ -2920,6 +2922,10 @@ export class ApprovalService {
 
           // Copy clothing expenses
           if (staffMember.clothingExpenses && staffMember.clothingExpenses.length > 0) {
+            if (typeof staffMember.employeeCode === 'string' && staffMember.employeeCode.includes('-')) {
+              continue;
+            }
+
             for (const expense of staffMember.clothingExpenses) {
               await trx('approval_clothing_expense').insert({
                 approval_id: newApproval.id,
