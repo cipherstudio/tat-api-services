@@ -10,8 +10,8 @@ exports.up = function(knex) {
         table.integer('approval_continuous_status_id').notNullable();
         table.timestamp('created_at').defaultTo(knex.fn.now());
         table.timestamp('updated_at').defaultTo(knex.fn.now());
-        table.integer('created_by').notNullable();
-        table.integer('updated_by').notNullable();
+        table.string('created_by').nullable();
+        table.string('updated_by').nullable();
     });
 };
 

@@ -914,11 +914,27 @@ export class ApprovalService {
       );
 
       // get continuous approval
-      const continuousApproval = await this.knexService
-        .knex('approval_continuous as ac')
-        .where('ac.approval_id', id)
+      let approvalQuery = this.knexService.knex('approval_continuous as ac')
+        .leftJoin(
+          'approval_continuous_status as acs', 
+          'ac.approval_continuous_status_id', 
+          'acs.id')
+        .leftJoin(
+          'EMPLOYEE as et',
+          'ac.employee_code',
+          'et.CODE'
+        )
+        .leftJoin(
+          'EMPLOYEE as et2',
+          'ac.created_by',
+          'et2.CODE'
+        )
+        .where('ac.approval_id', id);
+      
+      const subQuery = approvalQuery.clone()
         .select(
-          'ac.id', 
+          [
+          'ac.id as approvalContinuousId', 
           'ac.employee_code as employeeCode', // ผู้รับ
           'et.POSITION as position', // ผู้รับ
           'ac.signer_name as signerName', // ผู้รับ
@@ -933,33 +949,72 @@ export class ApprovalService {
           'ac.updated_at as updatedAt', // วันที่ส่ง ปรับสถานะ
 
           // ผู้ส่ง
-          'u.employee_code as createdEmployeeCode',
+          'et2.CODE as createdEmployeeCode',
           'et2.NAME as createdName',
           'et2.POSITION as createdPosition',
 
           'acs.status_code as statusCode',
-          'acs.label as statusLabel'
-        )
-        .leftJoin(
-          'approval_continuous_status as acs', 
-          'ac.approval_continuous_status_id', 
-          'acs.id')
-        .leftJoin(
-          'EMPLOYEE as et',
-          'ac.employee_code',
-          'et.CODE'
-        )
-        .leftJoin(
-          'users as u',
-          'ac.created_by',
-          'u.id'
-        )
-        .leftJoin(
-          'EMPLOYEE as et2',
-          'u.employee_code',
-          'et2.CODE'
-        )
-        .orderBy('ac.created_at', 'asc');
+          'acs.label as statusLabel',
+          this.knexService.knex.raw(
+              `row_number() over (partition by "ac"."id" order by "ac"."created_at" asc) as "rn"`,
+            ),
+          ])
+          .as('sub');
+
+      const finalQuery = this.knexService.knex(subQuery)
+        .where('rn', 1)
+        .select('*');
+
+      const continuousApproval = await finalQuery;
+
+
+      // get continuous approval
+      // const continuousApproval = await this.knexService
+      //   .knex('approval_continuous as ac')
+      //   .where('ac.approval_id', id)
+      //   .select(
+      //     'ac.id', 
+      //     'ac.employee_code as employeeCode', // ผู้รับ
+      //     'et.POSITION as position', // ผู้รับ
+      //     'ac.signer_name as signerName', // ผู้รับ
+      //     'ac.signer_date as signerDate', 
+      //     'ac.document_ending as documentEnding', 
+      //     'ac.document_ending_wording as documentEndingWording', 
+      //     'ac.use_file_signature as useFileSignature', 
+      //     'ac.signature_attachment_id as signatureAttachmentId', 
+      //     'ac.use_system_signature as useSystemSignature', 
+      //     'ac.comments as comments',
+      //     'ac.created_at as createdAt', // วันที่สร้าง
+      //     'ac.updated_at as updatedAt', // วันที่ส่ง ปรับสถานะ
+
+      //     // ผู้ส่ง
+      //     'u.employee_code as createdEmployeeCode',
+      //     'et2.NAME as createdName',
+      //     'et2.POSITION as createdPosition',
+
+      //     'acs.status_code as statusCode',
+      //     'acs.label as statusLabel'
+      //   )
+      //   .leftJoin(
+      //     'approval_continuous_status as acs', 
+      //     'ac.approval_continuous_status_id', 
+      //     'acs.id')
+      //   .leftJoin(
+      //     'EMPLOYEE as et',
+      //     'ac.employee_code',
+      //     'et.CODE'
+      //   )
+      //   .leftJoin(
+      //     'users as u',
+      //     'ac.created_by',
+      //     'u.id'
+      //   )
+      //   .leftJoin(
+      //     'EMPLOYEE as et2',
+      //     'u.employee_code',
+      //     'et2.CODE'
+      //   )
+      //   .orderBy('ac.created_at', 'asc');
 
       // Combine all the data
       const response: ApprovalDetailResponseDto = {
@@ -982,7 +1037,7 @@ export class ApprovalService {
     return response;
   }
 
-  async update(id: number, updateDto: UpdateApprovalDto, userId: number): Promise<Approval> {
+  async update(id: number, updateDto: UpdateApprovalDto, userId: number, employeeCode: string): Promise<Approval> {
     const approval = await this.findById(id);
     if (!approval) {
       throw new NotFoundException(`Approval with ID ${id} not found`);
@@ -1661,8 +1716,8 @@ export class ApprovalService {
           approval_id: id,
           employee_code: updateDto.staffEmployeeCode,
           approval_continuous_status_id: approvalContinuousStatusId.id,
-          created_by: userId,
-          updated_by: userId,
+          created_by: employeeCode,
+          //updated_by: userId,
           signer_name: updateDto.signerName,
           signer_date: updateDto.signerDate,
           document_ending: updateDto.documentEnding,
@@ -2368,6 +2423,7 @@ export class ApprovalService {
     id: number,
     updateDto: UpdateApprovalContinuousDto,
     userId: number,
+    employeeCode: string,
   ): Promise<void> {
     // Check if approval_continuous exists and has PENDING status
     const existingContinuous = await this.knexService
@@ -2432,7 +2488,7 @@ export class ApprovalService {
         }
 
         // Add updated_by and updated_at
-        updateData.updated_by = userId;
+        updateData.updated_by = employeeCode;
         updateData.updated_at = new Date();
 
         // Update the record
@@ -2454,8 +2510,8 @@ export class ApprovalService {
           signer_name: updateDto.signerName,
           signer_date: updateDto.signerDate,
           approval_continuous_status_id: approvalContinuousStatusIdPending.id,
-          created_by: userId,
-          updated_by: userId,
+          created_by: employeeCode,
+          //updated_by: userId,
         });
         // get approval.continuous_employee_code
         const approval = await trx('approval')
@@ -2494,8 +2550,8 @@ export class ApprovalService {
             signer_name: updateDto.signerName,
             signer_date: updateDto.signerDate,
             approval_continuous_status_id: approvalContinuousStatusIdPending.id,
-            created_by: userId,
-            updated_by: userId,
+            created_by: employeeCode,
+            //updated_by: userId,
           });
         }
 
@@ -2506,7 +2562,7 @@ export class ApprovalService {
         }
 
         // Add updated_by and updated_at
-        updateData.updated_by = userId;
+        updateData.updated_by = employeeCode;
         updateData.updated_at = new Date();
 
         // update the status of approval_continuous
@@ -2528,8 +2584,8 @@ export class ApprovalService {
           signer_name: existingContinuous.name,
           signer_date: updateDto.signerDate,
           approval_continuous_status_id: approvalContinuousStatusIdPending.id,
-          created_by: userId,
-          updated_by: userId,
+          created_by: employeeCode,
+          //updated_by: userId,
         });
       }
       

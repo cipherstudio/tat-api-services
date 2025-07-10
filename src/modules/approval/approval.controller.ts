@@ -274,7 +274,7 @@ export class ApprovalController {
     @Body() updateApprovalDto: UpdateApprovalDto,
     @Req() req: RequestWithUser,
   ) {
-    return this.approvalService.update(id, updateApprovalDto, req.user.id);
+    return this.approvalService.update(id, updateApprovalDto, req.user.id, req.user.employeeCode);
   }
 
   @Patch(':id/status')
@@ -359,7 +359,7 @@ export class ApprovalController {
     @Body() updateDto: UpdateApprovalContinuousDto,
     @Req() req: RequestWithUser,
   ) {
-    return this.approvalService.updateApprovalContinuous(id, updateDto, req.user.id);
+    return this.approvalService.updateApprovalContinuous(id, updateDto, req.user.id, req.user.employeeCode);
   }
 
   @Post('duplicate/:id')
