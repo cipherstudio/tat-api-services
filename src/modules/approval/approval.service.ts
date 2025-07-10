@@ -937,7 +937,7 @@ export class ApprovalService {
           'ac.id as approvalContinuousId', 
           'ac.employee_code as employeeCode', // ผู้รับ
           'et.POSITION as position', // ผู้รับ
-          'ac.signer_name as signerName', // ผู้รับ
+          'et.NAME as signerName', // ผู้รับ
           'ac.signer_date as signerDate', 
           'ac.document_ending as documentEnding', 
           'ac.document_ending_wording as documentEndingWording', 
@@ -2475,20 +2475,6 @@ export class ApprovalService {
           .first();
 
       if (updateDto.statusCode === 'APPROVED') {
-
-        if (updateDto.useFileSignature !== undefined) {
-          updateData.use_file_signature = updateDto.useFileSignature;
-        }
-        if (updateDto.signatureAttachmentId !== undefined) {
-          updateData.signature_attachment_id = updateDto.signatureAttachmentId;
-        }
-        if (updateDto.useSystemSignature !== undefined) {
-          updateData.use_system_signature = updateDto.useSystemSignature;
-        }
-        if (updateDto.comments !== undefined) {
-          updateData.comments = updateDto.comments;
-        }
-
         // Add updated_by and updated_at
         updateData.updated_by = employeeCode;
         updateData.updated_at = new Date();
@@ -2511,6 +2497,10 @@ export class ApprovalService {
           employee_code: updateDto.employeeCode,
           signer_name: updateDto.signerName,
           signer_date: updateDto.signerDate,
+          use_file_signature: updateDto.useFileSignature,
+          signature_attachment_id: updateDto.signatureAttachmentId,
+          use_system_signature: updateDto.useSystemSignature,
+          comments: updateDto.comments,
           approval_continuous_status_id: approvalContinuousStatusIdPending.id,
           created_by: employeeCode,
           //updated_by: userId,
@@ -2551,6 +2541,10 @@ export class ApprovalService {
             employee_code: updateDto.employeeCode,
             signer_name: updateDto.signerName,
             signer_date: updateDto.signerDate,
+            use_file_signature: updateDto.useFileSignature,
+            signature_attachment_id: updateDto.signatureAttachmentId,
+            use_system_signature: updateDto.useSystemSignature,
+            comments: updateDto.comments,
             approval_continuous_status_id: approvalContinuousStatusIdPending.id,
             created_by: employeeCode,
             //updated_by: userId,
@@ -2558,10 +2552,6 @@ export class ApprovalService {
         }
 
       } else if (updateDto.statusCode === 'REJECTED') {
-        
-        if (updateDto.comments !== undefined) {
-          updateData.comments = updateDto.comments;
-        }
 
         // Add updated_by and updated_at
         updateData.updated_by = employeeCode;
@@ -2585,6 +2575,10 @@ export class ApprovalService {
           employee_code: existingContinuous.employee_code,
           signer_name: existingContinuous.name,
           signer_date: updateDto.signerDate,
+          use_file_signature: updateDto.useFileSignature,
+          signature_attachment_id: updateDto.signatureAttachmentId,
+          use_system_signature: updateDto.useSystemSignature,
+          comments: updateDto.comments,
           approval_continuous_status_id: approvalContinuousStatusIdPending.id,
           created_by: employeeCode,
           //updated_by: userId,
