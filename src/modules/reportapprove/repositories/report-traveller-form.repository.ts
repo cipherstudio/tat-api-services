@@ -57,7 +57,6 @@ export class ReportTravellerFormRepository extends KnexBaseRepository<ReportTrav
     try {
       const data = await toSnakeCase(dto);
       const { traveller, ...restForm } = data;
-      console.log('🚀 ~ ReportTravellerFormRepository ~ restForm:', restForm);
       if (traveller) {
         await this.knex('report_traveller')
           .where({ traveler_id: traveller.traveler_id })

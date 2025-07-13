@@ -5,6 +5,10 @@ import { UpdateReportApproveDto } from '../dto/update-report-approve.dto';
 import { ReportApproveQueryDto } from '../dto/report-approve-query.dto';
 import { ReportTravellerFormRepository } from '../repositories/report-traveller-form.repository';
 import { ReportDailyTravelDetailRepository } from '../repositories/report-daily-travel-detail.repository';
+import { ReportHolidayWageDetailRepository } from '../repositories/report-holiday-wage-detail.repository';
+import { ReportAccommodationRepository } from '../repositories/report-accommodation.repository';
+import { ReportOtherExpenseRepository } from '../repositories/report-other-expense.repository';
+import { ReportTransportationRepository } from '../repositories/report-transportation.repository';
 
 @Injectable()
 export class ReportApproveService {
@@ -12,6 +16,10 @@ export class ReportApproveService {
     private readonly reportApproveRepo: ReportApproveRepository,
     private readonly reportTravellerFormRepo: ReportTravellerFormRepository,
     private readonly reportDailyTravelDetailRepo: ReportDailyTravelDetailRepository,
+    private readonly reportHolidayWageDetailRepo: ReportHolidayWageDetailRepository,
+    private readonly reportAccommodationRepo: ReportAccommodationRepository,
+    private readonly reportOtherExpenseRepo: ReportOtherExpenseRepository,
+    private readonly reportTransportationRepo: ReportTransportationRepository,
   ) {}
 
   async findAll(query: ReportApproveQueryDto) {
@@ -88,7 +96,14 @@ export class ReportApproveService {
             : null,
         };
         if (existing) {
-          const { dailyTravelDetails, ...restForm } = data;
+          const {
+            dailyTravelDetails,
+            holidayWageDetailDaily,
+            accommodationDetails,
+            otherExpenseDetails,
+            transportationDetails,
+            ...restForm
+          } = data;
           await this.reportTravellerFormRepo.updateOne(
             existing.form_id,
             restForm,
@@ -141,8 +156,199 @@ export class ReportApproveService {
               await this.reportDailyTravelDetailRepo.delete(d.detailId);
             }
           }
+          // --- holidayWageDetailDaily sync ---
+          if (holidayWageDetailDaily) {
+            // 1. หา holidayId ทั้งหมดที่ส่งมา
+            const incomingIds = holidayWageDetailDaily
+              .filter((d) => d.holidayId)
+              .map((d) => d.holidayId);
+            // 2. หา holiday ปัจจุบันใน DB
+            const currentDetails =
+              await this.reportHolidayWageDetailRepo.findByFormId(
+                existing.form_id,
+              );
+            const currentIds = currentDetails.map((d) => d.holidayId);
+            // 3. ลบ holiday ที่ไม่มีใน incoming
+            for (const id of currentIds) {
+              if (!incomingIds.includes(id)) {
+                await this.reportHolidayWageDetailRepo.delete(id);
+              }
+            }
+            // 4. อัปเดตหรือสร้างใหม่
+            for (const detail of holidayWageDetailDaily) {
+              if (detail.holidayId) {
+                await this.reportHolidayWageDetailRepo.update(
+                  detail.holidayId,
+                  {
+                    ...detail,
+                    date: this.toOracleDate(detail.date),
+                  },
+                );
+              } else {
+                await this.reportHolidayWageDetailRepo.create({
+                  ...detail,
+                  formId: +existing.form_id,
+                  date: this.toOracleDate(detail.date),
+                });
+              }
+            }
+          } else {
+            // ถ้าไม่มี holidayWageDetailDaily ส่งมาเลย ให้ลบทั้งหมด
+            const currentDetails =
+              await this.reportHolidayWageDetailRepo.findByFormId(
+                existing.form_id,
+              );
+            for (const d of currentDetails) {
+              await this.reportHolidayWageDetailRepo.delete(d.holidayId);
+            }
+          }
+          // --- accommodationDetails sync ---
+          if (accommodationDetails) {
+            // 1. หา accommodationId ทั้งหมดที่ส่งมา
+            const incomingIds = accommodationDetails
+              .filter((d) => d.accommodationId)
+              .map((d) => d.accommodationId);
+            // 2. หา accommodation ปัจจุบันใน DB
+            const currentDetails =
+              await this.reportAccommodationRepo.findByFormId(existing.form_id);
+            const currentIds = currentDetails.map((d) => d.accommodationId);
+            // 3. ลบ accommodation ที่ไม่มีใน incoming
+            for (const id of currentIds) {
+              if (!incomingIds.includes(id)) {
+                await this.reportAccommodationRepo.delete(id);
+              }
+            }
+            // 4. อัปเดตหรือสร้างใหม่
+            for (const detail of accommodationDetails) {
+              if (detail.accommodationId) {
+                await this.reportAccommodationRepo.update(
+                  detail.accommodationId,
+                  {
+                    ...detail,
+                    type: detail.type,
+                    pricePerDay: detail.pricePerDay,
+                    days: detail.days,
+                    total: detail.total,
+                  },
+                );
+              } else {
+                await this.reportAccommodationRepo.create({
+                  ...detail,
+                  formId: +existing.form_id,
+                  type: detail.type,
+                  pricePerDay: detail.pricePerDay,
+                  days: detail.days,
+                  total: detail.total,
+                });
+              }
+            }
+          } else {
+            // ถ้าไม่มี accommodationDetails ส่งมาเลย ให้ลบทั้งหมด
+            const currentDetails =
+              await this.reportAccommodationRepo.findByFormId(existing.form_id);
+            for (const d of currentDetails) {
+              await this.reportAccommodationRepo.delete(d.accommodationId);
+            }
+          }
+          // --- otherExpenseDetails sync ---
+          if (otherExpenseDetails) {
+            // 1. หา expenseId ทั้งหมดที่ส่งมา
+            const incomingIds = otherExpenseDetails
+              .filter((d) => d.expenseId)
+              .map((d) => d.expenseId);
+
+            // 2. หา expense ปัจจุบันใน DB
+            const currentDetails =
+              await this.reportOtherExpenseRepo.findByFormId(existing.form_id);
+            const currentIds = currentDetails.map((d) => d.expenseId);
+            // 3. ลบ expense ที่ไม่มีใน incoming
+            for (const id of currentIds) {
+              if (!incomingIds.includes(id)) {
+                await this.reportOtherExpenseRepo.delete(id);
+              }
+            }
+            // 4. อัปเดตหรือสร้างใหม่
+            for (const detail of otherExpenseDetails) {
+              if (detail.expenseId) {
+                await this.reportOtherExpenseRepo.update(
+                  detail.expenseId,
+                  detail,
+                );
+              } else {
+                await this.reportOtherExpenseRepo.create({
+                  ...detail,
+                  formId: +existing.form_id,
+                  amount: detail.amount,
+                  certificateFilePath: detail.certificateFilePath,
+                });
+              }
+            }
+          } else {
+            // ถ้าไม่มี otherExpenseDetails ส่งมาเลย ให้ลบทั้งหมด
+            const currentDetails =
+              await this.reportOtherExpenseRepo.findByFormId(existing.form_id);
+            for (const d of currentDetails) {
+              await this.reportOtherExpenseRepo.delete(d.expenseId);
+            }
+          }
+          // --- transportationDetails sync ---
+          if (transportationDetails) {
+            // 1. หา transportationId ทั้งหมดที่ส่งมา
+            const incomingIds = transportationDetails
+              .filter((d) => d.transportId)
+              .map((d) => d.transportId);
+            // 2. หา transportation ปัจจุบันใน DB
+            const currentDetails =
+              await this.reportTransportationRepo.findByFormId(
+                existing.form_id,
+              );
+            const currentIds = currentDetails.map((d) => d.transportId);
+            // 3. ลบ transportation ที่ไม่มีใน incoming
+            for (const id of currentIds) {
+              if (!incomingIds.includes(id)) {
+                await this.reportTransportationRepo.delete(id);
+              }
+            }
+            // 4. อัปเดตหรือสร้างใหม่
+            for (const detail of transportationDetails) {
+              if (detail.transportId) {
+                await this.reportTransportationRepo.update(detail.transportId, {
+                  ...detail,
+                  date: this.toOracleDate(detail.date),
+                });
+              } else {
+                await this.reportTransportationRepo.create({
+                  ...detail,
+                  formId: +existing.form_id,
+                  amount: detail.amount,
+                  receiptFilePath: detail.receiptFilePath,
+                  type: detail.type,
+                  date: this.toOracleDate(detail.date),
+                  fromPlace: detail.fromPlace,
+                  toPlace: detail.toPlace,
+                });
+              }
+            }
+          } else {
+            // ถ้าไม่มี transportationDetails ส่งมาเลย ให้ลบทั้งหมด
+            const currentDetails =
+              await this.reportTransportationRepo.findByFormId(
+                existing.form_id,
+              );
+            for (const d of currentDetails) {
+              await this.reportTransportationRepo.delete(d.transportId);
+            }
+          }
         } else {
-          const { traveller, dailyTravelDetails, ...restForm } = data;
+          const {
+            traveller,
+            dailyTravelDetails,
+            holidayWageDetailDaily,
+            accommodationDetails,
+            otherExpenseDetails,
+            transportationDetails,
+            ...restForm
+          } = data;
           // You may need to map traveller info if needed
           const createdForm = await this.reportTravellerFormRepo.createOne(
             restForm,
@@ -162,6 +368,49 @@ export class ReportApproveService {
                 formId: +createdForm.form_id,
                 departureDate: this.toOracleDate(detail.departureDate),
                 returnDate: this.toOracleDate(detail.returnDate),
+              });
+            }
+          }
+          if (holidayWageDetailDaily) {
+            for (const detail of holidayWageDetailDaily) {
+              await this.reportHolidayWageDetailRepo.create({
+                ...detail,
+                formId: +createdForm.form_id,
+                date: this.toOracleDate(detail.date),
+              });
+            }
+          }
+          if (accommodationDetails) {
+            for (const detail of accommodationDetails) {
+              await this.reportAccommodationRepo.create({
+                ...detail,
+                formId: +createdForm.form_id,
+                type: detail.type,
+                pricePerDay: detail.pricePerDay,
+                days: detail.days,
+                total: detail.total,
+              });
+            }
+          }
+          if (otherExpenseDetails) {
+            for (const detail of otherExpenseDetails) {
+              await this.reportOtherExpenseRepo.create({
+                ...detail,
+                formId: +createdForm.form_id,
+              });
+            }
+          }
+          if (transportationDetails) {
+            for (const detail of transportationDetails) {
+              await this.reportTransportationRepo.create({
+                ...detail,
+                formId: +createdForm.form_id,
+                amount: detail.amount,
+                receiptFilePath: detail.receiptFilePath,
+                type: detail.type,
+                date: this.toOracleDate(detail.date),
+                fromPlace: detail.fromPlace,
+                toPlace: detail.toPlace,
               });
             }
           }

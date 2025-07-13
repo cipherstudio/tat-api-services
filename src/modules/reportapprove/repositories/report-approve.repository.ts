@@ -54,6 +54,26 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_traveller_form.form_id',
         'report_daily_travel_detail.form_id',
       )
+      .leftJoin(
+        'report_holiday_wage_detail',
+        'report_traveller_form.form_id',
+        'report_holiday_wage_detail.form_id',
+      )
+      .leftJoin(
+        'report_accommodation',
+        'report_traveller_form.form_id',
+        'report_accommodation.form_id',
+      )
+      .leftJoin(
+        'report_other_expense',
+        'report_traveller_form.form_id',
+        'report_other_expense.form_id',
+      )
+      .leftJoin(
+        'report_transportation',
+        'report_traveller_form.form_id',
+        'report_transportation.form_id',
+      )
       .leftJoin('OP_MASTER_T', (builder) => {
         builder.on(
           'report_approve.creator_code',
@@ -147,6 +167,37 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_daily_travel_detail.return_date as daily_travel_detail_return_date',
         'report_daily_travel_detail.return_time as daily_travel_detail_return_time',
         'report_daily_travel_detail.travel_details as daily_travel_detail_travel_details',
+        // report_holiday_wage_detail columns
+        'report_holiday_wage_detail.holiday_id as holiday_wage_detail_id',
+        'report_holiday_wage_detail.form_id as holiday_wage_detail_form_id',
+        'report_holiday_wage_detail.date as holiday_wage_detail_date',
+        'report_holiday_wage_detail.hours as holiday_wage_detail_hours',
+        'report_holiday_wage_detail.year as holiday_wage_detail_year',
+        'report_holiday_wage_detail.wage as holiday_wage_detail_wage',
+        'report_holiday_wage_detail.tax as holiday_wage_detail_tax',
+        'report_holiday_wage_detail.total as holiday_wage_detail_total',
+        // report_accommodation columns
+        'report_accommodation.accommodation_id as accommodation_id',
+        'report_accommodation.form_id as accommodation_form_id',
+        'report_accommodation.type as accommodation_type',
+        'report_accommodation.price_per_day as accommodation_price_per_day',
+        'report_accommodation.days as accommodation_days',
+        'report_accommodation.total as accommodation_total',
+        // report_other_expense columns
+        'report_other_expense.expense_id as other_expense_id',
+        'report_other_expense.form_id as other_expense_form_id',
+        'report_other_expense.name as other_expense_name',
+        'report_other_expense.amount as other_expense_amount',
+        'report_other_expense.certificate_file_path as other_expense_certificate_file_path',
+        // report_transportation columns
+        'report_transportation.transport_id as transportation_id',
+        'report_transportation.form_id as transportation_form_id',
+        'report_transportation.type as transportation_type',
+        'report_transportation.from_place as transportation_from_place',
+        'report_transportation.to_place as transportation_to_place',
+        'report_transportation.date as transportation_date',
+        'report_transportation.amount as transportation_amount',
+        'report_transportation.receipt_file_path as transportation_receipt_file_path',
       )
       .orderBy(`report_approve.${snakeCaseOrderBy}`, direction)
       .offset(offset)
@@ -225,22 +276,107 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
               travelerId: row.travellerTravelerId,
             },
             dailyTravelDetails: [],
+            holidayWageDetailDaily: [],
+            accommodationDetails: [],
+            otherExpenseDetails: [],
+            transportationDetails: [],
           };
           grouped[id].reportTravellerForm.push(form);
         }
         // ถ้ามี dailyTravelDetailId ให้ push เข้า array
         if (row.dailyTravelDetailId) {
-          form.dailyTravelDetails.push({
-            detailId: row.dailyTravelDetailId,
-            formId: row.dailyTravelDetailFormId,
-            departurePlace: row.dailyTravelDetailDeparturePlace,
-            departureDate: row.dailyTravelDetailDepartureDate,
-            departureTime: row.dailyTravelDetailDepartureTime,
-            returnPlace: row.dailyTravelDetailReturnPlace,
-            returnDate: row.dailyTravelDetailReturnDate,
-            returnTime: row.dailyTravelDetailReturnTime,
-            travelDetails: row.dailyTravelDetailTravelDetails,
-          });
+          if (
+            !form.dailyTravelDetails.some(
+              (d) => d.detailId === row.dailyTravelDetailId,
+            )
+          ) {
+            form.dailyTravelDetails.push({
+              id: row.dailyTravelDetailId,
+              detailId: row.dailyTravelDetailId,
+              formId: row.dailyTravelDetailFormId,
+              departurePlace: row.dailyTravelDetailDeparturePlace,
+              departureDate: row.dailyTravelDetailDepartureDate,
+              departureTime: row.dailyTravelDetailDepartureTime,
+              returnPlace: row.dailyTravelDetailReturnPlace,
+              returnDate: row.dailyTravelDetailReturnDate,
+              returnTime: row.dailyTravelDetailReturnTime,
+              travelDetails: row.dailyTravelDetailTravelDetails,
+            });
+          }
+        }
+        // ถ้ามี holidayWageDetailId ให้ push เข้า array
+        if (row.holidayWageDetailId) {
+          if (
+            !form.holidayWageDetailDaily.some(
+              (d) => d.holidayId === row.holidayWageDetailId,
+            )
+          ) {
+            form.holidayWageDetailDaily.push({
+              id: row.holidayWageDetailId,
+              holidayId: row.holidayWageDetailId,
+              formId: row.holidayWageDetailFormId,
+              date: row.holidayWageDetailDate,
+              hours: row.holidayWageDetailHours,
+              year: row.holidayWageDetailYear,
+              wage: row.holidayWageDetailWage,
+              tax: row.holidayWageDetailTax,
+              total: row.holidayWageDetailTotal,
+            });
+          }
+        }
+        // ถ้ามี accommodationId ให้ push เข้า array
+        if (row.accommodationId) {
+          if (
+            !form.accommodationDetails.some(
+              (d) => d.accommodationId === row.accommodationId,
+            )
+          ) {
+            form.accommodationDetails.push({
+              id: row.accommodationId,
+              accommodationId: row.accommodationId,
+              formId: row.accommodationFormId,
+              type: row.accommodationType,
+              pricePerDay: row.accommodationPricePerDay,
+              days: row.accommodationDays,
+              total: row.accommodationTotal,
+            });
+          }
+        }
+        // ถ้ามี otherExpenseId ให้ push เข้า array
+        if (row.otherExpenseId) {
+          if (
+            !form.otherExpenseDetails.some(
+              (d) => d.expenseId === row.otherExpenseId,
+            )
+          ) {
+            form.otherExpenseDetails.push({
+              id: row.otherExpenseId,
+              expenseId: row.otherExpenseId,
+              formId: row.otherExpenseFormId,
+              name: row.otherExpenseName,
+              amount: row.otherExpenseAmount,
+              certificateFilePath: row.otherExpenseCertificateFilePath,
+            });
+          }
+        }
+        if (row.transportationId) {
+          if (
+            !form.transportationDetails.some(
+              (d) => d.transportId === row.transportationId,
+            )
+          ) {
+            form.transportationDetails.push({
+              id: row.transportationId,
+              transportId: row.transportationId,
+              formId: row.transportationFormId,
+              type: row.transportationType,
+              fromPlace: row.transportationFromPlace,
+              toPlace: row.transportationToPlace,
+              date: row.transportationDate,
+              amount: row.transportationAmount,
+              receiptFilePath: row.transportationReceiptFilePath,
+            });
+          }
         }
       }
     }
@@ -279,6 +415,26 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_daily_travel_detail',
         'report_traveller_form.form_id',
         'report_daily_travel_detail.form_id',
+      )
+      .leftJoin(
+        'report_holiday_wage_detail',
+        'report_traveller_form.form_id',
+        'report_holiday_wage_detail.form_id',
+      )
+      .leftJoin(
+        'report_accommodation',
+        'report_traveller_form.form_id',
+        'report_accommodation.form_id',
+      )
+      .leftJoin(
+        'report_other_expense',
+        'report_traveller_form.form_id',
+        'report_other_expense.form_id',
+      )
+      .leftJoin(
+        'report_transportation',
+        'report_traveller_form.form_id',
+        'report_transportation.form_id',
       )
       .leftJoin('OP_MASTER_T', (builder) => {
         builder.on(
@@ -353,6 +509,37 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_daily_travel_detail.return_date as daily_travel_detail_return_date',
         'report_daily_travel_detail.return_time as daily_travel_detail_return_time',
         'report_daily_travel_detail.travel_details as daily_travel_detail_travel_details',
+        // report_holiday_wage_detail columns
+        'report_holiday_wage_detail.holiday_id as holiday_wage_detail_id',
+        'report_holiday_wage_detail.form_id as holiday_wage_detail_form_id',
+        'report_holiday_wage_detail.date as holiday_wage_detail_date',
+        'report_holiday_wage_detail.hours as holiday_wage_detail_hours',
+        'report_holiday_wage_detail.year as holiday_wage_detail_year',
+        'report_holiday_wage_detail.wage as holiday_wage_detail_wage',
+        'report_holiday_wage_detail.tax as holiday_wage_detail_tax',
+        'report_holiday_wage_detail.total as holiday_wage_detail_total',
+        // report_accommodation columns
+        'report_accommodation.accommodation_id as accommodation_id',
+        'report_accommodation.form_id as accommodation_form_id',
+        'report_accommodation.type as accommodation_type',
+        'report_accommodation.price_per_day as accommodation_price_per_day',
+        'report_accommodation.days as accommodation_days',
+        'report_accommodation.total as accommodation_total',
+        // report_other_expense columns
+        'report_other_expense.expense_id as other_expense_id',
+        'report_other_expense.form_id as other_expense_form_id',
+        'report_other_expense.name as other_expense_name',
+        'report_other_expense.amount as other_expense_amount',
+        'report_other_expense.certificate_file_path as other_expense_certificate_file_path',
+        // report_transportation columns
+        'report_transportation.transport_id as transportation_id',
+        'report_transportation.form_id as transportation_form_id',
+        'report_transportation.type as transportation_type',
+        'report_transportation.from_place as transportation_from_place',
+        'report_transportation.to_place as transportation_to_place',
+        'report_transportation.date as transportation_date',
+        'report_transportation.amount as transportation_amount',
+        'report_transportation.receipt_file_path as transportation_receipt_file_path',
       )
       .where('report_approve.id', id);
 
@@ -430,22 +617,106 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
               travelerId: r.travellerTravelerId,
             },
             dailyTravelDetails: [],
+            holidayWageDetailDaily: [],
+            accommodationDetails: [],
+            otherExpenseDetails: [],
+            transportationDetails: [],
           };
           formMap.set(r.formId, form);
         }
         // push dailyTravelDetail ถ้ามี
         if (r.dailyTravelDetailId) {
-          form.dailyTravelDetails.push({
-            detailId: r.dailyTravelDetailId,
-            formId: r.dailyTravelDetailFormId,
-            departurePlace: r.dailyTravelDetailDeparturePlace,
-            departureDate: r.dailyTravelDetailDepartureDate,
-            departureTime: r.dailyTravelDetailDepartureTime,
-            returnPlace: r.dailyTravelDetailReturnPlace,
-            returnDate: r.dailyTravelDetailReturnDate,
-            returnTime: r.dailyTravelDetailReturnTime,
-            travelDetails: r.dailyTravelDetailTravelDetails,
-          });
+          if (
+            !form.dailyTravelDetails.some(
+              (d) => d.detailId === r.dailyTravelDetailId,
+            )
+          ) {
+            form.dailyTravelDetails.push({
+              detailId: r.dailyTravelDetailId,
+              formId: r.dailyTravelDetailFormId,
+              departurePlace: r.dailyTravelDetailDeparturePlace,
+              departureDate: r.dailyTravelDetailDepartureDate,
+              departureTime: r.dailyTravelDetailDepartureTime,
+              returnPlace: r.dailyTravelDetailReturnPlace,
+              returnDate: r.dailyTravelDetailReturnDate,
+              returnTime: r.dailyTravelDetailReturnTime,
+              travelDetails: r.dailyTravelDetailTravelDetails,
+            });
+          }
+        }
+        // push holidayWageDetailDaily ถ้ามี
+        if (r.holidayWageDetailId) {
+          if (
+            !form.holidayWageDetailDaily.some(
+              (d) => d.holidayId === r.holidayWageDetailId,
+            )
+          ) {
+            form.holidayWageDetailDaily.push({
+              holidayId: r.holidayWageDetailId,
+              formId: r.holidayWageDetailFormId,
+              date: r.holidayWageDetailDate,
+              hours: r.holidayWageDetailHours,
+              year: r.holidayWageDetailYear,
+              wage: r.holidayWageDetailWage,
+              tax: r.holidayWageDetailTax,
+              total: r.holidayWageDetailTotal,
+            });
+          }
+        }
+        // push accommodationDetails ถ้ามี
+        if (r.accommodationId) {
+          if (
+            !form.accommodationDetails.some(
+              (d) => d.accommodationId === r.accommodationId,
+            )
+          ) {
+            form.accommodationDetails.push({
+              id: r.accommodationId,
+              accommodationId: r.accommodationId,
+              formId: r.accommodationFormId,
+              type: r.accommodationType,
+              pricePerDay: r.accommodationPricePerDay,
+              days: r.accommodationDays,
+              total: r.accommodationTotal,
+            });
+          }
+        }
+        // push otherExpenseDetails ถ้ามี
+        if (r.otherExpenseId) {
+          if (
+            !form.otherExpenseDetails.some(
+              (d) => d.expenseId === r.otherExpenseId,
+            )
+          ) {
+            form.otherExpenseDetails.push({
+              id: r.otherExpenseId,
+              expenseId: r.otherExpenseId,
+              formId: r.otherExpenseFormId,
+              name: r.otherExpenseName,
+              amount: r.otherExpenseAmount,
+              certificateFilePath: r.otherExpenseCertificateFilePath,
+            });
+          }
+        }
+        // push transportationDetails ถ้ามี
+        if (r.transportationId) {
+          if (
+            !form.transportationDetails.some(
+              (d) => d.transportId === r.transportationId,
+            )
+          ) {
+            form.transportationDetails.push({
+              id: r.transportationId,
+              transportId: r.transportationId,
+              formId: r.transportationFormId,
+              type: r.transportationType,
+              fromPlace: r.transportationFromPlace,
+              toPlace: r.transportationToPlace,
+              date: r.transportationDate,
+              amount: r.transportationAmount,
+              receiptFilePath: r.transportationReceiptFilePath,
+            });
+          }
         }
       }
     }

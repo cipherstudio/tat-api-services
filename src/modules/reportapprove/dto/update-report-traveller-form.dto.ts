@@ -9,6 +9,10 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { UpdateReportDailyTravelDetailDto } from './report-daily-travel-detail.dto';
+import { UpdateReportHolidayWageDetailDto } from './update-report-holiday-wage-detail.dto';
+import { UpdateReportAccommodationDto } from './update-report-accommodation.dto';
+import { UpdateReportOtherExpenseDto } from './update-report-other-expense.dto';
+import { UpdateReportTransportationDto } from './update-report-transportation.dto';
 
 export class UpdateReportTravellerFormDto extends PartialType(
   CreateReportTravellerFormDto,
@@ -34,4 +38,28 @@ export class UpdateReportTravellerFormDto extends PartialType(
   @ValidateNested()
   @Type(() => UpdateReportDailyTravelDetailDto)
   dailyTravelDetails?: UpdateReportDailyTravelDetailDto[];
+
+  @ApiProperty({ type: [UpdateReportHolidayWageDetailDto] })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpdateReportHolidayWageDetailDto)
+  holidayWageDetailDaily?: UpdateReportHolidayWageDetailDto[];
+
+  @ApiProperty({ type: [UpdateReportAccommodationDto] })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpdateReportAccommodationDto)
+  accommodationDetails?: UpdateReportAccommodationDto[];
+
+  @ApiProperty({ type: [UpdateReportOtherExpenseDto] })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpdateReportOtherExpenseDto)
+  otherExpenseDetails?: UpdateReportOtherExpenseDto[];
+
+  @ApiProperty({ type: [UpdateReportTransportationDto] })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpdateReportTransportationDto)
+  transportationDetails?: UpdateReportTransportationDto[];
 }

@@ -27,11 +27,10 @@ export class ReportDailyTravelDetailRepository extends KnexBaseRepository<Report
     dto: Partial<ReportDailyTravelDetail>,
   ): Promise<ReportDailyTravelDetail> {
     const data = await toSnakeCase(dto);
-    const [updated] = await this.knex('report_daily_travel_detail')
+    const updated = await this.knex('report_daily_travel_detail')
       .where({ detail_id: detailId })
-      .update(data)
-      .returning('*');
-    if (!updated) throw new NotFoundException('Detail not found');
+      .update(data);
+    if (!updated) throw new NotFoundException('Detail not found'); // TODO: check if updated is 0
     return toCamelCase<ReportDailyTravelDetail>(updated);
   }
 
