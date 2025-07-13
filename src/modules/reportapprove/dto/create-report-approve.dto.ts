@@ -23,7 +23,6 @@ export class CreateReportApproveDto {
   @IsString()
   creatorCode: string;
 
-  // @ApiProperty({ example: 'DOC-2024-001', required: false })
   @IsOptional()
   @IsString()
   documentNumber?: string;

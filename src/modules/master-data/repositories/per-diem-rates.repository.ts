@@ -16,7 +16,10 @@ export class PerDiemRatesRepository extends KnexBaseRepository<PerDiemRates> {
     return await toCamelCase<PerDiemRates>(created);
   }
 
-  async update(id: number, entity: Partial<PerDiemRates>): Promise<PerDiemRates> {
+  async update(
+    id: number,
+    entity: Partial<PerDiemRates>,
+  ): Promise<PerDiemRates> {
     const dbEntity = await toSnakeCase(entity);
     const updated = await super.update(id, dbEntity);
     return await toCamelCase<PerDiemRates>(updated);
@@ -27,14 +30,18 @@ export class PerDiemRatesRepository extends KnexBaseRepository<PerDiemRates> {
     return dbEntity ? await toCamelCase<PerDiemRates>(dbEntity) : undefined;
   }
 
-  async findOne(conditions: Record<string, any>): Promise<PerDiemRates | undefined> {
+  async findOne(
+    conditions: Record<string, any>,
+  ): Promise<PerDiemRates | undefined> {
     const dbEntity = await super.findOne(conditions);
     return dbEntity ? await toCamelCase<PerDiemRates>(dbEntity) : undefined;
   }
 
   async find(conditions: Record<string, any> = {}): Promise<PerDiemRates[]> {
     const dbEntities = await super.find(conditions);
-    return Promise.all(dbEntities.map(async (e) => await toCamelCase<PerDiemRates>(e)));
+    return Promise.all(
+      dbEntities.map(async (e) => await toCamelCase<PerDiemRates>(e)),
+    );
   }
 
   async findWithPagination(
@@ -44,10 +51,18 @@ export class PerDiemRatesRepository extends KnexBaseRepository<PerDiemRates> {
     orderBy: string = 'id',
     direction: 'asc' | 'desc' = 'asc',
   ) {
-    const result = await super.findWithPagination(page, limit, conditions, orderBy, direction);
+    const result = await super.findWithPagination(
+      page,
+      limit,
+      conditions,
+      orderBy,
+      direction,
+    );
     return {
       ...result,
-      data: await Promise.all(result.data.map(async (e) => await toCamelCase<PerDiemRates>(e))),
+      data: await Promise.all(
+        result.data.map(async (e) => await toCamelCase<PerDiemRates>(e)),
+      ),
     };
   }
 
@@ -70,8 +85,12 @@ export class PerDiemRatesRepository extends KnexBaseRepository<PerDiemRates> {
     if (searchTerm) {
       query.where((builder) => {
         builder
-          .whereRaw('LOWER("position_group") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
-          .orWhereRaw('LOWER("position_name") LIKE ?', [`%${searchTerm.toLowerCase()}%`]);
+          .whereRaw('LOWER("position_group") LIKE ?', [
+            `%${searchTerm.toLowerCase()}%`,
+          ])
+          .orWhereRaw('LOWER("position_name") LIKE ?', [
+            `%${searchTerm.toLowerCase()}%`,
+          ]);
       });
     }
 
@@ -92,7 +111,9 @@ export class PerDiemRatesRepository extends KnexBaseRepository<PerDiemRates> {
       .offset(offset);
 
     return {
-      data: await Promise.all(data.map(async (e) => await toCamelCase<PerDiemRates>(e))),
+      data: await Promise.all(
+        data.map(async (e) => await toCamelCase<PerDiemRates>(e)),
+      ),
       meta: {
         total,
         page,
@@ -101,4 +122,40 @@ export class PerDiemRatesRepository extends KnexBaseRepository<PerDiemRates> {
       },
     };
   }
-} 
+
+  async findByLevelCode(levelCode?: string): Promise<PerDiemRates[]> {
+    let codeStart = null;
+    let codeEnd = null;
+
+    if (levelCode === '09' || levelCode === '10' || levelCode === '11') {
+      codeStart = '09';
+      codeEnd = '11';
+    }
+
+    if (
+      levelCode === '01' ||
+      levelCode === '02' ||
+      levelCode === '03' ||
+      levelCode === '04' ||
+      levelCode === '05' ||
+      levelCode === '06' ||
+      levelCode === '07' ||
+      levelCode === '08'
+    ) {
+      codeStart = '01';
+      codeEnd = '08';
+    }
+
+    const conditions = {
+      level_code_start: codeStart,
+      level_code_end: codeEnd,
+    };
+
+    const result = await this.knex(this.tableName)
+      .where(conditions)
+      .orderBy('id', 'asc');
+    return await Promise.all(
+      result.map(async (e) => await toCamelCase<PerDiemRates>(e)),
+    );
+  }
+}
