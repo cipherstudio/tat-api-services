@@ -30,6 +30,8 @@ export class PerDiemRatesService {
       createdBefore,
       updatedAfter,
       updatedBefore,
+      levelCodeStart,
+      levelCodeEnd,
     } = queryOptions || {};
 
     // Generate cache key that includes all query parameters
@@ -46,17 +48,25 @@ export class PerDiemRatesService {
       createdBefore ? `createdBefore:${createdBefore.toISOString()}` : null,
       updatedAfter ? `updatedAfter:${updatedAfter.toISOString()}` : null,
       updatedBefore ? `updatedBefore:${updatedBefore.toISOString()}` : null,
-    ].filter(Boolean).join(':');
+      levelCodeStart ? `levelCodeStart:${levelCodeStart}` : null,
+      levelCodeEnd ? `levelCodeEnd:${levelCodeEnd}` : null,
+    ]
+      .filter(Boolean)
+      .join(':');
 
-    const cacheKey = this.redisCacheService.generateListKey(this.CACHE_PREFIX, cacheParams);
-    const cachedResult = await this.redisCacheService.get<PaginatedResult<PerDiemRates>>(cacheKey);
+    const cacheKey = this.redisCacheService.generateListKey(
+      this.CACHE_PREFIX,
+      cacheParams,
+    );
+    const cachedResult =
+      await this.redisCacheService.get<PaginatedResult<PerDiemRates>>(cacheKey);
     if (cachedResult) {
       return cachedResult;
     }
 
     // Prepare conditions
     const conditions: Record<string, any> = {};
-    
+
     if (positionTitle) {
       conditions.position_title = positionTitle;
     }
@@ -85,14 +95,28 @@ export class PerDiemRatesService {
       conditions.updated_at = { ...conditions.updated_at, $lte: updatedBefore };
     }
 
-    const result = await this.perDiemRatesRepository.findWithPaginationAndSearch(
-      page,
-      limit,
-      conditions,
-      orderBy,
-      orderDir.toLowerCase() as 'asc' | 'desc',
-      searchTerm
-    );
+    if (levelCodeStart) {
+      conditions.level_code_start = {
+        ...conditions.level_code_start,
+        $eq: levelCodeStart,
+      };
+    }
+
+    if (levelCodeEnd) {
+      conditions.level_code_end = {
+        ...conditions.level_code_end,
+        $eq: levelCodeEnd,
+      };
+    }
+    const result =
+      await this.perDiemRatesRepository.findWithPaginationAndSearch(
+        page,
+        limit,
+        conditions,
+        orderBy,
+        orderDir.toLowerCase() as 'asc' | 'desc',
+        searchTerm,
+      );
 
     // Cache the result
     await this.redisCacheService.set(cacheKey, result, this.CACHE_TTL);
@@ -119,23 +143,32 @@ export class PerDiemRatesService {
     return rate;
   }
 
-  async create(createPerDiemRatesDto: CreatePerDiemRatesDto): Promise<PerDiemRates> {
-    const savedRate = await this.perDiemRatesRepository.create(createPerDiemRatesDto);
+  async create(
+    createPerDiemRatesDto: CreatePerDiemRatesDto,
+  ): Promise<PerDiemRates> {
+    const savedRate = await this.perDiemRatesRepository.create(
+      createPerDiemRatesDto,
+    );
 
     // Cache the new rate
     await this.redisCacheService.set(
       this.redisCacheService.generateKey(this.CACHE_PREFIX, savedRate.id),
       savedRate,
-      this.CACHE_TTL
+      this.CACHE_TTL,
     );
 
     // Invalidate the list cache
-    await this.redisCacheService.del(this.redisCacheService.generateListKey(this.CACHE_PREFIX));
+    await this.redisCacheService.del(
+      this.redisCacheService.generateListKey(this.CACHE_PREFIX),
+    );
 
     return savedRate;
   }
 
-  async update(id: number, updatePerDiemRatesDto: UpdatePerDiemRatesDto): Promise<PerDiemRates> {
+  async update(
+    id: number,
+    updatePerDiemRatesDto: UpdatePerDiemRatesDto,
+  ): Promise<PerDiemRates> {
     const rate = await this.findById(id);
     if (!rate) {
       throw new NotFoundException(`Per diem rate with ID ${id} not found`);
@@ -149,7 +182,9 @@ export class PerDiemRatesService {
     await this.redisCacheService.set(cacheKey, updatedRate, this.CACHE_TTL);
 
     // Invalidate the list cache
-    await this.redisCacheService.del(this.redisCacheService.generateListKey(this.CACHE_PREFIX));
+    await this.redisCacheService.del(
+      this.redisCacheService.generateListKey(this.CACHE_PREFIX),
+    );
 
     return updatedRate;
   }
@@ -161,8 +196,17 @@ export class PerDiemRatesService {
     }
 
     // Remove from cache
-    await this.redisCacheService.del(this.redisCacheService.generateKey(this.CACHE_PREFIX, id));
+    await this.redisCacheService.del(
+      this.redisCacheService.generateKey(this.CACHE_PREFIX, id),
+    );
     // Invalidate the list cache
-    await this.redisCacheService.del(this.redisCacheService.generateListKey(this.CACHE_PREFIX));
+    await this.redisCacheService.del(
+      this.redisCacheService.generateListKey(this.CACHE_PREFIX),
+    );
   }
-} 
+
+  async findByLevelCode(levelCode?: string): Promise<PerDiemRates[]> {
+    const result = await this.perDiemRatesRepository.findByLevelCode(levelCode);
+    return result;
+  }
+}

@@ -62,8 +62,6 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
       .orderBy('EFFDT', 'desc')
       .limit(2);
 
-    console.log(salaryRows);
-
     // Helper function to enrich salaryRow with holidayWorkHour
     const enrichWithHolidayWorkHour = async (salaryRow: any) => {
       if (!salaryRow || !salaryRow['id']) return undefined;
