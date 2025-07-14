@@ -30,8 +30,43 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
       (letter) => `_${letter.toLowerCase()}`,
     );
 
-    // Base query with joins (เพิ่ม join กับ report_traveller)
-    const baseQuery = this.knex('report_approve')
+    // 1. Query id เฉพาะหน้าที่ต้องการ
+    const idQuery = this.knex('report_approve').whereNull(
+      'report_approve.deleted_at',
+    );
+    if (Object.keys(dbFilter).length > 0) {
+      if (dbFilter.status) {
+        idQuery.where('report_approve.status', dbFilter.status);
+        delete dbFilter.status;
+      }
+      idQuery.where(dbFilter);
+    }
+    const countResult = await idQuery
+      .clone()
+      .countDistinct('report_approve.id as count')
+      .first();
+    const total = Number(countResult?.count || 0);
+    const idRows = await idQuery
+      .clone()
+      .orderBy(`report_approve.${snakeCaseOrderBy}`, direction)
+      .limit(limit)
+      .offset(offset)
+      .pluck('id');
+    if (idRows.length === 0) {
+      return {
+        data: [],
+        meta: {
+          total,
+          page,
+          limit,
+          lastPage: Math.ceil(total / limit),
+        },
+      };
+    }
+
+    // 2. join ตารางอื่นๆ โดย whereIn idRows
+    const rows = await this.knex('report_approve')
+      .whereIn('report_approve.id', idRows)
       .whereNull('report_approve.deleted_at')
       .leftJoin(
         'report_approve_status',
@@ -85,27 +120,7 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
           '=',
           this.knex.raw('RTRIM("OP_MASTER_T"."PMT_CODE")'),
         );
-      });
-
-    // Apply filters if any
-    if (Object.keys(dbFilter).length > 0) {
-      // Prefix table name for status to avoid ambiguity
-      if (dbFilter.status) {
-        baseQuery.where('report_approve.status', dbFilter.status);
-        delete dbFilter.status;
-      }
-      baseQuery.where(dbFilter);
-    }
-
-    // 1. Get total count using a separate count query with DISTINCT
-    const countQuery = baseQuery
-      .clone()
-      .countDistinct('report_approve.id as count');
-    const countResult = await countQuery.first();
-    const total = Number(countResult?.count || 0);
-
-    // 2. Get paginated data with all columns (select columns จากทั้ง 3 ตาราง)
-    const rows = await baseQuery
+      })
       .distinct(
         // Report Approve columns
         'report_approve.id',
@@ -211,10 +226,7 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_allowance.sub_category as allowance_sub_category',
         'report_allowance.days as allowance_days',
         'report_allowance.total as allowance_total',
-      )
-      .orderBy(`report_approve.${snakeCaseOrderBy}`, direction)
-      .offset(offset)
-      .limit(limit);
+      );
 
     // 3. แปลงข้อมูลเป็น camelCase
     const data = await Promise.all(rows.map((row) => toCamelCase<any>(row)));
