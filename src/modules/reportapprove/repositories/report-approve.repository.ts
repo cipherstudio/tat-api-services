@@ -30,8 +30,43 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
       (letter) => `_${letter.toLowerCase()}`,
     );
 
-    // Base query with joins (เพิ่ม join กับ report_traveller)
-    const baseQuery = this.knex('report_approve')
+    // 1. Query id เฉพาะหน้าที่ต้องการ
+    const idQuery = this.knex('report_approve').whereNull(
+      'report_approve.deleted_at',
+    );
+    if (Object.keys(dbFilter).length > 0) {
+      if (dbFilter.status) {
+        idQuery.where('report_approve.status', dbFilter.status);
+        delete dbFilter.status;
+      }
+      idQuery.where(dbFilter);
+    }
+    const countResult = await idQuery
+      .clone()
+      .countDistinct('report_approve.id as count')
+      .first();
+    const total = Number(countResult?.count || 0);
+    const idRows = await idQuery
+      .clone()
+      .orderBy(`report_approve.${snakeCaseOrderBy}`, direction)
+      .limit(limit)
+      .offset(offset)
+      .pluck('id');
+    if (idRows.length === 0) {
+      return {
+        data: [],
+        meta: {
+          total,
+          page,
+          limit,
+          lastPage: Math.ceil(total / limit),
+        },
+      };
+    }
+
+    // 2. join ตารางอื่นๆ โดย whereIn idRows
+    const rows = await this.knex('report_approve')
+      .whereIn('report_approve.id', idRows)
       .whereNull('report_approve.deleted_at')
       .leftJoin(
         'report_approve_status',
@@ -74,33 +109,18 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_traveller_form.form_id',
         'report_transportation.form_id',
       )
+      .leftJoin(
+        'report_allowance',
+        'report_traveller_form.form_id',
+        'report_allowance.form_id',
+      )
       .leftJoin('OP_MASTER_T', (builder) => {
         builder.on(
           'report_approve.creator_code',
           '=',
           this.knex.raw('RTRIM("OP_MASTER_T"."PMT_CODE")'),
         );
-      });
-
-    // Apply filters if any
-    if (Object.keys(dbFilter).length > 0) {
-      // Prefix table name for status to avoid ambiguity
-      if (dbFilter.status) {
-        baseQuery.where('report_approve.status', dbFilter.status);
-        delete dbFilter.status;
-      }
-      baseQuery.where(dbFilter);
-    }
-
-    // 1. Get total count using a separate count query with DISTINCT
-    const countQuery = baseQuery
-      .clone()
-      .countDistinct('report_approve.id as count');
-    const countResult = await countQuery.first();
-    const total = Number(countResult?.count || 0);
-
-    // 2. Get paginated data with all columns (select columns จากทั้ง 3 ตาราง)
-    const rows = await baseQuery
+      })
       .distinct(
         // Report Approve columns
         'report_approve.id',
@@ -198,10 +218,15 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_transportation.date as transportation_date',
         'report_transportation.amount as transportation_amount',
         'report_transportation.receipt_file_path as transportation_receipt_file_path',
-      )
-      .orderBy(`report_approve.${snakeCaseOrderBy}`, direction)
-      .offset(offset)
-      .limit(limit);
+        // report_allowance columns
+        'report_allowance.allowance_id as allowance_id',
+        'report_allowance.form_id as allowance_form_id',
+        'report_allowance.type as allowance_type',
+        'report_allowance.category as allowance_category',
+        'report_allowance.sub_category as allowance_sub_category',
+        'report_allowance.days as allowance_days',
+        'report_allowance.total as allowance_total',
+      );
 
     // 3. แปลงข้อมูลเป็น camelCase
     const data = await Promise.all(rows.map((row) => toCamelCase<any>(row)));
@@ -280,6 +305,7 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
             accommodationDetails: [],
             otherExpenseDetails: [],
             transportationDetails: [],
+            allowanceCalculations: [],
           };
           grouped[id].reportTravellerForm.push(form);
         }
@@ -378,6 +404,24 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
             });
           }
         }
+        if (row.allowanceId) {
+          if (
+            !form.allowanceCalculations.some(
+              (d) => d.allowanceId === row.allowanceId,
+            )
+          ) {
+            form.allowanceCalculations.push({
+              id: row.allowanceId,
+              allowanceId: row.allowanceId,
+              formId: row.allowanceFormId,
+              type: row.allowanceType,
+              category: row.allowanceCategory,
+              subCategory: row.allowanceSubCategory,
+              days: row.allowanceDays,
+              total: row.allowanceTotal,
+            });
+          }
+        }
       }
     }
 
@@ -435,6 +479,11 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_transportation',
         'report_traveller_form.form_id',
         'report_transportation.form_id',
+      )
+      .leftJoin(
+        'report_allowance',
+        'report_traveller_form.form_id',
+        'report_allowance.form_id',
       )
       .leftJoin('OP_MASTER_T', (builder) => {
         builder.on(
@@ -540,6 +589,14 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_transportation.date as transportation_date',
         'report_transportation.amount as transportation_amount',
         'report_transportation.receipt_file_path as transportation_receipt_file_path',
+        // report_allowance columns
+        'report_allowance.allowance_id as allowance_id',
+        'report_allowance.form_id as allowance_form_id',
+        'report_allowance.type as allowance_type',
+        'report_allowance.category as allowance_category',
+        'report_allowance.sub_category as allowance_sub_category',
+        'report_allowance.days as allowance_days',
+        'report_allowance.total as allowance_total',
       )
       .where('report_approve.id', id);
 
@@ -621,6 +678,7 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
             accommodationDetails: [],
             otherExpenseDetails: [],
             transportationDetails: [],
+            allowanceCalculations: [],
           };
           formMap.set(r.formId, form);
         }
@@ -715,6 +773,25 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
               date: r.transportationDate,
               amount: r.transportationAmount,
               receiptFilePath: r.transportationReceiptFilePath,
+            });
+          }
+        }
+        // push allowanceCalculations ถ้ามี
+        if (r.allowanceId) {
+          if (
+            !form.allowanceCalculations.some(
+              (d) => d.allowanceId === r.allowanceId,
+            )
+          ) {
+            form.allowanceCalculations.push({
+              id: r.allowanceId,
+              allowanceId: r.allowanceId,
+              formId: r.allowanceFormId,
+              type: r.allowanceType,
+              category: r.allowanceCategory,
+              subCategory: r.allowanceSubCategory,
+              days: r.allowanceDays,
+              total: r.allowanceTotal,
             });
           }
         }

@@ -10,6 +10,7 @@ import { ReportHolidayWageDetailRepository } from './repositories/report-holiday
 import { ReportAccommodationRepository } from './repositories/report-accommodation.repository';
 import { ReportOtherExpenseRepository } from './repositories/report-other-expense.repository';
 import { ReportTransportationRepository } from './repositories/report-transportation.repository';
+import { ReportAllowanceRepository } from './repositories/report-allowance.repository';
 
 @Module({
   imports: [RedisCacheModule],
@@ -24,6 +25,7 @@ import { ReportTransportationRepository } from './repositories/report-transporta
     ReportAccommodationRepository,
     ReportOtherExpenseRepository,
     ReportTransportationRepository,
+    ReportAllowanceRepository,
   ],
   exports: [ReportApproveService],
 })

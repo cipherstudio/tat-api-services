@@ -84,6 +84,9 @@ import { MasterdataLabelsRepository } from './repositories/masterdata-labels.rep
 import { HolidayWorkRate } from './entities/holiday-work-rates.entity';
 import { HolidayWorkHour } from './entities/holiday-work-hours.entity';
 import { MasterdataLabel } from './entities/masterdata-labels.entity';
+import { MealAllowanceController } from './controllers/meal-allowance.controller.js';
+import { MealAllowanceService } from './services/meal-allowance.service.js';
+import { MealAllowanceRepository } from './repositories/meal-allowance.repository.js';
 
 @Module({
   imports: [RedisCacheModule],
@@ -112,6 +115,7 @@ import { MasterdataLabel } from './entities/masterdata-labels.entity';
     ApprovalClothingExpenseController,
     PrivilegeController,
     MasterdataLabelsController,
+    MealAllowanceController,
   ],
   providers: [
     // Services
@@ -139,6 +143,7 @@ import { MasterdataLabel } from './entities/masterdata-labels.entity';
     ApprovalClothingExpenseService,
     PrivilegeService,
     MasterdataLabelsService,
+    MealAllowanceService,
     // Repositories
     CountriesRepository,
     PlacesRepository,
@@ -164,6 +169,7 @@ import { MasterdataLabel } from './entities/masterdata-labels.entity';
     ApprovalClothingExpenseRepository,
     PrivilegeRepository,
     MasterdataLabelsRepository,
+    MealAllowanceRepository,
     // Shared services
     RedisCacheService,
     HolidayWorkRate,
@@ -195,6 +201,7 @@ import { MasterdataLabel } from './entities/masterdata-labels.entity';
     ApprovalClothingExpenseService,
     PrivilegeService,
     MasterdataLabelsService,
+    MealAllowanceService,
   ],
 })
 export class MasterDataModule {}

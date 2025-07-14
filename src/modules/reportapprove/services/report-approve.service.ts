@@ -9,6 +9,7 @@ import { ReportHolidayWageDetailRepository } from '../repositories/report-holida
 import { ReportAccommodationRepository } from '../repositories/report-accommodation.repository';
 import { ReportOtherExpenseRepository } from '../repositories/report-other-expense.repository';
 import { ReportTransportationRepository } from '../repositories/report-transportation.repository';
+import { ReportAllowanceRepository } from '../repositories/report-allowance.repository';
 
 @Injectable()
 export class ReportApproveService {
@@ -20,6 +21,7 @@ export class ReportApproveService {
     private readonly reportAccommodationRepo: ReportAccommodationRepository,
     private readonly reportOtherExpenseRepo: ReportOtherExpenseRepository,
     private readonly reportTransportationRepo: ReportTransportationRepository,
+    private readonly reportAllowanceRepo: ReportAllowanceRepository,
   ) {}
 
   async findAll(query: ReportApproveQueryDto) {
@@ -102,6 +104,7 @@ export class ReportApproveService {
             accommodationDetails,
             otherExpenseDetails,
             transportationDetails,
+            allowanceCalculations,
             ...restForm
           } = data;
           await this.reportTravellerFormRepo.updateOne(
@@ -339,6 +342,51 @@ export class ReportApproveService {
               await this.reportTransportationRepo.delete(d.transportId);
             }
           }
+          // --- allowanceCalculations sync ---
+          if (allowanceCalculations) {
+            // 1. หา allowanceId ทั้งหมดที่ส่งมา
+            const incomingIds = allowanceCalculations
+              .filter((d) => d.allowanceId)
+              .map((d) => d.allowanceId);
+            // 2. หา allowance ปัจจุบันใน DB
+            const currentDetails = await this.reportAllowanceRepo.findByFormId(
+              existing.form_id,
+            );
+            const currentIds = currentDetails.map((d) => d.allowanceId);
+            // 3. ลบ allowance ที่ไม่มีใน incoming
+            for (const id of currentIds) {
+              if (!incomingIds.includes(id)) {
+                await this.reportAllowanceRepo.delete(id);
+              }
+            }
+            // 4. อัปเดตหรือสร้างใหม่
+            for (const detail of allowanceCalculations) {
+              if (detail.allowanceId) {
+                await this.reportAllowanceRepo.update(
+                  detail.allowanceId,
+                  detail,
+                );
+              } else {
+                await this.reportAllowanceRepo.create({
+                  ...detail,
+                  formId: +existing.form_id,
+                  type: detail.type,
+                  category: detail.category,
+                  subCategory: detail.subCategory,
+                  days: detail.days,
+                  total: detail.total,
+                });
+              }
+            }
+          } else {
+            // ถ้าไม่มี allowanceCalculations ส่งมาเลย ให้ลบทั้งหมด
+            const currentDetails = await this.reportAllowanceRepo.findByFormId(
+              existing.form_id,
+            );
+            for (const d of currentDetails) {
+              await this.reportAllowanceRepo.delete(d.allowanceId);
+            }
+          }
         } else {
           const {
             traveller,
@@ -347,6 +395,7 @@ export class ReportApproveService {
             accommodationDetails,
             otherExpenseDetails,
             transportationDetails,
+            allowanceCalculations,
             ...restForm
           } = data;
           // You may need to map traveller info if needed
@@ -411,6 +460,19 @@ export class ReportApproveService {
                 date: this.toOracleDate(detail.date),
                 fromPlace: detail.fromPlace,
                 toPlace: detail.toPlace,
+              });
+            }
+          }
+          if (allowanceCalculations) {
+            for (const detail of allowanceCalculations) {
+              await this.reportAllowanceRepo.create({
+                ...detail,
+                formId: +createdForm.form_id,
+                type: detail.type,
+                category: detail.category,
+                subCategory: detail.subCategory,
+                days: detail.days,
+                total: detail.total,
               });
             }
           }
