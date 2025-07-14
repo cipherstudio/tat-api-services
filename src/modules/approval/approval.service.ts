@@ -2707,11 +2707,11 @@ export class ApprovalService {
 
       // Copy travel date ranges
       if (originalApproval.travelDateRanges && originalApproval.travelDateRanges.length > 0) {
-        for (const dateRange of originalApproval.travelDateRanges) {
+        for (const dateRange of originalApproval.travelDateRanges as any) {
           await trx('approval_date_ranges').insert({
             approval_id: newApproval.id,
-            start_date: dateRange.start_date,
-            end_date: dateRange.end_date,
+            start_date: dateRange.startDate,
+            end_date: dateRange.endDate,
           });
         }
       }
@@ -2744,12 +2744,12 @@ export class ApprovalService {
 
            // Copy trip date ranges
            if (tripEntry.tripDateRanges && tripEntry.tripDateRanges.length > 0) {
-             for (const dateRange of tripEntry.tripDateRanges) {
+             for (const dateRange of tripEntry.tripDateRanges as any) {
                await trx('approval_trip_date_ranges').insert({
                  approval_id: newApproval.id,
                  approval_trip_entries_id: newTripEntry.id,
-                 start_date: dateRange.start_date,
-                 end_date: dateRange.end_date,
+                 start_date: dateRange.startDate,
+                 end_date: dateRange.endDate,
                });
              }
            }
@@ -2796,12 +2796,12 @@ export class ApprovalService {
 
                // Copy work location date ranges
                if (workLocation.tripDateRanges && workLocation.tripDateRanges.length > 0) {
-                 for (const dateRange of workLocation.tripDateRanges) {
+                 for (const dateRange of workLocation.tripDateRanges as any) {
                    await trx('approval_work_locations_date_ranges').insert({
                      approval_id: newApproval.id,
                      approval_work_locations_id: newWorkLocation.id,
-                     start_date: dateRange.start_date,
-                     end_date: dateRange.end_date,
+                     start_date: dateRange.startDate,
+                     end_date: dateRange.endDate,
                      created_at: new Date(),
                      updated_at: new Date(),
                    });
@@ -2811,6 +2811,7 @@ export class ApprovalService {
               // Copy transportation expenses
               if (workLocation.transportationExpenses && workLocation.transportationExpenses.length > 0) {
                 for (const expense of workLocation.transportationExpenses) {
+                  const expenseData = expense as any;
                   await trx('approval_transportation_expense').insert({
                     approval_id: newApproval.id,
                     staff_member_id: newStaffMember.id,
@@ -2818,16 +2819,16 @@ export class ApprovalService {
                     travel_type: expense.travelType,
                     expense_type: expense.expenseType,
                     travel_method: expense.travelMethod,
-                    outbound_origin: expense.outbound?.origin,
-                    outbound_destination: expense.outbound?.destination,
-                    outbound_trips: expense.outbound?.trips,
-                    outbound_expense: expense.outbound?.expense,
-                    outbound_total: expense.outbound?.total,
-                    inbound_origin: expense.inbound?.origin,
-                    inbound_destination: expense.inbound?.destination,
-                    inbound_trips: expense.inbound?.trips,
-                    inbound_expense: expense.inbound?.expense,
-                    inbound_total: expense.inbound?.total,
+                    outbound_origin: expenseData.outboundOrigin,
+                    outbound_destination: expenseData.outboundDestination,
+                    outbound_trips: expenseData.outboundTrips,
+                    outbound_expense: expenseData.outboundExpense,
+                    outbound_total: expenseData.outboundTotal,
+                    inbound_origin: expenseData.inboundOrigin,
+                    inbound_destination: expenseData.inboundDestination,
+                    inbound_trips: expenseData.inboundTrips,
+                    inbound_expense: expenseData.inboundExpense,
+                    inbound_total: expenseData.inboundTotal,
                     total_amount: expense.totalAmount,
                     created_at: new Date(),
                     updated_at: new Date(),
@@ -2893,9 +2894,10 @@ export class ApprovalService {
                     }
                   }
 
-                  // Copy accommodation holiday expenses
-                  if (workLocation.accommodationHolidayExpenses && workLocation.accommodationHolidayExpenses.length > 0) {
-                    for (const holidayExpense of workLocation.accommodationHolidayExpenses) {
+                          // Copy accommodation holiday expenses
+                      const expenseWithHoliday = expense as any;
+                      if (expenseWithHoliday.accommodationHolidayExpenses && expenseWithHoliday.accommodationHolidayExpenses.length > 0) {
+                        for (const holidayExpense of expenseWithHoliday.accommodationHolidayExpenses) {
                       await trx('approval_accommodation_holiday_expense').insert({
                         approval_id: newApproval.id,
                         approval_accommodation_expense_id: newAccommodationExpense.id,
@@ -2987,15 +2989,15 @@ export class ApprovalService {
 
       // Copy budgets
       if (originalApproval.budgets && originalApproval.budgets.length > 0) {
-        for (const budget of originalApproval.budgets) {
+        for (const budget of originalApproval.budgets as any) {
           await trx('approval_budgets').insert({
             approval_id: newApproval.id,
-            budget_type: budget.budget_type,
-            item_type: budget.item_type,
-            reservation_code: budget.reservation_code,
+            budget_type: budget.budgetType,
+            item_type: budget.itemType,
+            reservation_code: budget.reservationCode,
             department: budget.department,
-            budget_code: budget.budget_code,
-            attachment_id: budget.attachment_id,
+            budget_code: budget.budgetCode,
+            attachment_id: budget.budgetAttachmentId,
           });
         }
       }

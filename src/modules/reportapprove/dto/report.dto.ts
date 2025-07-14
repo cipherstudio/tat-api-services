@@ -1,5 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsDate,
+  IsNotEmpty,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+import { ReportTravellerForm } from '../entities/report-traveller-form.entity';
 
 export class ReportApproveDto {
   @ApiProperty({ example: 'Sample Title' })
@@ -21,4 +29,22 @@ export class ReportApproveDto {
   @IsNotEmpty()
   @IsString()
   documentNumber: string;
+
+  @ApiProperty({ example: '2024-06-21T10:00:00.000Z' })
+  @IsNotEmpty()
+  @IsDate()
+  createdAt: Date;
+
+  @ApiProperty({ example: '2024-06-21T10:00:00.000Z' })
+  @IsNotEmpty()
+  @IsDate()
+  updatedAt: Date;
+
+  //relations
+  @ApiProperty({ type: [ReportTravellerForm] })
+  @IsNotEmpty()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ReportTravellerForm)
+  travellerForms: ReportTravellerForm[];
 }
