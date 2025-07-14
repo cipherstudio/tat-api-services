@@ -8,6 +8,7 @@ exports.up = function (knex) {
       table.increments('meal_allowance_id').primary(); // PK
       table.string('type'); // ['meeting', 'training']
       table.float('rate_per_day');
+      table.float('rate_per_2_days');
       table.enum('location', ['in', 'out', 'abroad']); // ['in', 'out', 'abroad']
       table.timestamp('created_at').defaultTo(knex.fn.now());
       table.timestamp('updated_at').defaultTo(knex.fn.now());

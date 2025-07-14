@@ -41,4 +41,8 @@ export class MealAllowanceService {
   async findWithLevels(query: Record<string, any> = {}) {
     return this.mealAllowanceRepository.findWithLevels(query);
   }
+
+  async findWithLevel(level: string) {
+    return this.mealAllowanceRepository.findWithLevel(level);
+  }
 }

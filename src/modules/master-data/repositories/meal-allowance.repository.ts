@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { KnexBaseRepository } from '../../../common/repositories/knex-base.repository';
 import { KnexService } from '../../../database/knex-service/knex.service';
-import { toSnakeCase } from '../../../common/utils/case-mapping';
+import { toCamelCase, toSnakeCase } from '../../../common/utils/case-mapping';
 import { MealAllowance } from '../entities/meal-allowance.entity';
 
 @Injectable()
@@ -40,6 +40,7 @@ export class MealAllowanceRepository extends KnexBaseRepository<MealAllowance> {
           meal_allowance_id: row.meal_allowance_id,
           type: row.type,
           rate_per_day: row.rate_per_day,
+          rate_per_2_days: row.rate_per_2_days,
           location: row.location,
           created_at: row.created_at,
           updated_at: row.updated_at,
@@ -53,7 +54,11 @@ export class MealAllowanceRepository extends KnexBaseRepository<MealAllowance> {
         });
       }
     }
-    return Array.from(map.values());
+    const dataBeforeCamelCase = Array.from(map.values());
+    const dataAfterCamelCase = await Promise.all(
+      dataBeforeCamelCase.map((m) => toCamelCase(m)),
+    );
+    return dataAfterCamelCase;
   }
 
   async findWithPaginationAndSearch(query: any) {
@@ -116,6 +121,7 @@ export class MealAllowanceRepository extends KnexBaseRepository<MealAllowance> {
           meal_allowance_id: row.meal_allowance_id,
           type: row.type,
           rate_per_day: row.rate_per_day,
+          rate_per_2_days: row.rate_per_2_days,
           location: row.location,
           created_at: row.created_at,
           updated_at: row.updated_at,
@@ -129,8 +135,12 @@ export class MealAllowanceRepository extends KnexBaseRepository<MealAllowance> {
         });
       }
     }
+    const dataBeforeCamelCase = Array.from(map.values());
+    const dataAfterCamelCase = await Promise.all(
+      dataBeforeCamelCase.map((m) => toCamelCase(m)),
+    );
     return {
-      data: Array.from(map.values()),
+      data: dataAfterCamelCase,
       meta: { total, page, limit, lastPage: Math.ceil(total / limit) },
     };
   }
@@ -177,5 +187,49 @@ export class MealAllowanceRepository extends KnexBaseRepository<MealAllowance> {
     await this.knex('meal_allowance_level').where({ meal_allowance_id }).del();
     await this.knex('meal_allowance').where({ meal_allowance_id }).del();
     return { success: true };
+  }
+
+  async findWithLevel(level: string): Promise<any[]> {
+    const rows = await this.knex('meal_allowance as ma')
+      .leftJoin(
+        'meal_allowance_level as mal',
+        'ma.meal_allowance_id',
+        'mal.meal_allowance_id',
+      )
+      .select(
+        'ma.*',
+        'mal.meal_allowance_id as level_meal_allowance_id',
+        'mal.level as level_level',
+      )
+      .where('mal.level', level)
+      .orderBy('ma.meal_allowance_id', 'asc');
+    const map = new Map();
+    for (const row of rows) {
+      const id = row.meal_allowance_id;
+      if (!map.has(id)) {
+        map.set(id, {
+          meal_allowance_id: row.meal_allowance_id,
+          type: row.type,
+          rate_per_day: row.rate_per_day,
+          rate_per_2_days: row.rate_per_2_days,
+          location: row.location,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
+          levels: [],
+        });
+      }
+      if (row.level_meal_allowance_id && row.level_level) {
+        map.get(id).levels.push({
+          meal_allowance_id: row.level_meal_allowance_id,
+          level: row.level_level,
+        });
+      }
+    }
+
+    const dataBeforeCamelCase = Array.from(map.values());
+    const dataAfterCamelCase = await Promise.all(
+      dataBeforeCamelCase.map((m) => toCamelCase(m)),
+    );
+    return dataAfterCamelCase;
   }
 }

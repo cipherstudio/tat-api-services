@@ -33,6 +33,11 @@ export class CreateMealAllowanceDto {
   @Min(0)
   rate_per_day: number;
 
+  @ApiProperty({ description: 'อัตราต่อ 2 วัน' })
+  @IsNumber()
+  @Min(0)
+  rate_per_2_days: number;
+
   @ApiProperty({
     description: 'สถานที่',
     enum: ['in', 'out', 'abroad'],

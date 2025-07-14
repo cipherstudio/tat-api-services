@@ -75,6 +75,7 @@ export class MealAllowanceController {
         meal_allowance_id: 1,
         type: 'meeting',
         rate_per_day: 500,
+        rate_per_2_days: 1000,
         location: 'in',
         created_at: '2024-07-14T00:00:00.000Z',
         updated_at: '2024-07-14T00:00:00.000Z',
@@ -85,8 +86,37 @@ export class MealAllowanceController {
       },
     },
   })
-  async findOne(@Param('id') id: number) {
+  async findOne(@Param('') id: number) {
     return this.mealAllowanceService.findOne(Number(id));
+  }
+
+  @Get('level/:level')
+  @ApiOperation({
+    summary: 'Get meal allowances by level',
+    description: 'ค้นหา meal allowance ทั้งหมดที่มี level ตรงกับที่ระบุ',
+  })
+  @ApiOkResponse({
+    description: 'Meal allowances with the specified level',
+    schema: {
+      example: [
+        {
+          meal_allowance_id: 1,
+          type: 'meeting',
+          rate_per_day: 500,
+          rate_per_2_days: 1000,
+          location: 'in',
+          created_at: '2024-07-14T00:00:00.000Z',
+          updated_at: '2024-07-14T00:00:00.000Z',
+          levels: [
+            { meal_allowance_id: 1, level: '03' },
+            { meal_allowance_id: 1, level: 'กรรมการ' },
+          ],
+        },
+      ],
+    },
+  })
+  async findWithLevel(@Param('level') level: string) {
+    return this.mealAllowanceService.findWithLevel(level);
   }
 
   @Post()
@@ -115,6 +145,7 @@ export class MealAllowanceController {
         meal_allowance_id: 2,
         type: 'training',
         rate_per_day: 600,
+        rate_per_2_days: 1200,
         location: 'out',
         created_at: '2024-07-14T00:00:00.000Z',
         updated_at: '2024-07-14T00:00:00.000Z',
@@ -162,6 +193,7 @@ export class MealAllowanceController {
         meal_allowance_id: 2,
         type: 'meeting',
         rate_per_day: 700,
+        rate_per_2_days: 1400,
         location: 'abroad',
         created_at: '2024-07-14T00:00:00.000Z',
         updated_at: '2024-07-14T00:00:00.000Z',

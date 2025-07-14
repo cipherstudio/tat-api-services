@@ -10,6 +10,9 @@ export class MealAllowance {
   @ApiProperty({ description: 'อัตราต่อวัน' })
   rate_per_day: number;
 
+  @ApiProperty({ description: 'อัตราต่อ 2 วัน' })
+  rate_per_2_days: number;
+
   @ApiProperty({ description: 'สถานที่', enum: ['in', 'out', 'abroad'] })
   location: 'in' | 'out' | 'abroad';
 
@@ -39,6 +42,7 @@ export const mealAllowanceColumnMap = {
   meal_allowance_id: 'meal_allowance_id',
   type: 'type',
   rate_per_day: 'rate_per_day',
+  rate_per_2_days: 'rate_per_2_days',
   location: 'location',
   created_at: 'created_at',
   updated_at: 'updated_at',
@@ -48,6 +52,7 @@ export const mealAllowanceReverseColumnMap = {
   meal_allowance_id: 'meal_allowance_id',
   type: 'type',
   rate_per_day: 'rate_per_day',
+  rate_per_2_days: 'rate_per_2_days',
   location: 'location',
   created_at: 'created_at',
   updated_at: 'updated_at',
