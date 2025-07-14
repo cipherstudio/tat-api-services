@@ -35,6 +35,8 @@ import { UpdateClothingExpenseDatesDto } from './dto/update-clothing-expense-dat
 import { CheckClothingExpenseEligibilityDto } from './dto/check-clothing-expense-eligibility.dto';
 import { ClothingExpenseEligibilityResponseDto } from './dto/clothing-expense-eligibility-response.dto';
 import { ApprovalStatusLabelResponseDto } from './entities/approval-status-label.entity';
+import { UpdateApprovalContinuousDto } from './dto/update-approval-continuous.dto';
+import { ApprovalStatisticsResponseDto } from './dto/approval-statistics-response.dto';
 //import { ApprovalWorkLocationDto } from './dto/approval-work-location.dto';
 
 interface RequestWithUser extends Request {
@@ -230,6 +232,20 @@ export class ApprovalController {
     return this.approvalService.findAllStatusLabels();
   }
 
+  @Get('statistics')
+  @ApiOperation({
+    summary: 'Get approval statistics',
+    description: 'Retrieve approval statistics for dashboard with counts by status and travel type',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Success',
+    type: ApprovalStatisticsResponseDto,
+  })
+  getStatistics(@Req() req: RequestWithUser): Promise<ApprovalStatisticsResponseDto> {
+    return this.approvalService.getStatistics(req.user.id);
+  }
+
   @Get(':id')
   @ApiOperation({
     summary: 'Get approval by ID',
@@ -256,8 +272,9 @@ export class ApprovalController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateApprovalDto: UpdateApprovalDto,
+    @Req() req: RequestWithUser,
   ) {
-    return this.approvalService.update(id, updateApprovalDto);
+    return this.approvalService.update(id, updateApprovalDto, req.user.id, req.user.employeeCode);
   }
 
   @Patch(':id/status')
@@ -327,5 +344,35 @@ export class ApprovalController {
     return this.approvalService.checkClothingExpenseEligibility(
       checkEligibilityDto,
     );
+  }
+
+  @Post('approvals-continuous/:id')
+  @ApiOperation({
+    summary: 'Update approval continuous',
+    description: 'Update approval continuous by ID',
+  })
+  @ApiBody({ type: UpdateApprovalContinuousDto })
+  @ApiResponse({ status: 200, description: 'Approval continuous updated successfully' })
+  @ApiResponse({ status: 404, description: 'Approval continuous not found' })
+  updateApprovalContinuous(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateDto: UpdateApprovalContinuousDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.approvalService.updateApprovalContinuous(id, updateDto, req.user.id, req.user.employeeCode);
+  }
+
+  @Post('duplicate/:id')
+  @ApiOperation({
+    summary: 'Duplicate approval',
+    description: 'Create a duplicate of an existing approval record',
+  })
+  @ApiResponse({ status: 201, description: 'Approval duplicated successfully' })
+  @ApiResponse({ status: 404, description: 'Approval not found' })
+  duplicate(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.approvalService.duplicate(id, req.user.id);
   }
 }

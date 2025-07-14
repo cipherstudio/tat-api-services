@@ -93,6 +93,8 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
       .leftJoin('OP_MASTER_T', this.knex.raw('TRIM(OP_POSITION_NO_T.PPN_NUMBER) = TRIM(OP_MASTER_T.PMT_POS_NO)'))
       .leftJoin('VIEW_POSITION_4OT', this.knex.raw('TRIM(OP_MASTER_T.PMT_POS_NO) = TRIM(VIEW_POSITION_4OT.POS_POSITIONCODE)'))
       .leftJoin('EMPLOYEE', 'OP_MASTER_T.PMT_CODE', 'EMPLOYEE.CODE')
+      .leftJoin('OP_HEAD_T', this.knex.raw('TRIM(OP_POSITION_NO_T.PPN_NUMBER) = TRIM(OP_HEAD_T.PHT_POS_NO)'))
+      .leftJoin('VIEW_POSITION_4OT as VIEW_POSITION_4OT_HEAD', this.knex.raw('TRIM(OP_HEAD_T.PHT_POS_NO) = TRIM(VIEW_POSITION_4OT_HEAD.POS_POSITIONCODE)'))
       .select([
         'OP_ORGANIZE_R.POG_CODE',
         'OP_POSITION_NO_T.PPN_ORGANIZE',
@@ -104,16 +106,26 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
         'OP_MASTER_T.PMT_NAME_E',
         'OP_MASTER_T.PMT_LEVEL_CODE',
         'VIEW_POSITION_4OT.POS_POSITIONNAME',
+        'OP_HEAD_T.PHT_CODE',
+        'OP_HEAD_T.PHT_NAME_T',
+        'OP_HEAD_T.PHT_NAME_E',
+        'OP_HEAD_T.PHT_POS_NO',
+        'OP_HEAD_T.PHT_LEVEL_CODE',
+        'VIEW_POSITION_4OT_HEAD.POS_POSITIONNAME as HEAD_POSITIONNAME',
       ])
       .whereIn('OP_ORGANIZE_R.POG_CODE', organizationCodes)
-      .whereNotNull('OP_MASTER_T.PMT_CODE')
-      .whereNotNull('OP_MASTER_T.PMT_POS_EX');
+      .where(function() {
+        this.whereNotNull('OP_MASTER_T.PMT_CODE')
+            .whereNotNull('OP_MASTER_T.PMT_POS_EX')
+            .orWhereNotNull('OP_HEAD_T.PHT_CODE');
+      });
 
     if (query?.employeeSearchTerm) {
       employeeQuery = employeeQuery.where((builder) => {
         builder
           .where('EMPLOYEE.NAME', 'like', `%${query.employeeSearchTerm}%`)
-          .orWhere('VIEW_POSITION_4OT.POS_POSITIONNAME', 'like', `%${query.employeeSearchTerm}%`);
+          .orWhere('VIEW_POSITION_4OT.POS_POSITIONNAME', 'like', `%${query.employeeSearchTerm}%`)
+          .orWhere('OP_HEAD_T.PHT_NAME_T', 'like', `%${query.employeeSearchTerm}%`);
       });
     }
 
@@ -291,14 +303,24 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
         grouped.set(orgCode, []);
       }
 
-      grouped.get(orgCode)!.push({
+      // ใช้ข้อมูลจาก OP_MASTER_T หรือ OP_HEAD_T
+      const employeeData = emp.pmtCode ? {
         pmtCode: emp.pmtCode,
         pmtNameT: emp.pmtNameT,
         pmtNameE: emp.pmtNameE,
         pmtPosNo: emp.pmtPosNo,
         pmtLevelCode: emp.pmtLevelCode,
         positionName: emp.posPositionname || '',
-      });
+      } : {
+        pmtCode: emp.phtCode,
+        pmtNameT: emp.phtNameT,
+        pmtNameE: emp.phtNameE,
+        pmtPosNo: emp.phtPosNo,
+        pmtLevelCode: emp.phtLevelCode,
+        positionName: emp.headPositionname || '',
+      };
+      
+      grouped.get(orgCode)!.push(employeeData);
     });
 
     return grouped;

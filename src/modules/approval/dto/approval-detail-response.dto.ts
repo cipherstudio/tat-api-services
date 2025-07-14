@@ -178,6 +178,18 @@ export class StaffMemberDto {
   organizationPosition: string;
 
   @ApiProperty({
+    description: 'ระดับสิทธิ์',
+    example: 'C5'
+  })
+  viewLevel: string;
+
+  @ApiProperty({
+    description: 'ตำแหน่งในองค์กร',
+    example: 'IT Department'
+  })
+  viewPosition: string;
+
+  @ApiProperty({
     description: 'สถานที่ทำงาน',
     type: [WorkLocationDto]
   })
@@ -591,6 +603,20 @@ export class ApprovalDetailResponseDto implements Approval {
   })
   useSystemSignature?: boolean;
 
+  @ApiProperty({
+    description: 'หมายเลขใบบันทึกข้อความ',
+    required: false,
+    example: '0001 : 25680708 : 1720'
+  })
+  approvalPrintNumber?: string;
+  
+  @ApiProperty({
+    description: 'หมายเลขใบรายละเอียดค่าใช้จ่าย',
+    required: false,
+    example: '0001 : 25680708 : 1720'
+  })
+  expensePrintNumber?: string;
+
   @ApiProperty({ description: 'When the approval was created' })
   createdAt: Date;
 
@@ -605,4 +631,23 @@ export class ApprovalDetailResponseDto implements Approval {
 
   @ApiProperty({ description: 'Current status of the approval' })
   currentStatus: string;
+
+  @ApiProperty({ description: 'Continuous employee code' })
+  continuousEmployeeCode: string;
+
+  @ApiProperty({ description: 'Continuous approval' })
+  continuousApproval: {
+    id: number;
+    employeeCode: string;
+    signerName: string;
+    signerDate: string;
+    documentEnding: string;
+    documentEndingWording: string;
+    useFileSignature: boolean;
+    signatureAttachmentId: number;
+    useSystemSignature: boolean;
+    comments: string;
+    statusCode: string;
+    statusLabel: string;
+  }[];
 } 
