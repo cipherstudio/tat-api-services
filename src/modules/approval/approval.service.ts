@@ -2504,28 +2504,14 @@ export class ApprovalService {
             continuous_employee_code: updateDto.employeeCode,
           });
 
-        // insert approval_continuous // employee คนถัดไป
-        await trx('approval_continuous').insert({
-          approval_id: existingContinuous.approval_id,
-          employee_code: updateDto.employeeCode,
-          signer_name: updateDto.signerName,
-          signer_date: updateDto.signerDate,
-          use_file_signature: updateDto.useFileSignature,
-          signature_attachment_id: updateDto.signatureAttachmentId,
-          use_system_signature: updateDto.useSystemSignature,
-          comments: updateDto.comments,
-          approval_continuous_status_id: approvalContinuousStatusIdPending.id,
-          created_by: employeeCode,
-          //updated_by: userId,
-        });
-        // get approval.continuous_employee_code
+        // get approval.final_staff_employee_code
         const approval = await trx('approval')
           .where('id', existingContinuous.approval_id)
-          .select('continuous_employee_code')
+          .select('final_staff_employee_code')
           .first();
 
-        // if employee code is final_staff_employee_code, update approval status to APPROVED
-        if (updateDto.employeeCode === approval.final_staff_employee_code) {
+        // if current employee code is final_staff_employee_code, update approval status to APPROVED
+        if (existingContinuous.employee_code === approval.final_staff_employee_code) {
           // get approval_status_label_id of APPROVED
           const approvalStatusLabelIdApproved = await trx('approval_status_labels')
             .where('status_code', 'APPROVED')
@@ -2560,12 +2546,10 @@ export class ApprovalService {
             comments: updateDto.comments,
             approval_continuous_status_id: approvalContinuousStatusIdPending.id,
             created_by: employeeCode,
-            //updated_by: userId,
           });
         }
 
       } else if (updateDto.statusCode === 'REJECTED') {
-
         // Add updated_by and updated_at
         updateData.updated_by = employeeCode;
         updateData.updated_at = new Date();
@@ -2575,18 +2559,46 @@ export class ApprovalService {
           .where('id', id)
           .update(updateData);
 
-        // update approval.continuous_employee_code ต้นเรื่อง
+        // get approval_status_label_id of REJECTED
+        const approvalStatusLabelIdRejected = await trx('approval_status_labels')
+          .where('status_code', 'REJECTED')
+          .select('id')
+          .first();
+
+        // update approval status to REJECTED
         await trx('approval')
           .where('id', existingContinuous.approval_id)
           .update({
-            continuous_employee_code: existingContinuous.employee_code,
+            approval_status_label_id: approvalStatusLabelIdRejected.id,
           });
 
-        // insert approval_continuous // employee ต้นเรื่อง
+        // insert approval_status_history for REJECTED
+        await trx('approval_status_history').insert({
+          approval_status_label_id: approvalStatusLabelIdRejected.id,
+          user_id: userId,
+          approval_id: existingContinuous.approval_id,
+          created_at: new Date(),
+          updated_at: new Date()
+        });
+
+        // get the approval creator (user_id from approval table)
+        const approval = await trx('approval')
+          .where('id', existingContinuous.approval_id)
+          .select('user_id', 'employee_code')
+          .first();
+
+        // update approval.continuous_employee_code กลับไปผู้สร้าง
+        await trx('approval')
+          .where('id', existingContinuous.approval_id)
+          .update({
+            continuous_employee_code: approval.employee_code,
+          });
+
+        // insert approval_continuous // ส่งกลับไปผู้สร้าง
         await trx('approval_continuous').insert({
           approval_id: existingContinuous.approval_id,
-          employee_code: existingContinuous.employee_code,
-          signer_name: existingContinuous.name,
+          employee_code: approval.employee_code,
+          signer_name: updateDto.signerName,
           signer_date: updateDto.signerDate,
           use_file_signature: updateDto.useFileSignature,
           signature_attachment_id: updateDto.signatureAttachmentId,
@@ -2594,11 +2606,9 @@ export class ApprovalService {
           comments: updateDto.comments,
           approval_continuous_status_id: approvalContinuousStatusIdPending.id,
           created_by: employeeCode,
-          //updated_by: userId,
         });
       }
       
-      // Update approval_continuous_status_id
       // Commit the transaction
       await trx.commit();
 
@@ -3001,33 +3011,6 @@ export class ApprovalService {
           });
         }
       }
-
-      // Create the approval continuous record
-      // if (originalApproval.signerName) {
-      //   // get approval continuous status id
-      //   const approvalContinuousStatusId = await this.knexService
-      //     .knex('approval_continuous_status')
-      //     .where('status_code', 'PENDING')
-      //     .select('id')
-      //     .first();
-
-      //   // create approval continuous record
-      //   await trx('approval_continuous').insert({
-      //     approval_id: newApproval.id,
-      //     employee_code: originalApproval.staffEmployeeCode,
-      //     approval_continuous_status_id: approvalContinuousStatusId.id,
-      //     created_by: userId,
-      //     updated_by: userId,
-      //     signer_name: originalApproval.signerName,
-      //     signer_date: originalApproval.signerDate,
-      //     document_ending: originalApproval.documentEnding,
-      //     document_ending_wording: originalApproval.documentEndingWording,
-      //     use_file_signature: originalApproval.useFileSignature,
-      //     signature_attachment_id: originalApproval.signatureAttachmentId,
-      //     use_system_signature: originalApproval.useSystemSignature,
-      //     comments: originalApproval.comments,
-      //   });
-      // }
 
       // Commit the transaction
       await trx.commit();
