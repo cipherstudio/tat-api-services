@@ -701,23 +701,34 @@ export class ApprovalService {
     }
 
     // Get staff members
-    const staffMembers = await this.knexService
-      .knex('approval_staff_members')
-      .where('approval_id', id)
-      .leftJoin('OP_MASTER_T as omt', 'approval_staff_members.employee_code', 'omt.PMT_CODE')
-      .leftJoin('EMPLOYEE as et', 'approval_staff_members.employee_code', 'et.CODE')
-      .select(
-        'id',
-        'employee_code as employeeCode',
-        'type',
-        'name',
-        'role',
-        'position',
-        'right_equivalent as rightEquivalent',
-        'organization_position as organizationPosition',
+    let staffMembersQuery = this.knexService.knex('approval_staff_members as asm')
+      .leftJoin('OP_MASTER_T as omt', 'asm.employee_code', 'omt.PMT_CODE')
+      .leftJoin('EMPLOYEE as et', 'asm.employee_code', 'et.CODE')
+      .where('asm.approval_id', id);
+    
+    const staffMembersSubQuery = staffMembersQuery.clone()
+      .select([
+        'asm.id',
+        'asm.employee_code as employeeCode',
+        'asm.type',
+        'asm.name',
+        'asm.role',
+        'asm.position',
+        'asm.right_equivalent as rightEquivalent',
+        'asm.organization_position as organizationPosition',
         'omt.PMT_LEVEL_CODE as viewLevel',
         'et.POSITION as viewPosition',
-      );
+        this.knexService.knex.raw(
+          `row_number() over (partition by "asm"."id" order by "asm"."id" asc) as "rn"`,
+        ),
+      ])
+      .as('sub');
+
+    const staffMembersFinalQuery = this.knexService.knex(staffMembersSubQuery)
+      .where('rn', 1)
+      .select('*');
+
+    const staffMembers = await staffMembersFinalQuery;
 
     // Get work locations for each staff member
     for (const staffMember of staffMembers) {
