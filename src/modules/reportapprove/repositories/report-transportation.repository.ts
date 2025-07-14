@@ -25,10 +25,9 @@ export class ReportTransportationRepository extends KnexBaseRepository<ReportTra
     entity: Partial<ReportTransportation>,
   ): Promise<ReportTransportation> {
     const dbEntity = await toSnakeCase(entity);
-    const [updated] = await this.knex('report_transportation')
+    const updated = await this.knex('report_transportation')
       .where({ transport_id: id })
-      .update(dbEntity)
-      .returning('*');
+      .update(dbEntity);
     return await toCamelCase<ReportTransportation>(updated);
   }
 

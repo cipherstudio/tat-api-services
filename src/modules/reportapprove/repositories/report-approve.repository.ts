@@ -74,6 +74,11 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_traveller_form.form_id',
         'report_transportation.form_id',
       )
+      .leftJoin(
+        'report_allowance',
+        'report_traveller_form.form_id',
+        'report_allowance.form_id',
+      )
       .leftJoin('OP_MASTER_T', (builder) => {
         builder.on(
           'report_approve.creator_code',
@@ -198,6 +203,14 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_transportation.date as transportation_date',
         'report_transportation.amount as transportation_amount',
         'report_transportation.receipt_file_path as transportation_receipt_file_path',
+        // report_allowance columns
+        'report_allowance.allowance_id as allowance_id',
+        'report_allowance.form_id as allowance_form_id',
+        'report_allowance.type as allowance_type',
+        'report_allowance.category as allowance_category',
+        'report_allowance.sub_category as allowance_sub_category',
+        'report_allowance.days as allowance_days',
+        'report_allowance.total as allowance_total',
       )
       .orderBy(`report_approve.${snakeCaseOrderBy}`, direction)
       .offset(offset)
@@ -280,6 +293,7 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
             accommodationDetails: [],
             otherExpenseDetails: [],
             transportationDetails: [],
+            allowanceCalculations: [],
           };
           grouped[id].reportTravellerForm.push(form);
         }
@@ -378,6 +392,24 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
             });
           }
         }
+        if (row.allowanceId) {
+          if (
+            !form.allowanceCalculations.some(
+              (d) => d.allowanceId === row.allowanceId,
+            )
+          ) {
+            form.allowanceCalculations.push({
+              id: row.allowanceId,
+              allowanceId: row.allowanceId,
+              formId: row.allowanceFormId,
+              type: row.allowanceType,
+              category: row.allowanceCategory,
+              subCategory: row.allowanceSubCategory,
+              days: row.allowanceDays,
+              total: row.allowanceTotal,
+            });
+          }
+        }
       }
     }
 
@@ -435,6 +467,11 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_transportation',
         'report_traveller_form.form_id',
         'report_transportation.form_id',
+      )
+      .leftJoin(
+        'report_allowance',
+        'report_traveller_form.form_id',
+        'report_allowance.form_id',
       )
       .leftJoin('OP_MASTER_T', (builder) => {
         builder.on(
@@ -540,6 +577,14 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_transportation.date as transportation_date',
         'report_transportation.amount as transportation_amount',
         'report_transportation.receipt_file_path as transportation_receipt_file_path',
+        // report_allowance columns
+        'report_allowance.allowance_id as allowance_id',
+        'report_allowance.form_id as allowance_form_id',
+        'report_allowance.type as allowance_type',
+        'report_allowance.category as allowance_category',
+        'report_allowance.sub_category as allowance_sub_category',
+        'report_allowance.days as allowance_days',
+        'report_allowance.total as allowance_total',
       )
       .where('report_approve.id', id);
 
@@ -621,6 +666,7 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
             accommodationDetails: [],
             otherExpenseDetails: [],
             transportationDetails: [],
+            allowanceCalculations: [],
           };
           formMap.set(r.formId, form);
         }
@@ -715,6 +761,25 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
               date: r.transportationDate,
               amount: r.transportationAmount,
               receiptFilePath: r.transportationReceiptFilePath,
+            });
+          }
+        }
+        // push allowanceCalculations ถ้ามี
+        if (r.allowanceId) {
+          if (
+            !form.allowanceCalculations.some(
+              (d) => d.allowanceId === r.allowanceId,
+            )
+          ) {
+            form.allowanceCalculations.push({
+              id: r.allowanceId,
+              allowanceId: r.allowanceId,
+              formId: r.allowanceFormId,
+              type: r.allowanceType,
+              category: r.allowanceCategory,
+              subCategory: r.allowanceSubCategory,
+              days: r.allowanceDays,
+              total: r.allowanceTotal,
             });
           }
         }

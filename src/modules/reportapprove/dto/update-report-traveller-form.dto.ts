@@ -13,6 +13,7 @@ import { UpdateReportHolidayWageDetailDto } from './update-report-holiday-wage-d
 import { UpdateReportAccommodationDto } from './update-report-accommodation.dto';
 import { UpdateReportOtherExpenseDto } from './update-report-other-expense.dto';
 import { UpdateReportTransportationDto } from './update-report-transportation.dto';
+import { UpdateReportAllowanceDto } from './update-report-allowance.dto';
 
 export class UpdateReportTravellerFormDto extends PartialType(
   CreateReportTravellerFormDto,
@@ -62,4 +63,10 @@ export class UpdateReportTravellerFormDto extends PartialType(
   @ValidateNested()
   @Type(() => UpdateReportTransportationDto)
   transportationDetails?: UpdateReportTransportationDto[];
+
+  @ApiProperty({ type: [UpdateReportAllowanceDto] })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpdateReportAllowanceDto)
+  allowanceCalculations?: UpdateReportAllowanceDto[];
 }
