@@ -8,7 +8,7 @@ const attire_allowance_rates = [
       "level_code_start": '6',
       "level_code_end": '11',
       "destination_group_code": null, // default สำหรับประเทศที่ไม่อยู่ใน TEMP_EXEMPTED
-      "rate_thb": 3000.00,
+      "rate_thb": 9000.00,
       "spouse_rate_thb": 0,
       "child_rate_thb": 0
     },
@@ -18,7 +18,7 @@ const attire_allowance_rates = [
       "level_code_start": '1',
       "level_code_end": '5',
       "destination_group_code": null, // default สำหรับประเทศที่ไม่อยู่ใน TEMP_EXEMPTED
-      "rate_thb": 1500.00,
+      "rate_thb": 7500.00,
       "spouse_rate_thb": 0,
       "child_rate_thb": 0
     },
@@ -74,7 +74,7 @@ const attire_allowance_rates = [
       "level_code_start": '6',
       "level_code_end": '9',
       "destination_group_code": "PERM_B",
-      "rate_thb": 35000.00,
+      "rate_thb": 32000.00,
       "spouse_rate_thb": 20000.00,
       "child_rate_thb": 10000.00
     },
