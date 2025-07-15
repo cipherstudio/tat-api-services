@@ -385,6 +385,7 @@ export class ApprovalService {
     let clothingExpenses = [];
     let budgets = [];
     let continuousApproval = [];
+    let allAttachments: any[] = [];
 
     if (approvalIds.length > 0) {
       // Get all date ranges for each approval
@@ -470,6 +471,22 @@ export class ApprovalService {
 
       continuousApproval = await Promise.all(continuousApprovalPromises);
 
+      // Get all attachments for each approval
+      const allAttachmentPromises = approvalIds.map(async (approvalId) => {
+        const documentAtts = await this.attachmentService.getAttachments('approval_document', approvalId);
+        const signatureAtts = await this.attachmentService.getAttachments('approval_signature', approvalId);
+        const budgetAtts = await this.attachmentService.getAttachments('approval_budgets', approvalId);
+        const clothingAtts = await this.attachmentService.getAttachments('approval_clothing_expense', approvalId);
+        const continuousAtts = await this.attachmentService.getAttachments('approval_continuous_signature', approvalId);
+        return [
+          ...documentAtts,
+          ...signatureAtts,
+          ...budgetAtts,
+          ...clothingAtts,
+          ...continuousAtts
+        ];
+      });
+      allAttachments = await Promise.all(allAttachmentPromises);
     }
 
     // Create a map of date ranges by approval ID
@@ -488,19 +505,26 @@ export class ApprovalService {
     });
 
     // Combine approvals with their date ranges (status is already included from JOIN)
-    const data = approvals.map((approval) => ({
-      ...approval,
-      approvalDateRanges: dateRangeMap.get(approval.id) || [],
-      clothingExpenses: clothingExpenses.find((expenseArray) => 
-        expenseArray.length > 0 && expenseArray[0]?.approvalId === approval.id
-      ) || [],
-      approvalBudgets: budgets.find((budgetArray) => 
-        budgetArray.length > 0 && budgetArray[0]?.approvalId === approval.id
-      ) || [],
-      continuousApproval: continuousApproval.find((continuousApprovalArray) => 
-        continuousApprovalArray.length > 0 && continuousApprovalArray[0]?.approvalId === approval.id
-      ) || [],
-    }));
+    const data = approvals.map((approval, index) => {
+      // รวมไฟล์แนบ approval_attachments ทุกประเภท
+      const allAtts = (allAttachments[index] && allAttachments[index].length > 0)
+        ? allAttachments[index]
+        : [];
+      return {
+        ...approval,
+        approvalDateRanges: dateRangeMap.get(approval.id) || [],
+        attachments: allAtts,
+        clothingExpenses: clothingExpenses.find((expenseArray) => 
+          expenseArray.length > 0 && expenseArray[0]?.approvalId === approval.id
+        ) || [],
+        approvalBudgets: budgets.find((budgetArray) => 
+          budgetArray.length > 0 && budgetArray[0]?.approvalId === approval.id
+        ) || [],
+        continuousApproval: continuousApproval.find((continuousApprovalArray) => 
+          continuousApprovalArray.length > 0 && continuousApprovalArray[0]?.approvalId === approval.id
+        ) || [],
+      };
+    });
 
     // Apply additional filters (searchTerm only)
     let filteredData = data;

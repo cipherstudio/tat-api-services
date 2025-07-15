@@ -174,7 +174,81 @@ export class ApprovalController {
     required: false,
     description: 'Relations to include',
   })
-  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Success',
+    schema: {
+      example: {
+        data: [
+          {
+            id: 1,
+            userId: 1,
+            incrementId: '67001',
+            approvalRef: null,
+            recordType: 'owner',
+            name: 'นายสมชาย สมหญิง',
+            employeeCode: '66019',
+            travelType: 'domestic',
+            internationalSubOption: null,
+            workStartDate: '2024-03-20',
+            workEndDate: '2024-03-25',
+            startCountry: 'Thailand',
+            endCountry: 'Japan',
+            remarks: 'Business trip for annual meeting',
+            numTravelers: 'single',
+            documentNo: 'DOC-2024-001',
+            documentTel: '0812345678',
+            documentTo: 'HR Department',
+            documentTitle: 'Business Trip Request',
+            attachmentId: 1,
+            form3TotalOutbound: 5000,
+            form3TotalInbound: 3000,
+            form3TotalAmount: 8000,
+            exceedLodgingRightsChecked: false,
+            exceedLodgingRightsReason: null,
+            form4TotalAmount: 5000,
+            form5TotalAmount: 3000,
+            createdAt: '2024-06-21T10:00:00.000Z',
+            updatedAt: '2024-06-21T10:00:00.000Z',
+            attachments: [
+              {
+                id: 1,
+                entityType: 'approval_document',
+                entityId: 1,
+                fileId: 1,
+                fileName: 'document.pdf',
+                originalName: 'document.pdf',
+                mimeType: 'application/pdf',
+                size: 1024000,
+                path: '/uploads/documents/document.pdf',
+                createdAt: '2024-06-21T10:00:00.000Z',
+                updatedAt: '2024-06-21T10:00:00.000Z'
+              },
+              {
+                id: 2,
+                entityType: 'approval_signature',
+                entityId: 1,
+                fileId: 2,
+                fileName: 'signature.png',
+                originalName: 'signature.png',
+                mimeType: 'image/png',
+                size: 512000,
+                path: '/uploads/signatures/signature.png',
+                createdAt: '2024-06-21T10:00:00.000Z',
+                updatedAt: '2024-06-21T10:00:00.000Z'
+              }
+            ]
+          }
+        ],
+        meta: {
+          page: 1,
+          limit: 10,
+          total: 1,
+          totalPages: 1
+        }
+      }
+    }
+  })
   findAll(
     @Req() req: RequestWithUser,
     @Query('page', new ValidationPipe({ transform: true })) page?: number,
