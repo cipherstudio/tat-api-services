@@ -232,19 +232,28 @@ export class ApprovalService {
       //   )
       //   .where('approval_staff_members.employee_code', employeeCode);
 
-      // ถ้าเราเป็นคนในคณะเดินทาง หรือมีส่วนในการอนุมัติส่งเรื่อง
+      // ถ้าเราเป็นคนในคณะเดินทาง หรือมีส่วนในการอนุมัติส่งเรื่อง หรือถูกทำแทน (ไม่ได้เป็นคนสร้างเรื่อง)
       query = query
         .leftJoin(
           'approval_staff_members',
           'approval.id',
           'approval_staff_members.approval_id',
         )
-        .leftJoin(
-          'approval_continuous as ac', function () {
-            this.on('approval.id', '=', 'ac.approval_id')
-                .andOnVal('ac.employee_code', '=', employeeCode)
+        .leftJoin('approval_continuous as ac', function () {
+          this.on('approval.id', '=', 'ac.approval_id')
+              .andOnVal('ac.employee_code', '=', employeeCode)
         })
-        .where('approval_staff_members.employee_code', employeeCode);
+        .where(function () {
+          // ✅ เงื่อนไขที่ 1: เป็นคณะเดินทาง
+          this.where('approval_staff_members.employee_code', employeeCode)
+            // ✅ เงื่อนไขที่ 2: เป็นผู้อนุมัติ
+            .orWhereNotNull('ac.id')
+            // ✅ เงื่อนไขที่ 3: ถูกทำแทน
+            .orWhere(function () {
+              this.where('approval.record_type', 'delegate')
+                  .andWhere('approval.employee_code', employeeCode)
+            });
+        });
     }
 
     // Add filter for my approval
