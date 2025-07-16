@@ -1064,6 +1064,7 @@ export class ApprovalService {
     try {
       // Update approval record
       await trx('approval').where('id', id).update({
+        approval_ref: updateDto.approvalRef,
         record_type: updateDto.recordType,
         name: updateDto.name,
         employee_code: updateDto.employeeCode,
