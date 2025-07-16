@@ -18,6 +18,7 @@ import { OtherExpenseDto } from './other-expense.dto';
 import { ApprovalConditionDto } from './approval-condition.dto';
 import { ApprovalBudgetDto } from './approval-budget.dto';
 import { ApprovalAccommodationExpenseDto } from './approval-accommodation-expense.dto';
+import { CreateAttachmentDto } from './approval-attachment.dto';
 import { ApprovalAccommodationTransportExpenseDto } from './approval-accommodation-transport-expense.dto';
 import { ApprovalAccommodationHolidayExpenseDto } from './approval-accommodation-holiday-expense.dto';
 import { ApprovalEntertainmentExpenseDto } from './approval-entertainment-expense.dto';
@@ -451,6 +452,35 @@ export class UpdateApprovalDto {
   @IsOptional()
   @IsNumber()
   attachmentId?: number;
+
+  @ApiProperty({
+    description: 'ไฟล์เอกสารแนบ',
+    type: [CreateAttachmentDto],
+    required: false,
+    example: [
+      { fileId: 124 },
+      { fileId: 125 }
+    ],
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateAttachmentDto)
+  documentAttachments?: CreateAttachmentDto[];
+
+  @ApiProperty({
+    description: 'ไฟล์ลายเซ็นแนบ',
+    type: [CreateAttachmentDto],
+    required: false,
+    example: [
+      { fileId: 126 }
+    ],
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateAttachmentDto)
+  signatureAttachments?: CreateAttachmentDto[];
 
   @ApiProperty({
     description: 'Trip entries for the approval',

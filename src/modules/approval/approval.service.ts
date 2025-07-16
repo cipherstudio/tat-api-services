@@ -21,6 +21,7 @@ import { ApprovalStatisticsResponseDto, TravelTypeBreakdownDto, StatusBreakdownD
 import { FilesService } from '../files/files.service';
 //import { ApprovalWorkLocationDto } from './dto/approval-work-location.dto';
 import { UpdateApprovalContinuousDto } from './dto/update-approval-continuous.dto';
+import { ApprovalAttachmentService } from './services/approval-attachment.service';
 
 @Injectable()
 export class ApprovalService {
@@ -32,6 +33,7 @@ export class ApprovalService {
     private readonly cacheService: RedisCacheService,
     private readonly knexService: KnexService,
     private readonly filesService: FilesService,
+    private readonly attachmentService: ApprovalAttachmentService,
   ) {}
 
   private async generateIncrementId(): Promise<string> {
@@ -392,6 +394,7 @@ export class ApprovalService {
     let clothingExpenses = [];
     let budgets = [];
     let continuousApproval = [];
+    let allAttachments: any[] = [];
 
     if (approvalIds.length > 0) {
       // Get all date ranges for each approval
@@ -477,6 +480,22 @@ export class ApprovalService {
 
       continuousApproval = await Promise.all(continuousApprovalPromises);
 
+      // Get all attachments for each approval
+      const allAttachmentPromises = approvalIds.map(async (approvalId) => {
+        const documentAtts = await this.attachmentService.getAttachments('approval_document', approvalId);
+        const signatureAtts = await this.attachmentService.getAttachments('approval_signature', approvalId);
+        const budgetAtts = await this.attachmentService.getAttachments('approval_budgets', approvalId);
+        const clothingAtts = await this.attachmentService.getAttachments('approval_clothing_expense', approvalId);
+        const continuousAtts = await this.attachmentService.getAttachments('approval_continuous_signature', approvalId);
+        return [
+          ...documentAtts,
+          ...signatureAtts,
+          ...budgetAtts,
+          ...clothingAtts,
+          ...continuousAtts
+        ];
+      });
+      allAttachments = await Promise.all(allAttachmentPromises);
     }
 
     // Create a map of date ranges by approval ID
@@ -495,19 +514,26 @@ export class ApprovalService {
     });
 
     // Combine approvals with their date ranges (status is already included from JOIN)
-    const data = approvals.map((approval) => ({
-      ...approval,
-      approvalDateRanges: dateRangeMap.get(approval.id) || [],
-      clothingExpenses: clothingExpenses.find((expenseArray) => 
-        expenseArray.length > 0 && expenseArray[0]?.approvalId === approval.id
-      ) || [],
-      approvalBudgets: budgets.find((budgetArray) => 
-        budgetArray.length > 0 && budgetArray[0]?.approvalId === approval.id
-      ) || [],
-      continuousApproval: continuousApproval.find((continuousApprovalArray) => 
-        continuousApprovalArray.length > 0 && continuousApprovalArray[0]?.approvalId === approval.id
-      ) || [],
-    }));
+    const data = approvals.map((approval, index) => {
+      // รวมไฟล์แนบ approval_attachments ทุกประเภท
+      const allAtts = (allAttachments[index] && allAttachments[index].length > 0)
+        ? allAttachments[index]
+        : [];
+      return {
+        ...approval,
+        approvalDateRanges: dateRangeMap.get(approval.id) || [],
+        attachments: allAtts,
+        clothingExpenses: clothingExpenses.find((expenseArray) => 
+          expenseArray.length > 0 && expenseArray[0]?.approvalId === approval.id
+        ) || [],
+        approvalBudgets: budgets.find((budgetArray) => 
+          budgetArray.length > 0 && budgetArray[0]?.approvalId === approval.id
+        ) || [],
+        continuousApproval: continuousApproval.find((continuousApprovalArray) => 
+          continuousApprovalArray.length > 0 && continuousApprovalArray[0]?.approvalId === approval.id
+        ) || [],
+      };
+    });
 
     // Apply additional filters (searchTerm only)
     let filteredData = data;
@@ -1036,9 +1062,46 @@ export class ApprovalService {
       //   )
       //   .orderBy('ac.created_at', 'asc');
 
+      const approvalDocuments = await this.attachmentService.getAttachments('approval_document', id);
+      const approvalSignatures = await this.attachmentService.getAttachments('approval_signature', id);
+
+              // Get additional attachments for budgets
+        const budgetAttachments = await this.attachmentService.getAttachments('approval_budgets', id);
+        for (const budget of budgets) {
+          budget.attachments = budgetAttachments;
+        }
+
+      // Get additional attachments for clothing expenses
+      const clothingExpenseAttachments = await this.attachmentService.getAttachments('approval_clothing_expense', id);
+      for (const staffMember of staffMembers) {
+        if (staffMember.clothingExpenses) {
+          for (const expense of staffMember.clothingExpenses) {
+            expense.attachments = clothingExpenseAttachments;
+          }
+        }
+      }
+
+      // Get additional attachments for continuous approval signatures
+      const continuousSignatureAttachments = await this.attachmentService.getAttachments('approval_continuous_signature', id);
+      for (const continuous of continuousApproval) {
+        continuous.signatureAttachments = continuousSignatureAttachments;
+      }
+
+      // Combine all attachments into one array
+      const allAttachments = [
+        ...approvalDocuments,
+        ...approvalSignatures,
+        ...budgetAttachments,
+        ...clothingExpenseAttachments,
+        ...continuousSignatureAttachments
+      ];
+
       // Combine all the data
       const response: ApprovalDetailResponseDto = {
         ...approvalDto,
+        documentAttachments: approvalDocuments,
+        signatureAttachments: approvalSignatures,
+        attachments: allAttachments,
         statusHistory,
         //currentStatus: statusHistory[0]?.status || 'ฉบับร่าง',
         travelDateRanges,
@@ -1590,6 +1653,7 @@ export class ApprovalService {
                     }
                   }
 
+                  let clothingExpenseId;
                   if (existingExpense) {
                     // Update existing record
                     await trx('approval_clothing_expense')
@@ -1609,9 +1673,10 @@ export class ApprovalService {
                         attachment_id: expense.attachmentId ?? null,
                         updated_at: new Date(),
                       });
+                    clothingExpenseId = existingExpense.id;
                   } else {
                     // Insert new record
-                    await trx('approval_clothing_expense').insert({
+                    const [insertedClothingExpense] = await trx('approval_clothing_expense').insert({
                       approval_id: id,
                       staff_member_id: insertedStaffMember.id,
                       employee_code: staffMember.employeeCode,
@@ -1626,7 +1691,8 @@ export class ApprovalService {
                       attachment_id: expense.attachmentId ?? null,
                       created_at: new Date(),
                       updated_at: new Date(),
-                    });
+                    }).returning('id');
+                    clothingExpenseId = insertedClothingExpense.id;
                   }
                 }
               }
@@ -1690,17 +1756,11 @@ export class ApprovalService {
 
       // Process budgets
       if (updateDto.budgets && Array.isArray(updateDto.budgets)) {
-        // Get old budget attachment IDs before deletion
-        const oldBudgetAttachments = await trx('approval_budgets')
-          .where('approval_id', id)
-          .select('attachment_id')
-          .whereNotNull('attachment_id');
-        
         await trx('approval_budgets').where('approval_id', id).delete();
         
         for (const budget of updateDto.budgets) {
           if (budget && typeof budget === 'object') {
-            await trx('approval_budgets').insert({
+            const [insertedBudget] = await trx('approval_budgets').insert({
               approval_id: id,
               budget_type: budget.budget_type,
               item_type: budget.item_type,
@@ -1708,15 +1768,8 @@ export class ApprovalService {
               department: budget.department,
               budget_code: budget.budget_code,
               attachment_id: budget.attachment_id ?? null,
-            });
+            }).returning('id');
           }
-        }
-        
-        // Store old budget attachment IDs for cleanup after transaction
-        const oldBudgetAttachmentIds = oldBudgetAttachments.map(att => att.attachment_id);
-        if (oldBudgetAttachmentIds.length > 0) {
-          // Store for cleanup after successful transaction
-          await this.cleanupOldBudgetFiles(oldBudgetAttachmentIds, updateDto.budgets);
         }
       }
 
@@ -1731,7 +1784,7 @@ export class ApprovalService {
         if (!approvalContinuousStatusId) {
           throw new NotFoundException('Approval continuous status not found');
         }
-        await trx('approval_continuous').insert({
+        const [insertedContinuousApproval] = await trx('approval_continuous').insert({
           approval_id: id,
           employee_code: updateDto.staffEmployeeCode,
           approval_continuous_status_id: approvalContinuousStatusId.id,
@@ -1745,7 +1798,7 @@ export class ApprovalService {
           signature_attachment_id: updateDto.signatureAttachmentId,
           use_system_signature: updateDto.useSystemSignature,
           comments: updateDto.comments,
-        });
+        }).returning('id');
       }
 
       // Process JSON fields
@@ -1792,8 +1845,47 @@ export class ApprovalService {
         await trx('approval').where('id', id).update(updateData);
       }
 
+      // Process main approval attachments (documents)
+      if (updateDto.documentAttachments && updateDto.documentAttachments.length > 0) {
+        await this.attachmentService.updateAttachments('approval_document', id, updateDto.documentAttachments);
+      }
+
+      // Process main approval signature attachments
+      if (updateDto.signatureAttachments && updateDto.signatureAttachments.length > 0) {
+        await this.attachmentService.updateAttachments('approval_signature', id, updateDto.signatureAttachments);
+      }
+
       // Commit the transaction
       await trx.commit();
+
+      // Process budget attachments after transaction commit
+      if (updateDto.budgets && Array.isArray(updateDto.budgets)) {
+        for (const budget of updateDto.budgets) {
+          if (budget && typeof budget === 'object' && budget.attachments && budget.attachments.length > 0) {
+            await this.attachmentService.updateAttachments('approval_budgets', id, budget.attachments);
+          }
+        }
+      }
+
+      // Process clothing expense attachments after transaction commit
+      if (updateDto.staffMembers && Array.isArray(updateDto.staffMembers)) {
+        for (const staffMember of updateDto.staffMembers) {
+          if (staffMember.clothingExpenses && Array.isArray(staffMember.clothingExpenses)) {
+            for (const expense of staffMember.clothingExpenses) {
+              if (expense && typeof expense === 'object' && expense.attachments && expense.attachments.length > 0) {
+                // ใช้ approval ID แทน clothing expense ID เพื่อให้ entityId ไม่เปลี่ยน
+                await this.attachmentService.updateAttachments('approval_clothing_expense', id, expense.attachments);
+              }
+            }
+          }
+        }
+      }
+
+      // Process continuous approval signature attachments after transaction commit
+      if (updateDto.signatureAttachments && updateDto.signatureAttachments.length > 0) {
+        // ใช้ approval ID แทน continuous approval ID เพื่อให้ entityId ไม่เปลี่ยน
+        await this.attachmentService.updateAttachments('approval_continuous_signature', id, updateDto.signatureAttachments);
+      }
 
       // Clean up old files after successful update
       // Delete old attachment file if it's different from the new one
@@ -1860,6 +1952,17 @@ export class ApprovalService {
       } catch (error) {
         console.warn(`Warning: Failed to delete signature attachment file ${signatureAttachmentId}:`, error.message);
       }
+    }
+
+    // Delete all attachments from approval_attachments table
+    try {
+      await this.attachmentService.deleteAttachments('approval_document', id);
+      await this.attachmentService.deleteAttachments('approval_signature', id);
+      await this.attachmentService.deleteAttachments('approval_budgets', id);
+      await this.attachmentService.deleteAttachments('approval_clothing_expense', id);
+      await this.attachmentService.deleteAttachments('approval_continuous_signature', id);
+    } catch (error) {
+      console.warn(`Warning: Failed to delete approval attachments for approval ${id}:`, error.message);
     }
 
     // Remove from cache
@@ -2440,6 +2543,18 @@ export class ApprovalService {
         console.log(`Successfully deleted old budget attachment file: ${attachmentId}`);
       } catch (error) {
         console.warn(`Warning: Failed to delete old budget attachment file ${attachmentId}:`, error.message);
+      }
+    }
+  }
+
+  private async cleanupBudgetFilesAfterTransaction(fileIds: number[]): Promise<void> {
+    // Delete old files that are no longer referenced
+    for (const fileId of fileIds) {
+      try {
+        await this.filesService.remove(fileId);
+        console.log(`Successfully deleted unused budget attachment file: ${fileId}`);
+      } catch (error) {
+        console.warn(`Warning: Failed to delete unused budget attachment file ${fileId}:`, error.message);
       }
     }
   }

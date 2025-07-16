@@ -11,6 +11,7 @@ import { ApprovalAccommodationTransportExpenseDto } from './approval-accommodati
 import { ApprovalAccommodationHolidayExpenseDto } from './approval-accommodation-holiday-expense.dto';
 import { ApprovalEntertainmentExpenseDto } from './approval-entertainment-expense.dto';
 import { ApprovalClothingExpenseDto } from './approval-clothing-expense.dto';
+import { AttachmentResponseDto } from './approval-attachment.dto';
 
 export class ApprovalStatusHistoryDto {
   @ApiProperty({ description: 'Status ID' })
@@ -205,7 +206,25 @@ export class StaffMemberDto {
   @ApiProperty({
     description: 'ค่าเครื่องแต่งกาย',
     type: [ApprovalClothingExpenseDto],
-    required: false
+    required: false,
+    example: [
+      {
+        id: 184,
+        clothingFileChecked: true,
+        clothingAmount: 9000,
+        clothingReason: null,
+        reportingDate: null,
+        nextClaimDate: '2026-03-21',
+        workEndDate: null,
+        incrementId: 'EX680700259',
+        destinationCountry: 'กรีนแลนด์',
+        clothingAttachmentId: null,
+        attachments: [
+          { fileId: 444 },
+          { fileId: 445 }
+        ]
+      }
+    ]
   })
   clothingExpenses?: ApprovalClothingExpenseDto[];
 }
@@ -387,6 +406,99 @@ export class ApprovalDetailResponseDto implements Approval {
   attachmentId?: number;
 
   @ApiProperty({
+    description: 'ไฟล์เอกสารแนบ',
+    type: [AttachmentResponseDto],
+    required: false,
+    example: [
+      {
+        id: 173,
+        entityType: 'approval_document',
+        entityId: 565,
+        fileId: 438,
+        fileName: 'Picture1.jpg',
+        filePath: 'uploads/images/1752565179245-747627120.jpg',
+        size: 1024000,
+        createdAt: '2025-07-15T07:39:54.031Z',
+        updatedAt: '2025-07-15T07:39:54.031Z'
+      },
+      {
+        id: 174,
+        entityType: 'approval_document',
+        entityId: 565,
+        fileId: 439,
+        fileName: 'Picture2.jpg',
+        filePath: 'uploads/images/1752565179246-686016289.jpg',
+        size: 2048000,
+        createdAt: '2025-07-15T07:39:54.031Z',
+        updatedAt: '2025-07-15T07:39:54.031Z'
+      }
+    ]
+  })
+  documentAttachments?: AttachmentResponseDto[];
+
+  @ApiProperty({
+    description: 'ไฟล์ลายเซ็นแนบ',
+    type: [AttachmentResponseDto],
+    required: false,
+    example: [
+      {
+        id: 175,
+        entityType: 'approval_signature',
+        entityId: 565,
+        fileId: 440,
+        fileName: 'Screenshot 2024-11-26 053237.png',
+        filePath: 'uploads/images/1752565180120-121997357.png',
+        size: 512000,
+        createdAt: '2025-07-15T07:39:55.469Z',
+        updatedAt: '2025-07-15T07:39:55.469Z'
+      },
+      {
+        id: 176,
+        entityType: 'approval_signature',
+        entityId: 565,
+        fileId: 441,
+        fileName: 'Screenshot 2024-11-26 053341.png',
+        filePath: 'uploads/images/1752565180121-796302643.png',
+        size: 768000,
+        createdAt: '2025-07-15T07:39:55.470Z',
+        updatedAt: '2025-07-15T07:39:55.470Z'
+      }
+    ]
+  })
+  signatureAttachments?: AttachmentResponseDto[];
+
+  @ApiProperty({
+    description: 'ไฟล์แนบทั้งหมด',
+    type: [AttachmentResponseDto],
+    required: false,
+    example: [
+      {
+        id: 173,
+        entityType: 'approval_document',
+        entityId: 565,
+        fileId: 438,
+        fileName: 'Picture1.jpg',
+        filePath: 'uploads/images/1752565179245-747627120.jpg',
+        size: 1024000,
+        createdAt: '2025-07-15T07:39:54.031Z',
+        updatedAt: '2025-07-15T07:39:54.031Z'
+      },
+      {
+        id: 175,
+        entityType: 'approval_signature',
+        entityId: 565,
+        fileId: 440,
+        fileName: 'Screenshot 2024-11-26 053237.png',
+        filePath: 'uploads/images/1752565180120-121997357.png',
+        size: 512000,
+        createdAt: '2025-07-15T07:39:55.469Z',
+        updatedAt: '2025-07-15T07:39:55.469Z'
+      }
+    ]
+  })
+  attachments?: AttachmentResponseDto[];
+
+  @ApiProperty({
     description: 'Trip entries for the approval',
     type: [TripEntryDto],
     required: false
@@ -466,7 +578,22 @@ export class ApprovalDetailResponseDto implements Approval {
   @ApiProperty({
     description: 'รายการงบประมาณ',
     type: [ApprovalBudgetDto],
-    required: false
+    required: false,
+    example: [
+      {
+        id: 658,
+        budgetType: 'เงินงบประมาณ',
+        itemType: 'ตัดจ่ายจากใบจอง',
+        reservationCode: null,
+        department: null,
+        budgetCode: null,
+        budgetAttachmentId: null,
+        attachments: [
+          { fileId: 442 },
+          { fileId: 443 }
+        ]
+      }
+    ]
   })
   budgets?: ApprovalBudgetDto[];
 
