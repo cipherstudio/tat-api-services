@@ -62,7 +62,12 @@ export class ApprovalController {
     @Body() createApprovalDto: CreateApprovalDto,
     @Req() req: RequestWithUser,
   ) {
-    return this.approvalService.create(createApprovalDto, req.user.id);
+    return this.approvalService.create(
+      createApprovalDto, 
+      req.user.id,
+      req.user.employeeCode,
+      req.user.fullName,
+    );
   }
 
   @Get()
@@ -518,6 +523,11 @@ export class ApprovalController {
     @Param('id', ParseIntPipe) id: number,
     @Req() req: RequestWithUser,
   ) {
-    return this.approvalService.duplicate(id, req.user.id);
+    return this.approvalService.duplicate(
+      id, 
+      req.user.id,
+      req.user.employeeCode,
+      req.user.fullName,
+    );
   }
 }
