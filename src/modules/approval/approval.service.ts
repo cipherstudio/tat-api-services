@@ -87,6 +87,8 @@ export class ApprovalService {
   async create(
     createApprovalDto: CreateApprovalDto,
     userId: number,
+    employeeCode: string,
+    employeeName: string,
   ): Promise<Approval> {
     // Start a transaction
     const trx = await this.knexService.knex.transaction();
@@ -111,6 +113,8 @@ export class ApprovalService {
         approvalPrintNumber,
         expensePrintNumber,
         userId,
+        createdEmployeeCode: employeeCode,
+        createdEmployeeName: employeeName,
         approvalStatusLabelId: approvalStatusLabelId.id,
       };
 
@@ -390,6 +394,8 @@ export class ApprovalService {
           'approval.use_system_signature as useSystemSignature',
           'approval.approval_print_number as approvalPrintNumber',
           'approval.expense_print_number as expensePrintNumber',
+          'approval.created_employee_code as createdEmployeeCode',
+          'approval.created_employee_name as createdEmployeeName',
           'approval.user_id as userId',
           'approval.created_at as createdAt',
           'approval.updated_at as updatedAt',
@@ -706,6 +712,8 @@ export class ApprovalService {
         'approval.deleted_at as deletedAt',
         'approval.approval_print_number as approvalPrintNumber',
         'approval.expense_print_number as expensePrintNumber',
+        'approval.created_employee_code as createdEmployeeCode',
+        'approval.created_employee_name as createdEmployeeName',
         'approval.continuous_employee_code as continuousEmployeeCode',
         'asl.label as currentStatus',
       )
@@ -2930,7 +2938,7 @@ export class ApprovalService {
     }
   }
 
-  async duplicate(id: number, userId: number): Promise<Approval> {
+  async duplicate(id: number, userId: number, employeeCode: string, employeeName: string): Promise<Approval> {
     // Get the original approval
     const originalApproval = await this.findById(id);
     if (!originalApproval) {
@@ -2999,6 +3007,8 @@ export class ApprovalService {
         use_system_signature: originalApproval.useSystemSignature,
         approval_print_number: approvalPrintNumber,
         expense_print_number: expensePrintNumber,
+        created_employee_code: employeeCode,
+        created_employee_name: employeeName,
         user_id: userId,
         approval_status_label_id: approvalStatusLabelId.id,
         continuous_employee_code: originalApproval.continuousEmployeeCode,
@@ -3557,6 +3567,8 @@ export class ApprovalService {
         'approval.approval_print_number as approvalPrintNumber',
         'approval.expense_print_number as expensePrintNumber',
         'approval.user_id as userId',
+        'approval.created_employee_code as createdEmployeeCode',
+        'approval.created_employee_name as createdEmployeeName',
         'approval.created_at as createdAt',
         'approval.updated_at as updatedAt',
         'approval.deleted_at as deletedAt',
