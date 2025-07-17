@@ -36,6 +36,13 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
           this.knex.raw('RTRIM("OP_MASTER_T"."PMT_CODE")'),
         );
       })
+      .leftJoin('VIEW_POSITION_4OT', (builder) => {
+        builder.on(
+          'VIEW_POSITION_4OT.POS_POSITIONCODE',
+          '=',
+          this.knex.raw('RTRIM("OP_MASTER_T"."PMT_POS_NO")'),
+        );
+      })
       .first();
 
     if (!dbEntity) return undefined;

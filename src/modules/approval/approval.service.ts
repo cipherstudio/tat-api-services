@@ -17,10 +17,19 @@ import { ApprovalDetailResponseDto } from './dto/approval-detail-response.dto';
 import { UpdateClothingExpenseDatesDto } from './dto/update-clothing-expense-dates.dto';
 import { CheckClothingExpenseEligibilityDto } from './dto/check-clothing-expense-eligibility.dto';
 import { ClothingExpenseEligibilityResponseDto } from './dto/clothing-expense-eligibility-response.dto';
-import { ApprovalStatisticsResponseDto, TravelTypeBreakdownDto, StatusBreakdownDto, SummaryDto, BreakdownDto, StatisticsDataDto } from './dto/approval-statistics-response.dto';
+import {
+  ApprovalStatisticsResponseDto,
+  TravelTypeBreakdownDto,
+  StatusBreakdownDto,
+  SummaryDto,
+  BreakdownDto,
+  //StatisticsDataDto,
+} from './dto/approval-statistics-response.dto';
 import { FilesService } from '../files/files.service';
 //import { ApprovalWorkLocationDto } from './dto/approval-work-location.dto';
 import { UpdateApprovalContinuousDto } from './dto/update-approval-continuous.dto';
+import * as moment from 'moment-timezone';
+import { QueryApprovalsThatHasClothingExpenseDto } from './dto/query-approvals-that-has-clothing-expense';
 
 @Injectable()
 export class ApprovalService {
@@ -163,7 +172,10 @@ export class ApprovalService {
     } = queryOptions || {};
 
     // Try to get from cache first
-    const cacheKey = this.cacheService.generateListKey(this.CACHE_PREFIX, JSON.stringify(queryOptions));
+    const cacheKey = this.cacheService.generateListKey(
+      this.CACHE_PREFIX,
+      JSON.stringify(queryOptions),
+    );
     const cachedResult =
       await this.cacheService.get<PaginatedResult<Approval>>(cacheKey);
     if (cachedResult) {
@@ -172,7 +184,10 @@ export class ApprovalService {
 
     // Validate pagination parameters
     const validatedPage = Math.max(1, Math.floor(Number(page)) || 1);
-    const validatedLimit = Math.max(1, Math.min(100, Math.floor(Number(limit)) || 10));
+    const validatedLimit = Math.max(
+      1,
+      Math.min(100, Math.floor(Number(limit)) || 10),
+    );
     const validatedOffset = (validatedPage - 1) * validatedLimit;
 
     // Prepare conditions
@@ -204,8 +219,8 @@ export class ApprovalService {
         ? 'approval.created_at'
         : orderBy === 'updatedAt'
           ? 'approval.updated_at'
-          : orderBy.startsWith('approval.') 
-            ? orderBy 
+          : orderBy.startsWith('approval.')
+            ? orderBy
             : `approval.${orderBy}`;
 
     let approvalStatusLabelId: number = null;
@@ -239,10 +254,12 @@ export class ApprovalService {
           'approval.id',
           'approval_staff_members.approval_id',
         )
-        .leftJoin(
-          'approval_continuous as ac', function () {
-            this.on('approval.id', '=', 'ac.approval_id')
-                .andOnVal('ac.employee_code', '=', employeeCode)
+        .leftJoin('approval_continuous as ac', function () {
+          this.on('approval.id', '=', 'ac.approval_id').andOnVal(
+            'ac.employee_code',
+            '=',
+            employeeCode,
+          );
         })
         .where('approval_staff_members.employee_code', employeeCode);
     }
@@ -304,7 +321,11 @@ export class ApprovalService {
 
     // join file table (attachment_id, signature_attachment_id)
     query = query.leftJoin('files as f', 'approval.attachment_id', 'f.id');
-    query = query.leftJoin('files as sf', 'approval.signature_attachment_id', 'sf.id');
+    query = query.leftJoin(
+      'files as sf',
+      'approval.signature_attachment_id',
+      'sf.id',
+    );
 
     // Get approvals with pagination
     const [countResult, approvals] = await Promise.all([
@@ -412,7 +433,7 @@ export class ApprovalService {
             'ace.next_claim_date as nextClaimDate',
             'ace.work_end_date as workEndDate',
             'f.original_name as attachmentFileName',
-            'f.path as attachmentFilePath'
+            'f.path as attachmentFilePath',
           )
           .where('ace.approval_id', approvalId);
         return clothingExpensesForApproval;
@@ -434,7 +455,7 @@ export class ApprovalService {
             'ab.budget_code as budgetCode',
             'ab.attachment_id as attachmentId',
             'f.original_name as attachmentFileName',
-            'f.path as attachmentFilePath'
+            'f.path as attachmentFilePath',
           )
           .where('ab.approval_id', approvalId);
         return budgetsForApproval;
@@ -442,32 +463,35 @@ export class ApprovalService {
 
       budgets = await Promise.all(budgetPromises);
 
-        // get continuous approval
+      // get continuous approval
       const continuousApprovalPromises = approvalIds.map(async (approvalId) => {
         const continuousApproval = await this.knexService
-           .knex('approval_continuous as ac')
-           .where('ac.approval_id', approvalId)
-           .leftJoin('approval_continuous_status as acs', 'ac.approval_continuous_status_id', 'acs.id')
-           .select(
-             'ac.id', 
-             'ac.approval_id as approvalId',
-             'ac.employee_code as employeeCode', 
-             'ac.signer_name as signerName', 
-             'ac.signer_date as signerDate', 
-             'ac.document_ending as documentEnding', 
-             'ac.document_ending_wording as documentEndingWording', 
-             'ac.use_file_signature as useFileSignature', 
-             'ac.signature_attachment_id as signatureAttachmentId', 
-             'ac.use_system_signature as useSystemSignature', 
-             'ac.comments as comments',
-             'acs.status_code as statusCode',
-             'acs.label as statusLabel'
-           )
+          .knex('approval_continuous as ac')
+          .where('ac.approval_id', approvalId)
+          .leftJoin(
+            'approval_continuous_status as acs',
+            'ac.approval_continuous_status_id',
+            'acs.id',
+          )
+          .select(
+            'ac.id',
+            'ac.approval_id as approvalId',
+            'ac.employee_code as employeeCode',
+            'ac.signer_name as signerName',
+            'ac.signer_date as signerDate',
+            'ac.document_ending as documentEnding',
+            'ac.document_ending_wording as documentEndingWording',
+            'ac.use_file_signature as useFileSignature',
+            'ac.signature_attachment_id as signatureAttachmentId',
+            'ac.use_system_signature as useSystemSignature',
+            'ac.comments as comments',
+            'acs.status_code as statusCode',
+            'acs.label as statusLabel',
+          );
         return continuousApproval;
       });
 
       continuousApproval = await Promise.all(continuousApprovalPromises);
-
     }
 
     // Create a map of date ranges by approval ID
@@ -489,15 +513,24 @@ export class ApprovalService {
     const data = approvals.map((approval) => ({
       ...approval,
       approvalDateRanges: dateRangeMap.get(approval.id) || [],
-      clothingExpenses: clothingExpenses.find((expenseArray) => 
-        expenseArray.length > 0 && expenseArray[0]?.approvalId === approval.id
-      ) || [],
-      approvalBudgets: budgets.find((budgetArray) => 
-        budgetArray.length > 0 && budgetArray[0]?.approvalId === approval.id
-      ) || [],
-      continuousApproval: continuousApproval.find((continuousApprovalArray) => 
-        continuousApprovalArray.length > 0 && continuousApprovalArray[0]?.approvalId === approval.id
-      ) || [],
+      clothingExpenses:
+        clothingExpenses.find(
+          (expenseArray) =>
+            expenseArray.length > 0 &&
+            expenseArray[0]?.approvalId === approval.id,
+        ) || [],
+      approvalBudgets:
+        budgets.find(
+          (budgetArray) =>
+            budgetArray.length > 0 &&
+            budgetArray[0]?.approvalId === approval.id,
+        ) || [],
+      continuousApproval:
+        continuousApproval.find(
+          (continuousApprovalArray) =>
+            continuousApprovalArray.length > 0 &&
+            continuousApprovalArray[0]?.approvalId === approval.id,
+        ) || [],
     }));
 
     // Apply additional filters (searchTerm only)
@@ -701,12 +734,14 @@ export class ApprovalService {
     }
 
     // Get staff members
-    let staffMembersQuery = this.knexService.knex('approval_staff_members as asm')
+    const staffMembersQuery = this.knexService
+      .knex('approval_staff_members as asm')
       .leftJoin('OP_MASTER_T as omt', 'asm.employee_code', 'omt.PMT_CODE')
       .leftJoin('EMPLOYEE as et', 'asm.employee_code', 'et.CODE')
       .where('asm.approval_id', id);
-    
-    const staffMembersSubQuery = staffMembersQuery.clone()
+
+    const staffMembersSubQuery = staffMembersQuery
+      .clone()
       .select([
         'asm.id',
         'asm.employee_code as employeeCode',
@@ -724,7 +759,8 @@ export class ApprovalService {
       ])
       .as('sub');
 
-    const staffMembersFinalQuery = this.knexService.knex(staffMembersSubQuery)
+    const staffMembersFinalQuery = this.knexService
+      .knex(staffMembersSubQuery)
       .where('rn', 1)
       .select('*');
 
@@ -924,123 +960,117 @@ export class ApprovalService {
         'attachment_id as budgetAttachmentId',
       );
 
-      // get continuous approval
-      let approvalQuery = this.knexService.knex('approval_continuous as ac')
-        .leftJoin(
-          'approval_continuous_status as acs', 
-          'ac.approval_continuous_status_id', 
-          'acs.id')
-        .leftJoin(
-          'EMPLOYEE as et',
-          'ac.employee_code',
-          'et.CODE'
-        )
-        .leftJoin(
-          'EMPLOYEE as et2',
-          'ac.created_by',
-          'et2.CODE'
-        )
-        .where('ac.approval_id', id);
-      
-      const subQuery = approvalQuery.clone()
-        .select(
-          [
-          'ac.id as approvalContinuousId', 
-          'ac.employee_code as employeeCode', // ผู้รับ
-          'et.POSITION as position', // ผู้รับ
-          'et.NAME as signerName', // ผู้รับ
-          'ac.signer_date as signerDate', 
-          'ac.document_ending as documentEnding', 
-          'ac.document_ending_wording as documentEndingWording', 
-          'ac.use_file_signature as useFileSignature', 
-          'ac.signature_attachment_id as signatureAttachmentId', 
-          'ac.use_system_signature as useSystemSignature', 
-          'ac.comments as comments',
-          'ac.created_at as createdAt', // วันที่สร้าง
-          'ac.updated_at as updatedAt', // วันที่ส่ง ปรับสถานะ
+    // get continuous approval
+    const approvalQuery = this.knexService
+      .knex('approval_continuous as ac')
+      .leftJoin(
+        'approval_continuous_status as acs',
+        'ac.approval_continuous_status_id',
+        'acs.id',
+      )
+      .leftJoin('EMPLOYEE as et', 'ac.employee_code', 'et.CODE')
+      .leftJoin('EMPLOYEE as et2', 'ac.created_by', 'et2.CODE')
+      .where('ac.approval_id', id);
 
-          // ผู้ส่ง
-          'et2.CODE as createdEmployeeCode',
-          'et2.NAME as createdName',
-          'et2.POSITION as createdPosition',
+    const subQuery = approvalQuery
+      .clone()
+      .select([
+        'ac.id as approvalContinuousId',
+        'ac.employee_code as employeeCode', // ผู้รับ
+        'et.POSITION as position', // ผู้รับ
+        'et.NAME as signerName', // ผู้รับ
+        'ac.signer_date as signerDate',
+        'ac.document_ending as documentEnding',
+        'ac.document_ending_wording as documentEndingWording',
+        'ac.use_file_signature as useFileSignature',
+        'ac.signature_attachment_id as signatureAttachmentId',
+        'ac.use_system_signature as useSystemSignature',
+        'ac.comments as comments',
+        'ac.created_at as createdAt', // วันที่สร้าง
+        'ac.updated_at as updatedAt', // วันที่ส่ง ปรับสถานะ
 
-          'acs.status_code as statusCode',
-          'acs.label as statusLabel',
-          this.knexService.knex.raw(
-              `row_number() over (partition by "ac"."id" order by "ac"."created_at" asc) as "rn"`,
-            ),
-          ])
-          .as('sub');
+        // ผู้ส่ง
+        'et2.CODE as createdEmployeeCode',
+        'et2.NAME as createdName',
+        'et2.POSITION as createdPosition',
 
-      const finalQuery = this.knexService.knex(subQuery)
-        .where('rn', 1)
-        .select('*');
+        'acs.status_code as statusCode',
+        'acs.label as statusLabel',
+        this.knexService.knex.raw(
+          `row_number() over (partition by "ac"."id" order by "ac"."created_at" asc) as "rn"`,
+        ),
+      ])
+      .as('sub');
 
-      const continuousApproval = await finalQuery;
+    const finalQuery = this.knexService
+      .knex(subQuery)
+      .where('rn', 1)
+      .select('*');
 
+    const continuousApproval = await finalQuery;
 
-      // get continuous approval
-      // const continuousApproval = await this.knexService
-      //   .knex('approval_continuous as ac')
-      //   .where('ac.approval_id', id)
-      //   .select(
-      //     'ac.id', 
-      //     'ac.employee_code as employeeCode', // ผู้รับ
-      //     'et.POSITION as position', // ผู้รับ
-      //     'ac.signer_name as signerName', // ผู้รับ
-      //     'ac.signer_date as signerDate', 
-      //     'ac.document_ending as documentEnding', 
-      //     'ac.document_ending_wording as documentEndingWording', 
-      //     'ac.use_file_signature as useFileSignature', 
-      //     'ac.signature_attachment_id as signatureAttachmentId', 
-      //     'ac.use_system_signature as useSystemSignature', 
-      //     'ac.comments as comments',
-      //     'ac.created_at as createdAt', // วันที่สร้าง
-      //     'ac.updated_at as updatedAt', // วันที่ส่ง ปรับสถานะ
+    // get continuous approval
+    // const continuousApproval = await this.knexService
+    //   .knex('approval_continuous as ac')
+    //   .where('ac.approval_id', id)
+    //   .select(
+    //     'ac.id',
+    //     'ac.employee_code as employeeCode', // ผู้รับ
+    //     'et.POSITION as position', // ผู้รับ
+    //     'ac.signer_name as signerName', // ผู้รับ
+    //     'ac.signer_date as signerDate',
+    //     'ac.document_ending as documentEnding',
+    //     'ac.document_ending_wording as documentEndingWording',
+    //     'ac.use_file_signature as useFileSignature',
+    //     'ac.signature_attachment_id as signatureAttachmentId',
+    //     'ac.use_system_signature as useSystemSignature',
+    //     'ac.comments as comments',
+    //     'ac.created_at as createdAt', // วันที่สร้าง
+    //     'ac.updated_at as updatedAt', // วันที่ส่ง ปรับสถานะ
 
-      //     // ผู้ส่ง
-      //     'u.employee_code as createdEmployeeCode',
-      //     'et2.NAME as createdName',
-      //     'et2.POSITION as createdPosition',
+    //     // ผู้ส่ง
+    //     'u.employee_code as createdEmployeeCode',
+    //     'et2.NAME as createdName',
+    //     'et2.POSITION as createdPosition',
 
-      //     'acs.status_code as statusCode',
-      //     'acs.label as statusLabel'
-      //   )
-      //   .leftJoin(
-      //     'approval_continuous_status as acs', 
-      //     'ac.approval_continuous_status_id', 
-      //     'acs.id')
-      //   .leftJoin(
-      //     'EMPLOYEE as et',
-      //     'ac.employee_code',
-      //     'et.CODE'
-      //   )
-      //   .leftJoin(
-      //     'users as u',
-      //     'ac.created_by',
-      //     'u.id'
-      //   )
-      //   .leftJoin(
-      //     'EMPLOYEE as et2',
-      //     'u.employee_code',
-      //     'et2.CODE'
-      //   )
-      //   .orderBy('ac.created_at', 'asc');
+    //     'acs.status_code as statusCode',
+    //     'acs.label as statusLabel'
+    //   )
+    //   .leftJoin(
+    //     'approval_continuous_status as acs',
+    //     'ac.approval_continuous_status_id',
+    //     'acs.id')
+    //   .leftJoin(
+    //     'EMPLOYEE as et',
+    //     'ac.employee_code',
+    //     'et.CODE'
+    //   )
+    //   .leftJoin(
+    //     'users as u',
+    //     'ac.created_by',
+    //     'u.id'
+    //   )
+    //   .leftJoin(
+    //     'EMPLOYEE as et2',
+    //     'u.employee_code',
+    //     'et2.CODE'
+    //   )
+    //   .orderBy('ac.created_at', 'asc');
 
-      // Combine all the data
-      const response: ApprovalDetailResponseDto = {
-        ...approvalDto,
-        statusHistory,
-        //currentStatus: statusHistory[0]?.status || 'ฉบับร่าง',
-        travelDateRanges,
-        approvalContents,
-        tripEntries,
-        staffMembers,
-        otherExpenses,
-        conditions,
-        budgets,
-        continuousApproval: continuousApproval || [],
-      };
+    // Combine all the data
+    const response: ApprovalDetailResponseDto = {
+      ...approvalDto,
+      statusHistory,
+      //currentStatus: statusHistory[0]?.status || 'ฉบับร่าง',
+      travelDateRanges,
+      approvalContents,
+      tripEntries,
+      staffMembers,
+      otherExpenses,
+      conditions,
+      budgets,
+      continuousApproval: continuousApproval || [],
+    };
 
     // Cache the result
     await this.cacheService.set(cacheKey, response, this.CACHE_TTL);
@@ -1048,7 +1078,12 @@ export class ApprovalService {
     return response;
   }
 
-  async update(id: number, updateDto: UpdateApprovalDto, userId: number, employeeCode: string): Promise<Approval> {
+  async update(
+    id: number,
+    updateDto: UpdateApprovalDto,
+    userId: number,
+    employeeCode: string,
+  ): Promise<Approval> {
     const approval = await this.findById(id);
     if (!approval) {
       throw new NotFoundException(`Approval with ID ${id} not found`);
@@ -1231,9 +1266,7 @@ export class ApprovalService {
         await trx('approval_entertainment_expense')
           .where('approval_id', id)
           .delete();
-        await trx('approval_continuous')
-          .where('approval_id', id)
-          .delete();
+        await trx('approval_continuous').where('approval_id', id).delete();
         //await trx('approval_clothing_expense').where('approval_id', id).delete();
 
         for (const staffMember of updateDto.staffMembers) {
@@ -1422,7 +1455,10 @@ export class ApprovalService {
 
               // Process clothing expenses for each staff member
               if (Array.isArray(staffMember.clothingExpenses)) {
-                if (typeof staffMember.employeeCode === 'string' && staffMember.employeeCode.includes('-')) {
+                if (
+                  typeof staffMember.employeeCode === 'string' &&
+                  staffMember.employeeCode.includes('-')
+                ) {
                   continue;
                 }
 
@@ -1452,9 +1488,7 @@ export class ApprovalService {
                   if (updateDto.travelType === 'international') {
                     // get work start date from first start date of traveldateranges
                     workStartDate = updateDto.travelDateRanges[0].start_date;
-                    const pwJob = await this.getPwJob(
-                      staffMember.employeeCode,
-                    );
+                    const pwJob = await this.getPwJob(staffMember.employeeCode);
                     if (!pwJob) {
                       nextClaimDate =
                         this.calculateNextClaimDate(workStartDate);
@@ -1541,9 +1575,7 @@ export class ApprovalService {
                     updateDto.travelType === 'temporary-international'
                   ) {
                     workStartDate = updateDto.workStartDate;
-                    const pwJob = await this.getPwJob(
-                      staffMember.employeeCode,
-                    );
+                    const pwJob = await this.getPwJob(staffMember.employeeCode);
                     if (!pwJob) {
                       nextClaimDate =
                         this.calculateNextClaimDate(workStartDate);
@@ -1685,9 +1717,9 @@ export class ApprovalService {
           .where('approval_id', id)
           .select('attachment_id')
           .whereNotNull('attachment_id');
-        
+
         await trx('approval_budgets').where('approval_id', id).delete();
-        
+
         for (const budget of updateDto.budgets) {
           if (budget && typeof budget === 'object') {
             await trx('approval_budgets').insert({
@@ -1701,12 +1733,17 @@ export class ApprovalService {
             });
           }
         }
-        
+
         // Store old budget attachment IDs for cleanup after transaction
-        const oldBudgetAttachmentIds = oldBudgetAttachments.map(att => att.attachment_id);
+        const oldBudgetAttachmentIds = oldBudgetAttachments.map(
+          (att) => att.attachment_id,
+        );
         if (oldBudgetAttachmentIds.length > 0) {
           // Store for cleanup after successful transaction
-          await this.cleanupOldBudgetFiles(oldBudgetAttachmentIds, updateDto.budgets);
+          await this.cleanupOldBudgetFiles(
+            oldBudgetAttachmentIds,
+            updateDto.budgets,
+          );
         }
       }
 
@@ -1787,20 +1824,34 @@ export class ApprovalService {
 
       // Clean up old files after successful update
       // Delete old attachment file if it's different from the new one
-      if (oldAttachmentId && updateDto.attachmentId && oldAttachmentId !== updateDto.attachmentId) {
+      if (
+        oldAttachmentId &&
+        updateDto.attachmentId &&
+        oldAttachmentId !== updateDto.attachmentId
+      ) {
         try {
           await this.filesService.remove(oldAttachmentId);
         } catch (error) {
-          console.warn(`Warning: Failed to delete old attachment file ${oldAttachmentId}:`, error.message);
+          console.warn(
+            `Warning: Failed to delete old attachment file ${oldAttachmentId}:`,
+            error.message,
+          );
         }
       }
 
       // Delete old signature attachment file if it's different from the new one
-      if (oldSignatureAttachmentId && updateDto.signatureAttachmentId && oldSignatureAttachmentId !== updateDto.signatureAttachmentId) {
+      if (
+        oldSignatureAttachmentId &&
+        updateDto.signatureAttachmentId &&
+        oldSignatureAttachmentId !== updateDto.signatureAttachmentId
+      ) {
         try {
           await this.filesService.remove(oldSignatureAttachmentId);
         } catch (error) {
-          console.warn(`Warning: Failed to delete old signature attachment file ${oldSignatureAttachmentId}:`, error.message);
+          console.warn(
+            `Warning: Failed to delete old signature attachment file ${oldSignatureAttachmentId}:`,
+            error.message,
+          );
         }
       }
 
@@ -1840,7 +1891,10 @@ export class ApprovalService {
       try {
         await this.filesService.remove(attachmentId);
       } catch (error) {
-        console.warn(`Warning: Failed to delete attachment file ${attachmentId}:`, error.message);
+        console.warn(
+          `Warning: Failed to delete attachment file ${attachmentId}:`,
+          error.message,
+        );
       }
     }
 
@@ -1848,7 +1902,10 @@ export class ApprovalService {
       try {
         await this.filesService.remove(signatureAttachmentId);
       } catch (error) {
-        console.warn(`Warning: Failed to delete signature attachment file ${signatureAttachmentId}:`, error.message);
+        console.warn(
+          `Warning: Failed to delete signature attachment file ${signatureAttachmentId}:`,
+          error.message,
+        );
       }
     }
 
@@ -2042,7 +2099,7 @@ export class ApprovalService {
     if (typeof employeeCode === 'string' && employeeCode.includes('-')) {
       return null;
     }
-    
+
     return await this.knexService
       .knex('PS_PW_JOB')
       .where('EMPLID', employeeCode)
@@ -2272,7 +2329,7 @@ export class ApprovalService {
         .select(
           'approval.travel_type',
           'approval.approval_status_label_id',
-          'approval.id'
+          'approval.id',
         );
 
       // Get status labels separately
@@ -2281,39 +2338,42 @@ export class ApprovalService {
         .select('id', 'status_code');
 
       // Create a map for quick lookup
-      const statusMap = new Map(statusLabels.map(s => [s.id, s.status_code]));
+      const statusMap = new Map(statusLabels.map((s) => [s.id, s.status_code]));
 
       // Process data manually to create statistics
       const statsMap = new Map<string, number>();
-      
+
       allApprovals.forEach((approval) => {
-        const statusCode = statusMap.get(approval.approval_status_label_id) || 'UNKNOWN';
+        const statusCode =
+          statusMap.get(approval.approval_status_label_id) || 'UNKNOWN';
         const travelType = approval.travel_type || 'unknown';
         const key = `${statusCode}|${travelType}`;
-        
+
         statsMap.set(key, (statsMap.get(key) || 0) + 1);
       });
 
       // Convert map to array format expected by the rest of the code
-      const rawStats: RawStatResult[] = Array.from(statsMap.entries()).map(([key, count]) => {
-        const [status_code, travel_type] = key.split('|');
-        return {
-          status_code,
-          travel_type,
-          count: count.toString()
-        };
-      });
+      const rawStats: RawStatResult[] = Array.from(statsMap.entries()).map(
+        ([key, count]) => {
+          const [status_code, travel_type] = key.split('|');
+          return {
+            status_code,
+            travel_type,
+            count: count.toString(),
+          };
+        },
+      );
 
       // Initialize the structure with all required travel types
       const initTravelTypeBreakdown = (): TravelTypeBreakdownDto => ({
         'temporary-domestic': 0,
         'temporary-international': 0,
         'temporary-both': 0,
-        'domestic': 0,
-        'international': 0,
+        domestic: 0,
+        international: 0,
         'training-domestic': 0,
         'training-international': 0,
-        'unknown': 0,
+        unknown: 0,
       });
 
       const initStatusBreakdown = (): StatusBreakdownDto => ({
@@ -2412,24 +2472,32 @@ export class ApprovalService {
     }
   }
 
-  private async cleanupOldBudgetFiles(oldAttachmentIds: number[], newBudgets: any[]): Promise<void> {
+  private async cleanupOldBudgetFiles(
+    oldAttachmentIds: number[],
+    newBudgets: any[],
+  ): Promise<void> {
     // Get new attachment IDs from the updated budgets
     const newAttachmentIds = newBudgets
-      .filter(budget => budget && budget.attachment_id)
-      .map(budget => budget.attachment_id);
-    
+      .filter((budget) => budget && budget.attachment_id)
+      .map((budget) => budget.attachment_id);
+
     // Find attachment IDs that are no longer used
     const attachmentsToDelete = oldAttachmentIds.filter(
-      oldId => !newAttachmentIds.includes(oldId)
+      (oldId) => !newAttachmentIds.includes(oldId),
     );
-    
+
     // Delete old files that are no longer referenced
     for (const attachmentId of attachmentsToDelete) {
       try {
         await this.filesService.remove(attachmentId);
-        console.log(`Successfully deleted old budget attachment file: ${attachmentId}`);
+        console.log(
+          `Successfully deleted old budget attachment file: ${attachmentId}`,
+        );
       } catch (error) {
-        console.warn(`Warning: Failed to delete old budget attachment file ${attachmentId}:`, error.message);
+        console.warn(
+          `Warning: Failed to delete old budget attachment file ${attachmentId}:`,
+          error.message,
+        );
       }
     }
   }
@@ -2443,20 +2511,25 @@ export class ApprovalService {
     // Check if approval_continuous exists and has PENDING status
     const existingContinuous = await this.knexService
       .knex('approval_continuous as ac')
-      .leftJoin('approval_continuous_status as acs', 'ac.approval_continuous_status_id', 'acs.id')
-      .where('ac.id', id)
-      .select(
-        'ac.*',
-        'acs.status_code as statusCode'
+      .leftJoin(
+        'approval_continuous_status as acs',
+        'ac.approval_continuous_status_id',
+        'acs.id',
       )
+      .where('ac.id', id)
+      .select('ac.*', 'acs.status_code as statusCode')
       .first();
 
     if (!existingContinuous) {
-      throw new NotFoundException(`Approval continuous with ID ${id} not found`);
+      throw new NotFoundException(
+        `Approval continuous with ID ${id} not found`,
+      );
     }
 
     if (existingContinuous.statusCode !== 'PENDING') {
-      throw new NotFoundException(`Approval continuous with ID ${id} cannot be updated. Only PENDING status can be updated.`);
+      throw new NotFoundException(
+        `Approval continuous with ID ${id} cannot be updated. Only PENDING status can be updated.`,
+      );
     }
 
     // Start a transaction
@@ -2474,18 +2547,21 @@ export class ApprovalService {
           .first();
 
         if (!approvalContinuousStatusId) {
-          throw new NotFoundException(`Approval continuous status with code ${updateDto.statusCode} not found`);
+          throw new NotFoundException(
+            `Approval continuous status with code ${updateDto.statusCode} not found`,
+          );
         }
 
-        updateData.approval_continuous_status_id = approvalContinuousStatusId.id;
+        updateData.approval_continuous_status_id =
+          approvalContinuousStatusId.id;
       }
 
       // get approval_continuous_status_id of PENDING
       const approvalContinuousStatusIdPending = await this.knexService
-          .knex('approval_continuous_status')
-          .where('status_code', 'PENDING')
-          .select('id')
-          .first();
+        .knex('approval_continuous_status')
+        .where('status_code', 'PENDING')
+        .select('id')
+        .first();
 
       if (updateDto.statusCode === 'APPROVED') {
         // Add updated_by and updated_at
@@ -2493,9 +2569,7 @@ export class ApprovalService {
         updateData.updated_at = new Date();
 
         // Update the record
-        await trx('approval_continuous')
-          .where('id', id)
-          .update(updateData);
+        await trx('approval_continuous').where('id', id).update(updateData);
 
         // update approval.continuous_employee_code
         await trx('approval')
@@ -2527,7 +2601,9 @@ export class ApprovalService {
         // if employee code is final_staff_employee_code, update approval status to APPROVED
         if (updateDto.employeeCode === approval.final_staff_employee_code) {
           // get approval_status_label_id of APPROVED
-          const approvalStatusLabelIdApproved = await trx('approval_status_labels')
+          const approvalStatusLabelIdApproved = await trx(
+            'approval_status_labels',
+          )
             .where('status_code', 'APPROVED')
             .select('id')
             .first();
@@ -2545,7 +2621,7 @@ export class ApprovalService {
             user_id: userId,
             approval_id: existingContinuous.approval_id,
             created_at: new Date(),
-            updated_at: new Date()
+            updated_at: new Date(),
           });
         } else {
           // insert approval_continuous // employee คนถัดไป
@@ -2563,17 +2639,13 @@ export class ApprovalService {
             //updated_by: userId,
           });
         }
-
       } else if (updateDto.statusCode === 'REJECTED') {
-
         // Add updated_by and updated_at
         updateData.updated_by = employeeCode;
         updateData.updated_at = new Date();
 
         // update the status of approval_continuous
-        await trx('approval_continuous')
-          .where('id', id)
-          .update(updateData);
+        await trx('approval_continuous').where('id', id).update(updateData);
 
         // update approval.continuous_employee_code ต้นเรื่อง
         await trx('approval')
@@ -2597,19 +2669,21 @@ export class ApprovalService {
           //updated_by: userId,
         });
       }
-      
+
       // Update approval_continuous_status_id
       // Commit the transaction
       await trx.commit();
 
       // Invalidate the cache for the related approval
       await this.cacheService.del(
-        this.cacheService.generateKey(this.CACHE_PREFIX, existingContinuous.approval_id),
+        this.cacheService.generateKey(
+          this.CACHE_PREFIX,
+          existingContinuous.approval_id,
+        ),
       );
       await this.cacheService.del(
         this.cacheService.generateListKey(this.CACHE_PREFIX),
       );
-
     } catch (error) {
       // Rollback the transaction in case of error
       await trx.rollback();
@@ -2663,8 +2737,10 @@ export class ApprovalService {
         form3_total_outbound: originalApproval.form3TotalOutbound,
         form3_total_inbound: originalApproval.form3TotalInbound,
         form3_total_amount: originalApproval.form3TotalAmount,
-        exceed_lodging_rights_checked: originalApproval.exceedLodgingRightsChecked,
-        exceed_lodging_rights_reason: originalApproval.exceedLodgingRightsReason,
+        exceed_lodging_rights_checked:
+          originalApproval.exceedLodgingRightsChecked,
+        exceed_lodging_rights_reason:
+          originalApproval.exceedLodgingRightsReason,
         form4_total_amount: originalApproval.form4TotalAmount,
         form5_total_amount: originalApproval.form5TotalAmount,
         approval_date: originalApproval.approvalDate,
@@ -2706,7 +2782,10 @@ export class ApprovalService {
       });
 
       // Copy travel date ranges
-      if (originalApproval.travelDateRanges && originalApproval.travelDateRanges.length > 0) {
+      if (
+        originalApproval.travelDateRanges &&
+        originalApproval.travelDateRanges.length > 0
+      ) {
         for (const dateRange of originalApproval.travelDateRanges as any) {
           await trx('approval_date_ranges').insert({
             approval_id: newApproval.id,
@@ -2717,7 +2796,10 @@ export class ApprovalService {
       }
 
       // Copy approval contents
-      if (originalApproval.approvalContents && originalApproval.approvalContents.length > 0) {
+      if (
+        originalApproval.approvalContents &&
+        originalApproval.approvalContents.length > 0
+      ) {
         for (const content of originalApproval.approvalContents) {
           await trx('approval_contents').insert({
             approval_id: newApproval.id,
@@ -2727,7 +2809,10 @@ export class ApprovalService {
       }
 
       // Copy trip entries and their date ranges
-      if (originalApproval.tripEntries && originalApproval.tripEntries.length > 0) {
+      if (
+        originalApproval.tripEntries &&
+        originalApproval.tripEntries.length > 0
+      ) {
         for (const tripEntry of originalApproval.tripEntries) {
           const [newTripEntry] = await trx('approval_trip_entries')
             .insert({
@@ -2742,22 +2827,25 @@ export class ApprovalService {
             })
             .returning('id');
 
-           // Copy trip date ranges
-           if (tripEntry.tripDateRanges && tripEntry.tripDateRanges.length > 0) {
-             for (const dateRange of tripEntry.tripDateRanges as any) {
-               await trx('approval_trip_date_ranges').insert({
-                 approval_id: newApproval.id,
-                 approval_trip_entries_id: newTripEntry.id,
-                 start_date: dateRange.startDate,
-                 end_date: dateRange.endDate,
-               });
-             }
-           }
+          // Copy trip date ranges
+          if (tripEntry.tripDateRanges && tripEntry.tripDateRanges.length > 0) {
+            for (const dateRange of tripEntry.tripDateRanges as any) {
+              await trx('approval_trip_date_ranges').insert({
+                approval_id: newApproval.id,
+                approval_trip_entries_id: newTripEntry.id,
+                start_date: dateRange.startDate,
+                end_date: dateRange.endDate,
+              });
+            }
+          }
         }
       }
 
       // Copy staff members and their related data
-      if (originalApproval.staffMembers && originalApproval.staffMembers.length > 0) {
+      if (
+        originalApproval.staffMembers &&
+        originalApproval.staffMembers.length > 0
+      ) {
         for (const staffMember of originalApproval.staffMembers) {
           const [newStaffMember] = await trx('approval_staff_members')
             .insert({
@@ -2775,7 +2863,10 @@ export class ApprovalService {
             .returning('id');
 
           // Copy work locations and their related data
-          if (staffMember.workLocations && staffMember.workLocations.length > 0) {
+          if (
+            staffMember.workLocations &&
+            staffMember.workLocations.length > 0
+          ) {
             for (const workLocation of staffMember.workLocations) {
               const [newWorkLocation] = await trx('approval_work_locations')
                 .insert({
@@ -2794,22 +2885,28 @@ export class ApprovalService {
                 })
                 .returning('id');
 
-               // Copy work location date ranges
-               if (workLocation.tripDateRanges && workLocation.tripDateRanges.length > 0) {
-                 for (const dateRange of workLocation.tripDateRanges as any) {
-                   await trx('approval_work_locations_date_ranges').insert({
-                     approval_id: newApproval.id,
-                     approval_work_locations_id: newWorkLocation.id,
-                     start_date: dateRange.startDate,
-                     end_date: dateRange.endDate,
-                     created_at: new Date(),
-                     updated_at: new Date(),
-                   });
-                 }
-               }
+              // Copy work location date ranges
+              if (
+                workLocation.tripDateRanges &&
+                workLocation.tripDateRanges.length > 0
+              ) {
+                for (const dateRange of workLocation.tripDateRanges as any) {
+                  await trx('approval_work_locations_date_ranges').insert({
+                    approval_id: newApproval.id,
+                    approval_work_locations_id: newWorkLocation.id,
+                    start_date: dateRange.startDate,
+                    end_date: dateRange.endDate,
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                  });
+                }
+              }
 
               // Copy transportation expenses
-              if (workLocation.transportationExpenses && workLocation.transportationExpenses.length > 0) {
+              if (
+                workLocation.transportationExpenses &&
+                workLocation.transportationExpenses.length > 0
+              ) {
                 for (const expense of workLocation.transportationExpenses) {
                   const expenseData = expense as any;
                   await trx('approval_transportation_expense').insert({
@@ -2837,9 +2934,14 @@ export class ApprovalService {
               }
 
               // Copy accommodation expenses
-              if (workLocation.accommodationExpenses && workLocation.accommodationExpenses.length > 0) {
+              if (
+                workLocation.accommodationExpenses &&
+                workLocation.accommodationExpenses.length > 0
+              ) {
                 for (const expense of workLocation.accommodationExpenses) {
-                  const [newAccommodationExpense] = await trx('approval_accommodation_expense')
+                  const [newAccommodationExpense] = await trx(
+                    'approval_accommodation_expense',
+                  )
                     .insert({
                       approval_id: newApproval.id,
                       staff_member_id: newStaffMember.id,
@@ -2869,7 +2971,8 @@ export class ApprovalService {
                       lodging_single_nights: expense.lodgingSingleNights,
                       lodging_single_rate: expense.lodgingSingleRate,
                       lodging_double_person: expense.lodgingDoublePerson,
-                      lodging_double_person_external: expense.lodgingDoublePersonExternal,
+                      lodging_double_person_external:
+                        expense.lodgingDoublePersonExternal,
                       lodging_total: expense.lodgingTotal,
                       moving_cost_checked: expense.movingCostChecked,
                       moving_cost_rate: expense.movingCostRate,
@@ -2879,11 +2982,17 @@ export class ApprovalService {
                     .returning('id');
 
                   // Copy accommodation transport expenses
-                  if (expense.accommodationTransportExpenses && expense.accommodationTransportExpenses.length > 0) {
+                  if (
+                    expense.accommodationTransportExpenses &&
+                    expense.accommodationTransportExpenses.length > 0
+                  ) {
                     for (const transportExpense of expense.accommodationTransportExpenses) {
-                      await trx('approval_accommodation_transport_expense').insert({
+                      await trx(
+                        'approval_accommodation_transport_expense',
+                      ).insert({
                         approval_id: newApproval.id,
-                        approval_accommodation_expense_id: newAccommodationExpense.id,
+                        approval_accommodation_expense_id:
+                          newAccommodationExpense.id,
                         type: transportExpense.type,
                         amount: transportExpense.amount,
                         checked: transportExpense.checked,
@@ -2894,13 +3003,19 @@ export class ApprovalService {
                     }
                   }
 
-                          // Copy accommodation holiday expenses
-                      const expenseWithHoliday = expense as any;
-                      if (expenseWithHoliday.accommodationHolidayExpenses && expenseWithHoliday.accommodationHolidayExpenses.length > 0) {
-                        for (const holidayExpense of expenseWithHoliday.accommodationHolidayExpenses) {
-                      await trx('approval_accommodation_holiday_expense').insert({
+                  // Copy accommodation holiday expenses
+                  const expenseWithHoliday = expense as any;
+                  if (
+                    expenseWithHoliday.accommodationHolidayExpenses &&
+                    expenseWithHoliday.accommodationHolidayExpenses.length > 0
+                  ) {
+                    for (const holidayExpense of expenseWithHoliday.accommodationHolidayExpenses) {
+                      await trx(
+                        'approval_accommodation_holiday_expense',
+                      ).insert({
                         approval_id: newApproval.id,
-                        approval_accommodation_expense_id: newAccommodationExpense.id,
+                        approval_accommodation_expense_id:
+                          newAccommodationExpense.id,
                         date: holidayExpense.date,
                         thai_date: holidayExpense.thaiDate,
                         checked: holidayExpense.checked,
@@ -2919,7 +3034,10 @@ export class ApprovalService {
           }
 
           // Copy entertainment expenses
-          if (staffMember.entertainmentExpenses && staffMember.entertainmentExpenses.length > 0) {
+          if (
+            staffMember.entertainmentExpenses &&
+            staffMember.entertainmentExpenses.length > 0
+          ) {
             for (const expense of staffMember.entertainmentExpenses) {
               await trx('approval_entertainment_expense').insert({
                 approval_id: newApproval.id,
@@ -2934,8 +3052,14 @@ export class ApprovalService {
           }
 
           // Copy clothing expenses
-          if (staffMember.clothingExpenses && staffMember.clothingExpenses.length > 0) {
-            if (typeof staffMember.employeeCode === 'string' && staffMember.employeeCode.includes('-')) {
+          if (
+            staffMember.clothingExpenses &&
+            staffMember.clothingExpenses.length > 0
+          ) {
+            if (
+              typeof staffMember.employeeCode === 'string' &&
+              staffMember.employeeCode.includes('-')
+            ) {
               continue;
             }
 
@@ -2962,7 +3086,10 @@ export class ApprovalService {
       }
 
       // Copy other expenses
-      if (originalApproval.otherExpenses && originalApproval.otherExpenses.length > 0) {
+      if (
+        originalApproval.otherExpenses &&
+        originalApproval.otherExpenses.length > 0
+      ) {
         for (const expense of originalApproval.otherExpenses) {
           await trx('approval_other_expense').insert({
             approval_id: newApproval.id,
@@ -2978,7 +3105,10 @@ export class ApprovalService {
       }
 
       // Copy conditions
-      if (originalApproval.conditions && originalApproval.conditions.length > 0) {
+      if (
+        originalApproval.conditions &&
+        originalApproval.conditions.length > 0
+      ) {
         for (const condition of originalApproval.conditions) {
           await trx('approval_conditions').insert({
             approval_id: newApproval.id,
@@ -3050,5 +3180,269 @@ export class ApprovalService {
       await trx.rollback();
       throw error;
     }
+  }
+
+  async getApprovalThatHasClothingExpense(
+    query: QueryApprovalsThatHasClothingExpenseDto,
+  ): Promise<{
+    data: Approval[];
+    meta: {
+      total: number;
+      page: number;
+      limit: number;
+      pageTotal: number;
+    };
+  }> {
+    const {
+      documentTitle,
+      approvalRequestStartDate,
+      approvalRequestEndDate,
+      incrementId,
+      urgencyLevel,
+      confidentialityLevel,
+    } = query;
+
+    const limit = 10;
+    const page = 1;
+    const offset = (page - 1) * limit;
+
+    // Get current date in Bangkok timezone (YYYY-MM-DD)
+    const currentDateBangkok = moment
+      .default()
+      .tz('Asia/Bangkok')
+      .format('YYYY-MM-DD');
+
+    // Subquery: หา start_date ที่น้อยที่สุดของแต่ละ approval
+    const minTripDateSubquery = this.knexService
+      .knex('approval_trip_date_ranges')
+      .select('approval_id')
+      .min('start_date as min_start_date')
+      .groupBy('approval_id')
+      .as('min_trip_dates');
+
+    // 1. Query data
+    let approvalQuery = this.knexService
+      .knex('approval')
+      .whereNull('approval.deleted_at')
+      .innerJoin(
+        'approval_clothing_expense',
+        'approval.id',
+        'approval_clothing_expense.approval_id',
+      )
+      .innerJoin(
+        minTripDateSubquery,
+        'approval.id',
+        'min_trip_dates.approval_id',
+      )
+      .where('min_trip_dates.min_start_date', '>', currentDateBangkok);
+
+    // Apply filters from query params
+    if (documentTitle) {
+      approvalQuery = approvalQuery.where(
+        'approval.document_title',
+        'like',
+        `%${documentTitle}%`,
+      );
+    }
+    if (incrementId) {
+      approvalQuery = approvalQuery.where(
+        'approval.increment_id',
+        'like',
+        `%${incrementId}%`,
+      );
+    }
+    if (urgencyLevel) {
+      approvalQuery = approvalQuery.where(
+        'approval.urgency_level',
+        urgencyLevel,
+      );
+    }
+    if (confidentialityLevel) {
+      approvalQuery = approvalQuery.where(
+        'approval.confidentiality_level',
+        confidentialityLevel,
+      );
+    }
+    if (approvalRequestStartDate && approvalRequestEndDate) {
+      approvalQuery = approvalQuery.whereBetween('approval.approval_date', [
+        approvalRequestStartDate,
+        approvalRequestEndDate,
+      ]);
+    } else if (approvalRequestStartDate) {
+      approvalQuery = approvalQuery.where(
+        'approval.approval_date',
+        '>=',
+        approvalRequestStartDate,
+      );
+    } else if (approvalRequestEndDate) {
+      approvalQuery = approvalQuery.where(
+        'approval.approval_date',
+        '<=',
+        approvalRequestEndDate,
+      );
+    }
+
+    const approvals = await approvalQuery
+      .select([
+        'approval.id as approvalId',
+        'approval.increment_id as incrementId',
+        'approval.record_type as recordType',
+        'approval.name',
+        'approval.employee_code as employeeCode',
+        'approval.travel_type as travelType',
+        'approval.international_sub_option as internationalSubOption',
+        'approval.approval_ref as approvalRef',
+        'approval.work_start_date as workStartDate',
+        'approval.work_end_date as workEndDate',
+        'approval.start_country as startCountry',
+        'approval.end_country as endCountry',
+        'approval.remarks',
+        'approval.num_travelers as numTravelers',
+        'approval.document_no as documentNo',
+        'approval.document_tel as documentTel',
+        'approval.document_to as documentTo',
+        'approval.document_title as documentTitle',
+        'approval.attachment_id as attachmentId',
+        'approval.form3_total_outbound as form3TotalOutbound',
+        'approval.form3_total_inbound as form3TotalInbound',
+        'approval.form3_total_amount as form3TotalAmount',
+        'approval.exceed_lodging_rights_checked as exceedLodgingRightsChecked',
+        'approval.exceed_lodging_rights_reason as exceedLodgingRightsReason',
+        'approval.form4_total_amount as form4TotalAmount',
+        'approval.form5_total_amount as form5TotalAmount',
+        'approval.approval_date as approvalDate',
+        'approval.staff',
+        'approval.staff_employee_code as staffEmployeeCode',
+        'approval.final_staff_employee_code as finalStaffEmployeeCode',
+        'approval.confidentiality_level as confidentialityLevel',
+        'approval.urgency_level as urgencyLevel',
+        'approval.comments',
+        'approval.final_staff as finalStaff',
+        'approval.signer_date as signerDate',
+        'approval.document_ending as documentEnding',
+        'approval.document_ending_wording as documentEndingWording',
+        'approval.signer_name as signerName',
+        'approval.use_file_signature as useFileSignature',
+        'approval.signature_attachment_id as signatureAttachmentId',
+        'approval.use_system_signature as useSystemSignature',
+        'approval.approval_print_number as approvalPrintNumber',
+        'approval.expense_print_number as expensePrintNumber',
+        'approval.user_id as userId',
+        'approval.created_at as createdAt',
+        'approval.updated_at as updatedAt',
+        'approval.deleted_at as deletedAt',
+        // min trip date
+        'min_trip_dates.min_start_date as tripStartDate',
+        // clothing expense
+        'approval_clothing_expense.id as clothingExpenseId',
+        'approval_clothing_expense.clothing_file_checked as clothingFileChecked',
+        'approval_clothing_expense.clothing_amount as clothingAmount',
+        'approval_clothing_expense.clothing_reason as clothingReason',
+        'approval_clothing_expense.reporting_date as clothingReportingDate',
+        'approval_clothing_expense.next_claim_date as clothingNextClaimDate',
+        'approval_clothing_expense.work_end_date as clothingWorkEndDate',
+        'approval_clothing_expense.destination_country as clothingDestinationCountry',
+        'approval_clothing_expense.attachment_id as clothingAttachmentId',
+        'approval_clothing_expense.staff_member_id as clothingStaffMemberId',
+        'approval_clothing_expense.employee_code as clothingEmployeeCode',
+        'approval_clothing_expense.created_at as clothingCreatedAt',
+        'approval_clothing_expense.updated_at as clothingUpdatedAt',
+      ])
+      .limit(limit)
+      .offset(offset);
+
+    // 2. Query total count (apply same filters)
+    let totalQuery = this.knexService
+      .knex('approval')
+      .whereNull('approval.deleted_at')
+      .innerJoin(
+        'approval_clothing_expense',
+        'approval.id',
+        'approval_clothing_expense.approval_id',
+      )
+      .innerJoin(
+        minTripDateSubquery,
+        'approval.id',
+        'min_trip_dates.approval_id',
+      )
+      .where('min_trip_dates.min_start_date', '>', currentDateBangkok);
+
+    if (documentTitle) {
+      totalQuery = totalQuery.where(
+        'approval.document_title',
+        'like',
+        `%${documentTitle}%`,
+      );
+    }
+    if (incrementId) {
+      totalQuery = totalQuery.where(
+        'approval.increment_id',
+        'like',
+        `%${incrementId}%`,
+      );
+    }
+    if (urgencyLevel) {
+      totalQuery = totalQuery.where('approval.urgency_level', urgencyLevel);
+    }
+    if (confidentialityLevel) {
+      totalQuery = totalQuery.where(
+        'approval.confidentiality_level',
+        confidentialityLevel,
+      );
+    }
+    if (approvalRequestStartDate && approvalRequestEndDate) {
+      totalQuery = totalQuery.whereBetween('approval.approval_date', [
+        approvalRequestStartDate,
+        approvalRequestEndDate,
+      ]);
+    } else if (approvalRequestStartDate) {
+      totalQuery = totalQuery.where(
+        'approval.approval_date',
+        '>=',
+        approvalRequestStartDate,
+      );
+    } else if (approvalRequestEndDate) {
+      totalQuery = totalQuery.where(
+        'approval.approval_date',
+        '<=',
+        approvalRequestEndDate,
+      );
+    }
+
+    const totalResult = await totalQuery
+      .countDistinct('approval.id as total')
+      .first();
+
+    const data = [];
+    for (const approval of approvals) {
+      data.push({
+        ...approval,
+        clothingExpense: {
+          id: approval.clothingExpenseId,
+          clothingFileChecked: approval.clothingFileChecked,
+          clothingAmount: approval.clothingAmount,
+          clothingReason: approval.clothingReason,
+          reportingDate: approval.clothingReportingDate,
+          nextClaimDate: approval.clothingNextClaimDate,
+          workEndDate: approval.clothingWorkEndDate,
+          destinationCountry: approval.clothingDestinationCountry,
+          attachmentId: approval.clothingAttachmentId,
+          staffMemberId: approval.clothingStaffMemberId,
+          employeeCode: approval.clothingEmployeeCode,
+          createdAt: approval.clothingCreatedAt,
+          updatedAt: approval.clothingUpdatedAt,
+        },
+      });
+    }
+
+    return {
+      data: data,
+      meta: {
+        total: Number(totalResult?.total || 0),
+        page,
+        limit,
+        pageTotal: Math.ceil(Number(totalResult?.total || 0) / limit),
+      },
+    };
   }
 }
