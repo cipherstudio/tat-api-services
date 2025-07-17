@@ -3412,6 +3412,7 @@ export class ApprovalService {
       incrementId,
       urgencyLevel,
       confidentialityLevel,
+      creatorCode,
     } = query;
 
     const limit = 10;
@@ -3446,6 +3447,16 @@ export class ApprovalService {
         'approval.id',
         'min_trip_dates.approval_id',
       )
+      .leftJoin('OP_MASTER_T', (builder) => {
+        builder.on(
+          'approval_clothing_expense.employee_code',
+          '=',
+          this.knexService.knex.raw('RTRIM("OP_MASTER_T"."PMT_CODE")'),
+        );
+      })
+      .innerJoin('approval_trip_date_ranges', (builder) => {
+        builder.on('approval.id', '=', 'approval_trip_date_ranges.approval_id');
+      })
       .where('min_trip_dates.min_start_date', '>', currentDateBangkok);
 
     // Apply filters from query params
@@ -3491,6 +3502,12 @@ export class ApprovalService {
         'approval.approval_date',
         '<=',
         approvalRequestEndDate,
+      );
+    }
+    if (creatorCode) {
+      approvalQuery = approvalQuery.where(
+        'approval_clothing_expense.employee_code',
+        creatorCode,
       );
     }
 
@@ -3545,6 +3562,7 @@ export class ApprovalService {
         'approval.deleted_at as deletedAt',
         // min trip date
         'min_trip_dates.min_start_date as tripStartDate',
+        'approval_trip_date_ranges.end_date as tripEndDate',
         // clothing expense
         'approval_clothing_expense.id as clothingExpenseId',
         'approval_clothing_expense.clothing_file_checked as clothingFileChecked',
@@ -3559,6 +3577,8 @@ export class ApprovalService {
         'approval_clothing_expense.employee_code as clothingEmployeeCode',
         'approval_clothing_expense.created_at as clothingCreatedAt',
         'approval_clothing_expense.updated_at as clothingUpdatedAt',
+        // OP_MASTER_T
+        'OP_MASTER_T.PMT_NAME_T as creatorName',
       ])
       .limit(limit)
       .offset(offset);
@@ -3621,12 +3641,26 @@ export class ApprovalService {
       );
     }
 
+    if (creatorCode) {
+      totalQuery = totalQuery.where(
+        'approval_clothing_expense.employee_code',
+        creatorCode,
+      );
+    }
+
     const totalResult = await totalQuery
       .countDistinct('approval.id as total')
       .first();
 
     const data = [];
     for (const approval of approvals) {
+      //check if approval already in data
+      const isApprovalAlreadyInData = data.some(
+        (item) => item.approvalId === approval.approvalId,
+      );
+      if (isApprovalAlreadyInData) {
+        continue;
+      }
       data.push({
         ...approval,
         clothingExpense: {

@@ -50,4 +50,12 @@ export class QueryApprovalsThatHasClothingExpenseDto extends QueryApprovalDto {
   @IsOptional()
   @IsString()
   confidentialityLevel?: string;
+
+  @ApiPropertyOptional({
+    description: 'Creator code',
+    default: '',
+  })
+  @IsOptional()
+  @IsString()
+  creatorCode?: string;
 }
