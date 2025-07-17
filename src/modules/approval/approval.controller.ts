@@ -37,6 +37,7 @@ import { ClothingExpenseEligibilityResponseDto } from './dto/clothing-expense-el
 import { ApprovalStatusLabelResponseDto } from './entities/approval-status-label.entity';
 import { UpdateApprovalContinuousDto } from './dto/update-approval-continuous.dto';
 import { ApprovalStatisticsResponseDto } from './dto/approval-statistics-response.dto';
+import { QueryApprovalsThatHasClothingExpenseDto } from './dto/query-approvals-that-has-clothing-expense';
 //import { ApprovalWorkLocationDto } from './dto/approval-work-location.dto';
 
 interface RequestWithUser extends Request {
@@ -289,7 +290,11 @@ export class ApprovalController {
       includes,
     };
 
-    return this.approvalService.findAll(queryOptions, req.user.id, req.user.employeeCode);
+    return this.approvalService.findAll(
+      queryOptions,
+      req.user.id,
+      req.user.employeeCode,
+    );
   }
 
   @Get('status')
@@ -309,15 +314,68 @@ export class ApprovalController {
   @Get('statistics')
   @ApiOperation({
     summary: 'Get approval statistics',
-    description: 'Retrieve approval statistics for dashboard with counts by status and travel type',
+    description:
+      'Retrieve approval statistics for dashboard with counts by status and travel type',
   })
   @ApiResponse({
     status: 200,
     description: 'Success',
     type: ApprovalStatisticsResponseDto,
   })
-  getStatistics(@Req() req: RequestWithUser): Promise<ApprovalStatisticsResponseDto> {
+  getStatistics(
+    @Req() req: RequestWithUser,
+  ): Promise<ApprovalStatisticsResponseDto> {
     return this.approvalService.getStatistics(req.user.id);
+  }
+
+  @Get('approvals-that-has-clothing-expense')
+  @ApiOperation({
+    summary: 'Get approvals that has clothing expense',
+    description: 'Get approvals that has clothing expense',
+  })
+  @ApiQuery({
+    name: 'documentTitle',
+    type: String,
+    required: false,
+    description: 'Filter by document title (เรื่อง)',
+  })
+  @ApiQuery({
+    name: 'approvalRequestStartDate',
+    type: String,
+    required: false,
+    description:
+      'Filter by approval request start date (วันที่ขออนุมัติเริ่มต้น) - ISO date string (YYYY-MM-DD)',
+  })
+  @ApiQuery({
+    name: 'approvalRequestEndDate',
+    type: String,
+    required: false,
+    description:
+      'Filter by approval request end date (วันที่ขออนุมัติสิ้นสุด) - ISO date string (YYYY-MM-DD)',
+  })
+  @ApiQuery({
+    name: 'incrementId',
+    type: String,
+    required: false,
+    description: 'Filter by increment ID (เลขที่หนังสือ)',
+  })
+  @ApiQuery({
+    name: 'urgencyLevel',
+    type: String,
+    required: false,
+    description: 'Filter by urgency level (ความด่วน)',
+  })
+  @ApiQuery({
+    name: 'confidentialityLevel',
+    type: String,
+    required: false,
+    description: 'Filter by confidentiality level (ความลับ)',
+  })
+  @ApiResponse({ status: 200, description: 'Success' })
+  getApprovalsThatHasClothingExpense(
+    @Query() query: QueryApprovalsThatHasClothingExpenseDto,
+  ) {
+    return this.approvalService.getApprovalThatHasClothingExpense(query);
   }
 
   @Get(':id')
@@ -348,7 +406,12 @@ export class ApprovalController {
     @Body() updateApprovalDto: UpdateApprovalDto,
     @Req() req: RequestWithUser,
   ) {
-    return this.approvalService.update(id, updateApprovalDto, req.user.id, req.user.employeeCode);
+    return this.approvalService.update(
+      id,
+      updateApprovalDto,
+      req.user.id,
+      req.user.employeeCode,
+    );
   }
 
   @Patch(':id/status')
@@ -426,14 +489,22 @@ export class ApprovalController {
     description: 'Update approval continuous by ID',
   })
   @ApiBody({ type: UpdateApprovalContinuousDto })
-  @ApiResponse({ status: 200, description: 'Approval continuous updated successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Approval continuous updated successfully',
+  })
   @ApiResponse({ status: 404, description: 'Approval continuous not found' })
   updateApprovalContinuous(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateDto: UpdateApprovalContinuousDto,
     @Req() req: RequestWithUser,
   ) {
-    return this.approvalService.updateApprovalContinuous(id, updateDto, req.user.id, req.user.employeeCode);
+    return this.approvalService.updateApprovalContinuous(
+      id,
+      updateDto,
+      req.user.id,
+      req.user.employeeCode,
+    );
   }
 
   @Post('duplicate/:id')
