@@ -1166,6 +1166,35 @@ export class ApprovalService {
       ...continuousSignatureAttachments,
     ];
 
+    // get approval ref data
+    let approvalRefData: {
+      id: number;
+      incrementId: string;
+      name: string;
+      employeeCode: string;
+      travelType: string;
+      documentTitle: string;
+      createdAt: Date;
+      updatedAt: Date;
+    } | null = null;
+    if (approval.approvalRef !== null) {
+      approvalRefData = await this.knexService
+        .knex('approval')
+        .where('id', approval.approvalRef)
+        .whereNull('deleted_at')
+        .select(
+          'id',
+          'increment_id as incrementId',
+          'name',
+          'employee_code as employeeCode',
+          'travel_type as travelType',
+          'document_title as documentTitle',
+          'created_at as createdAt',
+          'updated_at as updatedAt'
+        )
+        .first();
+    }
+
     // Combine all the data
     const response: ApprovalDetailResponseDto = {
       ...approvalDto,
@@ -1182,6 +1211,7 @@ export class ApprovalService {
       conditions,
       budgets,
       continuousApproval: continuousApproval || [],
+      approvalRefData: approvalRefData,
     };
 
     // Cache the result

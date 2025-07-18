@@ -777,4 +777,29 @@ export class ApprovalDetailResponseDto implements Approval {
     statusCode: string;
     statusLabel: string;
   }[];
+
+  @ApiProperty({
+    description: 'Approval ref data',
+    required: false,
+    example: {
+      id: 123,
+      incrementId: 'EX680700001',
+      name: 'Business Trip to Japan',
+      employeeCode: '66019',
+      travelType: 'international',
+      documentTitle: 'Business Trip Request',
+      createdAt: '2024-03-20T10:00:00.000Z',
+      updatedAt: '2024-03-20T10:00:00.000Z'
+    }
+  })
+  approvalRefData?: {
+    id: number;
+    incrementId: string;
+    name: string;
+    employeeCode: string;
+    travelType: string;
+    documentTitle: string;
+    createdAt: Date;
+    updatedAt: Date;
+  } | null | undefined;
 } 
