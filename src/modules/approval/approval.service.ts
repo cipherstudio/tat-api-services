@@ -86,7 +86,6 @@ export class ApprovalService {
 
   async create(
     createApprovalDto: CreateApprovalDto,
-    userId: number,
     employeeCode: string,
     employeeName: string,
   ): Promise<Approval> {
@@ -112,7 +111,6 @@ export class ApprovalService {
         incrementId,
         approvalPrintNumber,
         expensePrintNumber,
-        userId,
         createdEmployeeCode: employeeCode,
         createdEmployeeName: employeeName,
         approvalStatusLabelId: approvalStatusLabelId.id,
@@ -124,7 +122,7 @@ export class ApprovalService {
       // Create the approval status record
       await trx('approval_status_history').insert({
         approval_status_label_id: approvalStatusLabelId.id,
-        user_id: userId,
+        created_by: employeeCode,
         approval_id: savedApproval.id,
         created_at: new Date(),
         updated_at: new Date(),
@@ -155,7 +153,6 @@ export class ApprovalService {
 
   async findAll(
     queryOptions?: ApprovalQueryOptions,
-    userId?: number,
     employeeCode?: string,
   ): Promise<PaginatedResult<Approval>> {
     const {
@@ -212,8 +209,8 @@ export class ApprovalService {
     }
 
     // user can see only their own approvals (unless they are checking for approvals to review)
-    if (userId && !isRelatedToMe && !isMyApproval) {
-      conditions.user_id = userId;
+    if (employeeCode && !isRelatedToMe && !isMyApproval) {
+      conditions.created_employee_code = employeeCode;
     }
 
     // Add soft delete condition
@@ -396,7 +393,6 @@ export class ApprovalService {
           'approval.expense_print_number as expensePrintNumber',
           'approval.created_employee_code as createdEmployeeCode',
           'approval.created_employee_name as createdEmployeeName',
-          'approval.user_id as userId',
           'approval.created_at as createdAt',
           'approval.updated_at as updatedAt',
           'approval.deleted_at as deletedAt',
@@ -706,7 +702,6 @@ export class ApprovalService {
         'approval.use_file_signature as useFileSignature',
         'approval.signature_attachment_id as signatureAttachmentId',
         'approval.use_system_signature as useSystemSignature',
-        'approval.user_id as userId',
         'approval.created_at as createdAt',
         'approval.updated_at as updatedAt',
         'approval.deleted_at as deletedAt',
@@ -756,7 +751,7 @@ export class ApprovalService {
       .select(
         'ash.id',
         'asl.label as status',
-        'ash.user_id as userId',
+        'ash.created_by as createdBy',
         'ash.created_at as createdAt',
       );
 
@@ -1198,7 +1193,6 @@ export class ApprovalService {
   async update(
     id: number,
     updateDto: UpdateApprovalDto,
-    userId: number,
     employeeCode: string,
   ): Promise<Approval> {
     const approval = await this.findById(id);
@@ -2134,7 +2128,7 @@ export class ApprovalService {
   async updateStatus(
     id: number,
     updateStatusDto: UpdateApprovalStatusDto,
-    userId: number,
+    employeeCode: string,
   ): Promise<void> {
     const approval = await this.findById(id);
     if (!approval) {
@@ -2162,7 +2156,7 @@ export class ApprovalService {
       // Insert new status record
       await trx('approval_status_history').insert({
         approval_status_label_id: approvalStatusLabelId.id,
-        user_id: userId,
+        created_by: employeeCode,
         approval_id: id,
         created_at: new Date(),
         updated_at: new Date(),
@@ -2515,8 +2509,8 @@ export class ApprovalService {
     };
   }
 
-  async getStatistics(userId: number): Promise<ApprovalStatisticsResponseDto> {
-    const cacheKey = `${this.CACHE_PREFIX}:statistics:${userId}`;
+  async getStatistics(employeeCode: string): Promise<ApprovalStatisticsResponseDto> {
+    const cacheKey = `${this.CACHE_PREFIX}:statistics:${employeeCode}`;
     const CACHE_TTL = 300; // 5 minutes
 
     // Try to get from cache first
@@ -2536,7 +2530,7 @@ export class ApprovalService {
       // Get all approvals first to process manually (temporary solution)
       const allApprovals = await this.knexService
         .knex('approval')
-        .where('approval.user_id', userId)
+        .where('approval.created_employee_code', employeeCode)
         .whereNull('approval.deleted_at')
         .select(
           'approval.travel_type',
@@ -2736,7 +2730,6 @@ export class ApprovalService {
   async updateApprovalContinuous(
     id: number,
     updateDto: UpdateApprovalContinuousDto,
-    userId: number,
     employeeCode: string,
   ): Promise<void> {
     // Check if approval_continuous exists and has PENDING status
@@ -2838,7 +2831,7 @@ export class ApprovalService {
           // insert approval_status_history
           await trx('approval_status_history').insert({
             approval_status_label_id: approvalStatusLabelIdApproved.id,
-            user_id: userId,
+            created_by: employeeCode,
             approval_id: existingContinuous.approval_id,
             created_at: new Date(),
             updated_at: new Date(),
@@ -2884,16 +2877,16 @@ export class ApprovalService {
         // insert approval_status_history for REJECTED
         await trx('approval_status_history').insert({
           approval_status_label_id: approvalStatusLabelIdRejected.id,
-          user_id: userId,
+          created_by: employeeCode,
           approval_id: existingContinuous.approval_id,
           created_at: new Date(),
           updated_at: new Date(),
         });
 
-        // get the approval creator (user_id from approval table)
+        // get the approval creator (employee_code from approval table)
         const approval = await trx('approval')
           .where('id', existingContinuous.approval_id)
-          .select('user_id', 'employee_code')
+          .select('employee_code')
           .first();
 
         // update approval.continuous_employee_code กลับไปผู้สร้าง
@@ -2938,7 +2931,7 @@ export class ApprovalService {
     }
   }
 
-  async duplicate(id: number, userId: number, employeeCode: string, employeeName: string): Promise<Approval> {
+  async duplicate(id: number, employeeCode: string, employeeName: string): Promise<Approval> {
     // Get the original approval
     const originalApproval = await this.findById(id);
     if (!originalApproval) {
@@ -3009,7 +3002,7 @@ export class ApprovalService {
         expense_print_number: expensePrintNumber,
         created_employee_code: employeeCode,
         created_employee_name: employeeName,
-        user_id: userId,
+        //user_id: userId,
         approval_status_label_id: approvalStatusLabelId.id,
         continuous_employee_code: originalApproval.continuousEmployeeCode,
         created_at: new Date(),
@@ -3024,7 +3017,7 @@ export class ApprovalService {
       // Create the approval status history record
       await trx('approval_status_history').insert({
         approval_status_label_id: approvalStatusLabelId.id,
-        user_id: userId,
+        created_by: employeeCode,
         approval_id: newApproval.id,
         created_at: new Date(),
         updated_at: new Date(),
@@ -3549,7 +3542,7 @@ export class ApprovalService {
         'approval.use_system_signature as useSystemSignature',
         'approval.approval_print_number as approvalPrintNumber',
         'approval.expense_print_number as expensePrintNumber',
-        'approval.user_id as userId',
+        //'approval.user_id as userId',
         'approval.created_employee_code as createdEmployeeCode',
         'approval.created_employee_name as createdEmployeeName',
         'approval.created_at as createdAt',
