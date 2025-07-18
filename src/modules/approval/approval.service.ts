@@ -3428,6 +3428,7 @@ export class ApprovalService {
       urgencyLevel,
       confidentialityLevel,
       creatorCode,
+      statusLabelId,
     } = query;
 
     const limit = 10;
@@ -3524,6 +3525,13 @@ export class ApprovalService {
       approvalQuery = approvalQuery.where(
         'approval_clothing_expense.employee_code',
         creatorCode,
+      );
+    }
+
+    if (statusLabelId) {
+      approvalQuery = approvalQuery.where(
+        'approval.approval_status_label_id',
+        statusLabelId,
       );
     }
 
@@ -3666,6 +3674,13 @@ export class ApprovalService {
       totalQuery = totalQuery.where(
         'approval_clothing_expense.employee_code',
         creatorCode,
+      );
+    }
+
+    if (statusLabelId) {
+      totalQuery = totalQuery.where(
+        'approval.approval_status_label_id',
+        statusLabelId,
       );
     }
 

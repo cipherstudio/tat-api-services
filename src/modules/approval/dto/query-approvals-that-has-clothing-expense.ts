@@ -58,4 +58,12 @@ export class QueryApprovalsThatHasClothingExpenseDto extends QueryApprovalDto {
   @IsOptional()
   @IsString()
   creatorCode?: string;
+
+  @ApiPropertyOptional({
+    description: 'Status label ID',
+    default: '',
+  })
+  @IsOptional()
+  @IsString()
+  statusLabelId?: string;
 }
