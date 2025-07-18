@@ -2938,7 +2938,12 @@ export class ApprovalService {
     }
   }
 
-  async duplicate(id: number, userId: number, employeeCode: string, employeeName: string): Promise<Approval> {
+  async duplicate(
+    id: number,
+    userId: number,
+    employeeCode: string,
+    employeeName: string,
+  ): Promise<Approval> {
     // Get the original approval
     const originalApproval = await this.findById(id);
     if (!originalApproval) {
@@ -3445,14 +3450,15 @@ export class ApprovalService {
 
     // 1. Query data
     let approvalQuery = this.knexService
-      .knex('approval')
-      .whereNull('approval.deleted_at')
-      .innerJoin(
-        'approval_clothing_expense',
-        'approval.id',
+      .knex('approval_clothing_expense')
+      .whereNotNull('approval_clothing_expense.approval_id')
+      .leftJoin(
+        'approval',
         'approval_clothing_expense.approval_id',
+        'approval.id',
       )
-      .innerJoin(
+      .whereNull('approval.deleted_at')
+      .leftJoin(
         minTripDateSubquery,
         'approval.id',
         'min_trip_dates.approval_id',
@@ -3464,7 +3470,7 @@ export class ApprovalService {
           this.knexService.knex.raw('RTRIM("OP_MASTER_T"."PMT_CODE")'),
         );
       })
-      .innerJoin('approval_trip_date_ranges', (builder) => {
+      .leftJoin('approval_trip_date_ranges', (builder) => {
         builder.on('approval.id', '=', 'approval_trip_date_ranges.approval_id');
       })
       .where('min_trip_dates.min_start_date', '>', currentDateBangkok);
@@ -3521,6 +3527,8 @@ export class ApprovalService {
       );
     }
 
+    console.log(approvalQuery.toSQL());
+
     const approvals = await approvalQuery
       .select([
         'approval.id as approvalId',
@@ -3573,7 +3581,7 @@ export class ApprovalService {
         'approval.updated_at as updatedAt',
         'approval.deleted_at as deletedAt',
         // min trip date
-        'min_trip_dates.min_start_date as tripStartDate',
+        'approval_trip_date_ranges.start_date as tripStartDate',
         'approval_trip_date_ranges.end_date as tripEndDate',
         // clothing expense
         'approval_clothing_expense.id as clothingExpenseId',
@@ -3597,14 +3605,15 @@ export class ApprovalService {
 
     // 2. Query total count (apply same filters)
     let totalQuery = this.knexService
-      .knex('approval')
-      .whereNull('approval.deleted_at')
-      .innerJoin(
-        'approval_clothing_expense',
-        'approval.id',
+      .knex('approval_clothing_expense')
+      .whereNotNull('approval_clothing_expense.approval_id')
+      .leftJoin(
+        'approval',
         'approval_clothing_expense.approval_id',
+        'approval.id',
       )
-      .innerJoin(
+      .whereNull('approval.deleted_at')
+      .leftJoin(
         minTripDateSubquery,
         'approval.id',
         'min_trip_dates.approval_id',
@@ -3661,18 +3670,17 @@ export class ApprovalService {
     }
 
     const totalResult = await totalQuery
-      .countDistinct('approval.id as total')
+      .countDistinct('approval_clothing_expense.id as total')
       .first();
 
     const data = [];
+    const seenClothingExpenseIds = new Set();
     for (const approval of approvals) {
-      //check if approval already in data
-      const isApprovalAlreadyInData = data.some(
-        (item) => item.approvalId === approval.approvalId,
-      );
-      if (isApprovalAlreadyInData) {
+      if (seenClothingExpenseIds.has(approval.clothingExpenseId)) {
         continue;
       }
+      seenClothingExpenseIds.add(approval.clothingExpenseId);
+
       data.push({
         ...approval,
         clothingExpense: {
