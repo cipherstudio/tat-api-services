@@ -185,8 +185,8 @@ export class ApprovalController {
     required: false,
     description: 'Relations to include',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Success',
     schema: {
       example: {
@@ -232,7 +232,7 @@ export class ApprovalController {
                 size: 1024000,
                 path: '/uploads/documents/document.pdf',
                 createdAt: '2024-06-21T10:00:00.000Z',
-                updatedAt: '2024-06-21T10:00:00.000Z'
+                updatedAt: '2024-06-21T10:00:00.000Z',
               },
               {
                 id: 2,
@@ -245,19 +245,19 @@ export class ApprovalController {
                 size: 512000,
                 path: '/uploads/signatures/signature.png',
                 createdAt: '2024-06-21T10:00:00.000Z',
-                updatedAt: '2024-06-21T10:00:00.000Z'
-              }
-            ]
-          }
+                updatedAt: '2024-06-21T10:00:00.000Z',
+              },
+            ],
+          },
         ],
         meta: {
           page: 1,
           limit: 10,
           total: 1,
-          totalPages: 1
-        }
-      }
-    }
+          totalPages: 1,
+        },
+      },
+    },
   })
   findAll(
     @Req() req: RequestWithUser,
@@ -384,6 +384,12 @@ export class ApprovalController {
     type: String,
     required: false,
     description: 'Filter by confidentiality level (ความลับ)',
+  })
+  @ApiQuery({
+    name: 'creatorCode',
+    type: String,
+    required: false,
+    description: 'Filter by creator code',
   })
   @ApiResponse({ status: 200, description: 'Success' })
   getApprovalsThatHasClothingExpense(

@@ -2931,7 +2931,11 @@ export class ApprovalService {
     }
   }
 
-  async duplicate(id: number, employeeCode: string, employeeName: string): Promise<Approval> {
+  async duplicate(
+    id: number, 
+    employeeCode: string, 
+    employeeName: string
+  ): Promise<Approval> {
     // Get the original approval
     const originalApproval = await this.findById(id);
     if (!originalApproval) {
@@ -3415,6 +3419,8 @@ export class ApprovalService {
       incrementId,
       urgencyLevel,
       confidentialityLevel,
+      creatorCode,
+      statusLabelId,
     } = query;
 
     const limit = 10;
@@ -3437,18 +3443,29 @@ export class ApprovalService {
 
     // 1. Query data
     let approvalQuery = this.knexService
-      .knex('approval')
-      .whereNull('approval.deleted_at')
-      .innerJoin(
-        'approval_clothing_expense',
-        'approval.id',
+      .knex('approval_clothing_expense')
+      .whereNotNull('approval_clothing_expense.approval_id')
+      .leftJoin(
+        'approval',
         'approval_clothing_expense.approval_id',
+        'approval.id',
       )
-      .innerJoin(
+      .whereNull('approval.deleted_at')
+      .leftJoin(
         minTripDateSubquery,
         'approval.id',
         'min_trip_dates.approval_id',
       )
+      .leftJoin('OP_MASTER_T', (builder) => {
+        builder.on(
+          'approval_clothing_expense.employee_code',
+          '=',
+          this.knexService.knex.raw('RTRIM("OP_MASTER_T"."PMT_CODE")'),
+        );
+      })
+      .leftJoin('approval_trip_date_ranges', (builder) => {
+        builder.on('approval.id', '=', 'approval_trip_date_ranges.approval_id');
+      })
       .where('min_trip_dates.min_start_date', '>', currentDateBangkok);
 
     // Apply filters from query params
@@ -3496,6 +3513,21 @@ export class ApprovalService {
         approvalRequestEndDate,
       );
     }
+    if (creatorCode) {
+      approvalQuery = approvalQuery.where(
+        'approval_clothing_expense.employee_code',
+        creatorCode,
+      );
+    }
+
+    if (statusLabelId) {
+      approvalQuery = approvalQuery.where(
+        'approval.approval_status_label_id',
+        statusLabelId,
+      );
+    }
+
+    console.log(approvalQuery.toSQL());
 
     const approvals = await approvalQuery
       .select([
@@ -3549,7 +3581,8 @@ export class ApprovalService {
         'approval.updated_at as updatedAt',
         'approval.deleted_at as deletedAt',
         // min trip date
-        'min_trip_dates.min_start_date as tripStartDate',
+        'approval_trip_date_ranges.start_date as tripStartDate',
+        'approval_trip_date_ranges.end_date as tripEndDate',
         // clothing expense
         'approval_clothing_expense.id as clothingExpenseId',
         'approval_clothing_expense.clothing_file_checked as clothingFileChecked',
@@ -3564,20 +3597,23 @@ export class ApprovalService {
         'approval_clothing_expense.employee_code as clothingEmployeeCode',
         'approval_clothing_expense.created_at as clothingCreatedAt',
         'approval_clothing_expense.updated_at as clothingUpdatedAt',
+        // OP_MASTER_T
+        'OP_MASTER_T.PMT_NAME_T as creatorName',
       ])
       .limit(limit)
       .offset(offset);
 
     // 2. Query total count (apply same filters)
     let totalQuery = this.knexService
-      .knex('approval')
-      .whereNull('approval.deleted_at')
-      .innerJoin(
-        'approval_clothing_expense',
-        'approval.id',
+      .knex('approval_clothing_expense')
+      .whereNotNull('approval_clothing_expense.approval_id')
+      .leftJoin(
+        'approval',
         'approval_clothing_expense.approval_id',
+        'approval.id',
       )
-      .innerJoin(
+      .whereNull('approval.deleted_at')
+      .leftJoin(
         minTripDateSubquery,
         'approval.id',
         'min_trip_dates.approval_id',
@@ -3626,12 +3662,32 @@ export class ApprovalService {
       );
     }
 
+    if (creatorCode) {
+      totalQuery = totalQuery.where(
+        'approval_clothing_expense.employee_code',
+        creatorCode,
+      );
+    }
+
+    if (statusLabelId) {
+      totalQuery = totalQuery.where(
+        'approval.approval_status_label_id',
+        statusLabelId,
+      );
+    }
+
     const totalResult = await totalQuery
-      .countDistinct('approval.id as total')
+      .countDistinct('approval_clothing_expense.id as total')
       .first();
 
     const data = [];
+    const seenClothingExpenseIds = new Set();
     for (const approval of approvals) {
+      if (seenClothingExpenseIds.has(approval.clothingExpenseId)) {
+        continue;
+      }
+      seenClothingExpenseIds.add(approval.clothingExpenseId);
+
       data.push({
         ...approval,
         clothingExpense: {
