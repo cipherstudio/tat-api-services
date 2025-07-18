@@ -242,16 +242,11 @@ export class ApprovalService {
 
     // Add JOIN for isRelatedToMe filter
     if (isRelatedToMe) {
-      // query = query
-      //   .leftJoin(
-      //     'approval_staff_members',
-      //     'approval.id',
-      //     'approval_staff_members.approval_id',
-      //   )
-      //   .where('approval_staff_members.employee_code', employeeCode);
-
       // ถ้าเราเป็นคนในคณะเดินทาง หรือมีส่วนในการอนุมัติส่งเรื่อง หรือถูกทำแทน (ไม่ได้เป็นคนสร้างเรื่อง)
-      query = query
+      // ใช้ subquery เพื่อป้องกันข้อมูลซ้ำ
+      const relatedApprovalIds = this.knexService.knex
+        .select('approval.id')
+        .from('approval')
         .leftJoin(
           'approval_staff_members',
           'approval.id',
@@ -276,7 +271,10 @@ export class ApprovalService {
                 employeeCode,
               );
             });
-        });
+        })
+        .groupBy('approval.id');
+
+      query = query.whereIn('approval.id', relatedApprovalIds);
     }
 
     // Add filter for my approval
