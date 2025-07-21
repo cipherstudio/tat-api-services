@@ -17,8 +17,3 @@ services:
       - "8080:3000"
     command: npm run start:prod
     restart: unless-stopped
-
-  redis:
-    environment:
-      - REDIS_PASSWORD=staging_redis_password
-    restart: unless-stopped 

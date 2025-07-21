@@ -25,8 +25,12 @@ async function seedSuperAdmin() {
   const knexConfig = knexModule.default;
   const knexInstance = knex(knexConfig[environment]);
 
+  // Start transaction
+  const trx = await knexInstance.transaction();
+
   try {
     console.log('Knex has been initialized!');
+    console.log('Starting seed transaction...');
 
     // Create super admin user
     const hashedPassword = await bcrypt.hash('Admin@123', 10);
@@ -42,14 +46,25 @@ async function seedSuperAdmin() {
       updated_at: new Date(),
     };
 
-    // Save super admin
-    await knexInstance('users').insert(superAdmin);
+    // Save super admin within transaction
+    await trx('users').insert(superAdmin);
+
+    // Commit transaction
+    await trx.commit();
+    console.log('Seed transaction committed successfully');
 
     console.log('Super admin created successfully!');
     console.log('Email: admin@example.com');
     console.log('Password: Admin@123');
   } catch (error) {
     console.error('Error seeding super admin:', error);
+    console.log('Rolling back seed transaction...');
+
+    // Rollback transaction
+    await trx.rollback();
+    console.log('Seed transaction rolled back');
+
+    throw error;
   } finally {
     // Close the connection
     await knexInstance.destroy();
