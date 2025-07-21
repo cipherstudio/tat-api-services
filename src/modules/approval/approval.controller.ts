@@ -38,10 +38,13 @@ import { ApprovalStatusLabelResponseDto } from './entities/approval-status-label
 import { UpdateApprovalContinuousDto } from './dto/update-approval-continuous.dto';
 import { ApprovalStatisticsResponseDto } from './dto/approval-statistics-response.dto';
 import { QueryApprovalsThatHasClothingExpenseDto } from './dto/query-approvals-that-has-clothing-expense';
+import { Employee } from '../dataviews/entities/employee.entity';
+import { ViewPosition4ot } from '../dataviews/entities/view-position-4ot.entity';
+import { OpLevelSalR } from '../dataviews/entities/op-level-sal-r.entity';
 //import { ApprovalWorkLocationDto } from './dto/approval-work-location.dto';
 
 interface RequestWithUser extends Request {
-  user: User;
+  user: User & { employee?: Employee & ViewPosition4ot & OpLevelSalR };
 }
 
 @ApiTags('Approvals')
@@ -62,11 +65,13 @@ export class ApprovalController {
     @Body() createApprovalDto: CreateApprovalDto,
     @Req() req: RequestWithUser,
   ) {
+    if (!req.user.employee) {
+      throw new Error('Employee data not found for user');
+    }
     return this.approvalService.create(
       createApprovalDto, 
-      req.user.id,
-      req.user.employeeCode,
-      req.user.fullName,
+      req.user.employee.code,
+      req.user.employee.name,
     );
   }
 
@@ -188,7 +193,6 @@ export class ApprovalController {
         data: [
           {
             id: 1,
-            userId: 1,
             incrementId: '67001',
             approvalRef: null,
             recordType: 'owner',
@@ -295,10 +299,12 @@ export class ApprovalController {
       includes,
     };
 
+    if (!req.user.employee) {
+      throw new Error('Employee data not found for user');
+    }
     return this.approvalService.findAll(
       queryOptions,
-      req.user.id,
-      req.user.employeeCode,
+      req.user.employee.code,
     );
   }
 
@@ -330,7 +336,10 @@ export class ApprovalController {
   getStatistics(
     @Req() req: RequestWithUser,
   ): Promise<ApprovalStatisticsResponseDto> {
-    return this.approvalService.getStatistics(req.user.id);
+    if (!req.user.employee) {
+      throw new Error('Employee data not found for user');
+    }
+    return this.approvalService.getStatistics(req.user.employee.code);
   }
 
   @Get('approvals-that-has-clothing-expense')
@@ -417,11 +426,13 @@ export class ApprovalController {
     @Body() updateApprovalDto: UpdateApprovalDto,
     @Req() req: RequestWithUser,
   ) {
+    if (!req.user.employee) {
+      throw new Error('Employee data not found for user');
+    }
     return this.approvalService.update(
       id,
       updateApprovalDto,
-      req.user.id,
-      req.user.employeeCode,
+      req.user.employee.code,
     );
   }
 
@@ -441,7 +452,10 @@ export class ApprovalController {
     @Body() updateStatusDto: UpdateApprovalStatusDto,
     @Req() req: RequestWithUser,
   ) {
-    return this.approvalService.updateStatus(id, updateStatusDto, req.user.id);
+    if (!req.user.employee) {
+      throw new Error('Employee data not found for user');
+    }
+    return this.approvalService.updateStatus(id, updateStatusDto, req.user.employee.code);
   }
 
   @Delete(':id')
@@ -510,11 +524,13 @@ export class ApprovalController {
     @Body() updateDto: UpdateApprovalContinuousDto,
     @Req() req: RequestWithUser,
   ) {
+    if (!req.user.employee) {
+      throw new Error('Employee data not found for user');
+    }
     return this.approvalService.updateApprovalContinuous(
       id,
       updateDto,
-      req.user.id,
-      req.user.employeeCode,
+      req.user.employee.code,
     );
   }
 
@@ -529,11 +545,13 @@ export class ApprovalController {
     @Param('id', ParseIntPipe) id: number,
     @Req() req: RequestWithUser,
   ) {
+    if (!req.user.employee) {
+      throw new Error('Employee data not found for user');
+    }
     return this.approvalService.duplicate(
-      id, 
-      req.user.id,
-      req.user.employeeCode,
-      req.user.fullName,
+      id,
+      req.user.employee.code,
+      req.user.employee.name,
     );
   }
 }
