@@ -507,7 +507,9 @@ exports.up = async function (knex) {
     // update remark (stringify)
     await knex('disbursement_supporting_forms')
       .where('id', newData.formId)
-      .update({ remark: JSON.stringify(newData.remark) });
+      .update({
+        remark: newData.remark === null ? null : JSON.stringify(newData.remark),
+      });
     // add questions
     for (const q of newData.questions) {
       await knex('disbursement_supporting_questions').insert({
