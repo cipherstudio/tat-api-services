@@ -29,6 +29,17 @@ async function bootstrap() {
   // Get config service
   const configService = app.get(ConfigService);
 
+  // Custom middleware to handle /service prefix
+  app.use((req, res, next) => {
+    const originalUrl = req.url;
+    if (req.url.startsWith('/service/')) {
+      // Remove /service prefix completely
+      req.url = req.url.replace('/service/', '/');
+      console.log(`[Middleware] URL transformed: ${originalUrl} → ${req.url}`);
+    }
+    next();
+  });
+
   // Set global prefix and versioning
   app.setGlobalPrefix('api');
   app.enableVersioning({
