@@ -404,6 +404,7 @@ export class ApprovalService {
           'sf.path as signatureAttachmentFilePath',
         )
         .orderBy(dbOrderBy, orderDir.toLowerCase() as 'asc' | 'desc')
+        .orderBy('approval.created_at', 'desc')
         .limit(validatedLimit)
         .offset(validatedOffset),
     ]);
