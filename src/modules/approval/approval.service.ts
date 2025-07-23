@@ -1533,14 +1533,13 @@ export class ApprovalService {
                     .returning('id');
 
                   // Process accommodation transport expenses
-                  if (Array.isArray(expense.accommodationTransportExpenses)) {
-                    for (const transportExpense of expense.accommodationTransportExpenses) {
+                  if (Array.isArray(workLocation.accommodationTransportExpenses)) {
+                    for (const transportExpense of workLocation.accommodationTransportExpenses) {
                       await trx(
                         'approval_accommodation_transport_expense',
                       ).insert({
                         approval_id: id,
-                        approval_accommodation_expense_id:
-                          accommodationExpense.id,
+                        approval_accommodation_expense_id: accommodationExpense.id,
                         type: transportExpense.type,
                         amount: transportExpense.amount,
                         checked: transportExpense.checked,
@@ -3258,16 +3257,15 @@ export class ApprovalService {
 
                   // Copy accommodation transport expenses
                   if (
-                    expense.accommodationTransportExpenses &&
-                    expense.accommodationTransportExpenses.length > 0
+                    workLocation.accommodationTransportExpenses &&
+                    workLocation.accommodationTransportExpenses.length > 0
                   ) {
-                    for (const transportExpense of expense.accommodationTransportExpenses) {
+                    for (const transportExpense of workLocation.accommodationTransportExpenses) {
                       await trx(
                         'approval_accommodation_transport_expense',
                       ).insert({
                         approval_id: newApproval.id,
-                        approval_accommodation_expense_id:
-                          newAccommodationExpense.id,
+                        approval_accommodation_expense_id: newAccommodationExpense.id,
                         type: transportExpense.type,
                         amount: transportExpense.amount,
                         checked: transportExpense.checked,
@@ -3279,18 +3277,16 @@ export class ApprovalService {
                   }
 
                   // Copy accommodation holiday expenses
-                  const expenseWithHoliday = expense as any;
                   if (
-                    expenseWithHoliday.accommodationHolidayExpenses &&
-                    expenseWithHoliday.accommodationHolidayExpenses.length > 0
+                    workLocation.accommodationHolidayExpenses &&
+                    workLocation.accommodationHolidayExpenses.length > 0
                   ) {
-                    for (const holidayExpense of expenseWithHoliday.accommodationHolidayExpenses) {
+                    for (const holidayExpense of workLocation.accommodationHolidayExpenses) {
                       await trx(
                         'approval_accommodation_holiday_expense',
                       ).insert({
                         approval_id: newApproval.id,
-                        approval_accommodation_expense_id:
-                          newAccommodationExpense.id,
+                        approval_accommodation_expense_id: newAccommodationExpense.id,
                         date: holidayExpense.date,
                         thai_date: holidayExpense.thaiDate,
                         checked: holidayExpense.checked,
