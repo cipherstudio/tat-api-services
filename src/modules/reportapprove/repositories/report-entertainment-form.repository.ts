@@ -45,6 +45,7 @@ export class ReportEntertainmentFormRepository extends KnexBaseRepository<Report
       direction = 'desc',
       startDate,
       endDate,
+      searchTerm,
     } = query;
 
     const offset = (page - 1) * limit;
@@ -93,6 +94,27 @@ export class ReportEntertainmentFormRepository extends KnexBaseRepository<Report
       );
     }
 
+    if (searchTerm) {
+      baseQuery = baseQuery.where(
+        'ref.employee_name',
+        'like',
+        `%${searchTerm}%`,
+      );
+      baseQuery = baseQuery.orWhere(
+        'ref.employee_id',
+        'like',
+        `%${searchTerm}%`,
+      );
+      baseQuery = baseQuery.orWhere(
+        'ref.department',
+        'like',
+        `%${searchTerm}%`,
+      );
+      baseQuery = baseQuery.orWhere('ref.job', 'like', `%${searchTerm}%`);
+      // Note: section column might not exist in Oracle database
+      // Uncomment the following line if the section column exists
+      baseQuery = baseQuery.orWhere('ref.section', 'like', `%${searchTerm}%`);
+    }
     // Get total count
     const countResult = await baseQuery
       .clone()

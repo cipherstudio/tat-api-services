@@ -90,4 +90,9 @@ export class EntertainmentFormQueryDto {
     return date.toISOString().split('T')[0];
   })
   endDate?: string;
+
+  @ApiProperty({ example: 'search text', required: false })
+  @IsOptional()
+  @IsString()
+  searchTerm?: string;
 }
