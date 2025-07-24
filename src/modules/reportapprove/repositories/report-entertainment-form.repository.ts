@@ -81,16 +81,18 @@ export class ReportEntertainmentFormRepository extends KnexBaseRepository<Report
     }
 
     if (startDate) {
-      baseQuery = baseQuery.whereRaw(
-        "ref.created_at >= TO_DATE(?, 'YYYY-MM-DD')",
-        [startDate],
+      baseQuery = baseQuery.where(
+        'ref.created_at',
+        '>=',
+        this.knex.raw(`TO_DATE('${startDate}', 'YYYY-MM-DD')`),
       );
     }
 
     if (endDate) {
-      baseQuery = baseQuery.whereRaw(
-        "ref.created_at <= TO_DATE(?, 'YYYY-MM-DD')",
-        [endDate],
+      baseQuery = baseQuery.where(
+        'ref.created_at',
+        '<=',
+        this.knex.raw(`TO_DATE('${endDate}', 'YYYY-MM-DD')`),
       );
     }
 
