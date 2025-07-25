@@ -3,9 +3,13 @@
  * @returns { Promise<void> }
  */
 exports.up = function (knex) {
-  return knex.schema.alterTable('approval', function (table) {
-    // drop column user_id
-    table.dropColumn('user_id');
+  return knex.schema.hasColumn('approval', 'user_id').then((exists) => {
+    if (exists) {
+      return knex.schema.alterTable('approval', function (table) {
+        // drop column user_id
+        table.dropColumn('user_id');
+      });
+    }
   });
 };
 
@@ -14,7 +18,11 @@ exports.up = function (knex) {
  * @returns { Promise<void> }
  */
 exports.down = function (knex) {
-  return knex.schema.alterTable('approval', function (table) {
-    table.integer('user_id').notNullable();
+  return knex.schema.hasColumn('approval', 'user_id').then((exists) => {
+    if (!exists) {
+      return knex.schema.alterTable('approval', function (table) {
+        table.integer('user_id').notNullable();
+      });
+    }
   });
 };
