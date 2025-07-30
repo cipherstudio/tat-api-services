@@ -87,6 +87,9 @@ import { MasterdataLabel } from './entities/masterdata-labels.entity';
 import { MealAllowanceController } from './controllers/meal-allowance.controller.js';
 import { MealAllowanceService } from './services/meal-allowance.service.js';
 import { MealAllowanceRepository } from './repositories/meal-allowance.repository.js';
+import { EmployeeAdminController } from './controllers/employee-admin.controller';
+import { EmployeeAdminService } from './services/employee-admin.service';
+import { EmployeeAdminRepository } from './repositories/employee-admin.repository';
 
 @Module({
   imports: [RedisCacheModule],
@@ -116,6 +119,7 @@ import { MealAllowanceRepository } from './repositories/meal-allowance.repositor
     PrivilegeController,
     MasterdataLabelsController,
     MealAllowanceController,
+    EmployeeAdminController,
   ],
   providers: [
     // Services
@@ -144,6 +148,7 @@ import { MealAllowanceRepository } from './repositories/meal-allowance.repositor
     PrivilegeService,
     MasterdataLabelsService,
     MealAllowanceService,
+    EmployeeAdminService,
     // Repositories
     CountriesRepository,
     PlacesRepository,
@@ -170,6 +175,7 @@ import { MealAllowanceRepository } from './repositories/meal-allowance.repositor
     PrivilegeRepository,
     MasterdataLabelsRepository,
     MealAllowanceRepository,
+    EmployeeAdminRepository,
     // Shared services
     RedisCacheService,
     HolidayWorkRate,
