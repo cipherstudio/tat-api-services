@@ -555,4 +555,25 @@ export class ApprovalController {
       req.user.employee.name,
     );
   }
+
+  @Post('duplicate-cancel/:id')
+  @ApiOperation({
+    summary: 'Duplicate approval for cancellation',
+    description: 'Create a duplicate of an existing approval record for cancellation purposes',
+  })
+  @ApiResponse({ status: 201, description: 'Cancellation approval duplicated successfully' })
+  @ApiResponse({ status: 404, description: 'Approval not found' })
+  duplicateCancel(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: RequestWithUser,
+  ) {
+    if (!req.user.employee) {
+      throw new Error('Employee data not found for user');
+    }
+    return this.approvalService.duplicateCancel(
+      id,
+      req.user.employee.code,
+      req.user.employee.name,
+    );
+  }
 }

@@ -179,6 +179,13 @@ export class StaffMemberDto {
   organizationPosition: string;
 
   @ApiProperty({
+    description: 'สถานะการยกเลิก',
+    example: false,
+    required: false
+  })
+  cancelled?: boolean;
+
+  @ApiProperty({
     description: 'ระดับสิทธิ์',
     example: 'C5'
   })
@@ -736,6 +743,13 @@ export class ApprovalDetailResponseDto implements Approval {
     example: false
   })
   useSystemSignature?: boolean;
+
+  @ApiProperty({
+    description: 'สถานะการเป็น approval ยกเลิก',
+    required: false,
+    example: false
+  })
+  isCancelApproval?: boolean;
 
   @ApiProperty({
     description: 'หมายเลขใบบันทึกข้อความ',

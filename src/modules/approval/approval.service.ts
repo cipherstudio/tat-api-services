@@ -340,6 +340,7 @@ export class ApprovalService {
           'approval.use_file_signature as useFileSignature',
           'approval.signature_attachment_id as signatureAttachmentId',
           'approval.use_system_signature as useSystemSignature',
+          'approval.is_cancel_approval as isCancelApproval',
           'approval.approval_print_number as approvalPrintNumber',
           'approval.expense_print_number as expensePrintNumber',
           'approval.created_employee_code as createdEmployeeCode',
@@ -655,6 +656,7 @@ export class ApprovalService {
         'approval.use_file_signature as useFileSignature',
         'approval.signature_attachment_id as signatureAttachmentId',
         'approval.use_system_signature as useSystemSignature',
+        'approval.is_cancel_approval as isCancelApproval',
         'approval.created_at as createdAt',
         'approval.updated_at as updatedAt',
         'approval.deleted_at as deletedAt',
@@ -762,6 +764,7 @@ export class ApprovalService {
         'asm.position',
         'asm.right_equivalent as rightEquivalent',
         'asm.organization_position as organizationPosition',
+        'asm.cancelled',
         'omt.PMT_LEVEL_CODE as viewLevel',
         'et.POSITION as viewPosition',
         this.knexService.knex.raw(
@@ -1390,6 +1393,7 @@ export class ApprovalService {
               position: staffMember.position,
               right_equivalent: staffMember.rightEquivalent,
               organization_position: staffMember.organizationPosition,
+              cancelled: staffMember.cancelled || false,
               created_at: new Date(),
               updated_at: new Date(),
             })
@@ -3165,6 +3169,7 @@ export class ApprovalService {
               position: staffMember.position,
               right_equivalent: staffMember.rightEquivalent,
               organization_position: staffMember.organizationPosition,
+              cancelled: staffMember.cancelled || false,
               created_at: new Date(),
               updated_at: new Date(),
             })
@@ -3469,6 +3474,249 @@ export class ApprovalService {
       );
 
       return newApproval;
+    } catch (error) {
+      // Rollback the transaction in case of error
+      await trx.rollback();
+      throw error;
+    }
+  }
+
+  async duplicateCancel(
+    id: number, 
+    employeeCode: string, 
+    employeeName: string
+  ): Promise<Approval> {
+    const originalApproval = await this.findById(id);
+    if (!originalApproval) {
+      throw new NotFoundException(`Approval with ID ${id} not found`);
+    }
+
+    const trx = await this.knexService.knex.transaction();
+
+    try {
+      // Generate new increment ID and print numbers
+      const incrementId = await this.generateIncrementId();
+      const approvalPrintNumber = await this.generateApprovalPrintNumber();
+      const expensePrintNumber = await this.generateApprovalPrintNumber();
+
+      // Get the approval status label ID for DRAFT
+      const approvalStatusLabelId = await this.knexService
+        .knex('approval_status_labels')
+        .where('status_code', 'DRAFT')
+        .select('id')
+        .first();
+
+      // Create new approval record with modified data for cancellation
+      const newApprovalData = {
+        increment_id: incrementId,
+        record_type: originalApproval.recordType,
+        name: originalApproval.name,
+        employee_code: originalApproval.employeeCode,
+        travel_type: originalApproval.travelType,
+        international_sub_option: originalApproval.internationalSubOption,
+        approval_ref: originalApproval.id, // Reference to original approval
+        work_start_date: originalApproval.workStartDate,
+        work_end_date: originalApproval.workEndDate,
+        start_country: originalApproval.startCountry,
+        end_country: originalApproval.endCountry,
+        remarks: originalApproval.remarks,
+        num_travelers: originalApproval.numTravelers,
+        document_no: originalApproval.documentNo,
+        document_number: originalApproval.documentNumber,
+        document_tel: originalApproval.documentTel,
+        document_to: originalApproval.documentTo,
+        document_title: originalApproval.documentTitle,
+        attachment_id: null,
+        form3_total_outbound: 0,
+        form3_total_inbound: 0,
+        form3_total_amount: 0,
+        exceed_lodging_rights_checked: false,
+        exceed_lodging_rights_reason: null,
+        form4_total_amount: 0,
+        form5_total_amount: 0,
+        approval_date: originalApproval.approvalDate, // Copy approval date
+        staff: originalApproval.staff,
+        staff_employee_code: originalApproval.staffEmployeeCode,
+        final_staff_employee_code: originalApproval.finalStaffEmployeeCode,
+        confidentiality_level: originalApproval.confidentialityLevel,
+        urgency_level: originalApproval.urgencyLevel,
+        comments: originalApproval.comments,
+        final_staff: originalApproval.finalStaff,
+        signer_date: null, // Reset signer date
+        document_ending: originalApproval.documentEnding,
+        document_ending_wording: originalApproval.documentEndingWording,
+        signer_name: originalApproval.signerName,
+        use_file_signature: false,
+        signature_attachment_id: null,
+        use_system_signature: false,
+        approval_print_number: approvalPrintNumber,
+        expense_print_number: expensePrintNumber,
+        created_employee_code: employeeCode,
+        created_employee_name: employeeName,
+        is_cancel_approval: true,
+        approval_status_label_id: approvalStatusLabelId.id,
+        continuous_employee_code: originalApproval.continuousEmployeeCode,
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+
+      const [newApproval] = await trx('approval')
+        .insert(newApprovalData)
+        .returning('*');
+
+      await trx('approval_status_history').insert({
+        approval_status_label_id: approvalStatusLabelId.id,
+        created_by: employeeCode,
+        approval_id: newApproval.id,
+        created_at: new Date(),
+        updated_at: new Date(),
+      });
+
+      if (
+        originalApproval.travelDateRanges &&
+        originalApproval.travelDateRanges.length > 0
+      ) {
+        for (const dateRange of originalApproval.travelDateRanges as any) {
+          await trx('approval_date_ranges').insert({
+            approval_id: newApproval.id,
+            start_date: dateRange.startDate,
+            end_date: dateRange.endDate,
+          });
+        }
+      }
+
+      if (
+        originalApproval.approvalContents &&
+        originalApproval.approvalContents.length > 0
+      ) {
+        for (const content of originalApproval.approvalContents) {
+          await trx('approval_contents').insert({
+            approval_id: newApproval.id,
+            detail: content.detail,
+          });
+        }
+      }
+
+      if (
+        originalApproval.tripEntries &&
+        originalApproval.tripEntries.length > 0
+      ) {
+        for (const tripEntry of originalApproval.tripEntries) {
+          const [newTripEntry] = await trx('approval_trip_entries')
+            .insert({
+              approval_id: newApproval.id,
+              location: tripEntry.location,
+              destination: tripEntry.destination,
+              nearby_provinces: tripEntry.nearbyProvinces,
+              details: tripEntry.details,
+              destination_type: tripEntry.destinationType,
+              destination_id: tripEntry.destinationId,
+              destination_table: tripEntry.destinationTable,
+            })
+            .returning('id');
+
+          if (tripEntry.tripDateRanges && tripEntry.tripDateRanges.length > 0) {
+            for (const dateRange of tripEntry.tripDateRanges as any) {
+              await trx('approval_trip_date_ranges').insert({
+                approval_id: newApproval.id,
+                approval_trip_entries_id: newTripEntry.id,
+                start_date: dateRange.startDate,
+                end_date: dateRange.endDate,
+              });
+            }
+          }
+        }
+      }
+
+      if (
+        originalApproval.staffMembers &&
+        originalApproval.staffMembers.length > 0
+      ) {
+        for (const staffMember of originalApproval.staffMembers) {
+          const [newStaffMember] = await trx('approval_staff_members')
+            .insert({
+              approval_id: newApproval.id,
+              employee_code: staffMember.employeeCode,
+              type: staffMember.type,
+              name: staffMember.name,
+              role: staffMember.role,
+              position: staffMember.position,
+              right_equivalent: staffMember.rightEquivalent,
+              organization_position: staffMember.organizationPosition,
+              cancelled: staffMember.cancelled || false,
+              created_at: new Date(),
+              updated_at: new Date(),
+            })
+            .returning('id');
+
+          if (
+            staffMember.workLocations &&
+            staffMember.workLocations.length > 0
+          ) {
+            for (const workLocation of staffMember.workLocations) {
+              const [newWorkLocation] = await trx('approval_work_locations')
+                .insert({
+                  approval_id: newApproval.id,
+                  staff_member_id: newStaffMember.id,
+                  location: workLocation.location,
+                  destination: workLocation.destination,
+                  nearby_provinces: workLocation.nearbyProvinces,
+                  details: workLocation.details,
+                  checked: workLocation.checked,
+                  destination_type: workLocation.destinationType,
+                  destination_id: workLocation.destinationId,
+                  destination_table: workLocation.destinationTable,
+                  created_at: new Date(),
+                  updated_at: new Date(),
+                })
+                .returning('id');
+
+              if (
+                workLocation.tripDateRanges &&
+                workLocation.tripDateRanges.length > 0
+              ) {
+                for (const dateRange of workLocation.tripDateRanges as any) {
+                  await trx('approval_work_locations_date_ranges').insert({
+                    approval_id: newApproval.id,
+                    approval_work_locations_id: newWorkLocation.id,
+                    start_date: dateRange.startDate,
+                    end_date: dateRange.endDate,
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                  });
+                }
+              }
+            }
+          }
+
+        }
+      }
+
+      await trx.commit();
+
+      const { 
+        form3_total_outbound,
+        form3_total_inbound, 
+        form3_total_amount,
+        form4_total_amount,
+        form5_total_amount,
+        attachment_id,
+        exceed_lodging_rights_checked,
+        exceed_lodging_rights_reason,
+        ...responseData 
+      } = newApproval;
+
+      await this.cacheService.set(
+        this.cacheService.generateKey(this.CACHE_PREFIX, newApproval.id),
+        newApproval,
+        this.CACHE_TTL,
+      );
+
+      await this.cacheService.del(
+        this.cacheService.generateListKey(this.CACHE_PREFIX),
+      );
+
+      return responseData;
     } catch (error) {
       // Rollback the transaction in case of error
       await trx.rollback();
