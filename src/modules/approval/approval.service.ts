@@ -361,6 +361,7 @@ export class ApprovalService {
           'approval.remarks',
           'approval.num_travelers as numTravelers',
           'approval.document_no as documentNo',
+          'approval.document_number as documentNumber',
           'approval.document_tel as documentTel',
           'approval.document_to as documentTo',
           'approval.document_title as documentTitle',
@@ -675,6 +676,7 @@ export class ApprovalService {
         'approval.remarks',
         'approval.num_travelers as numTravelers',
         'approval.document_no as documentNo',
+        'approval.document_number as documentNumber',
         'approval.document_tel as documentTel',
         'approval.document_to as documentTo',
         'approval.document_title as documentTitle',
@@ -916,6 +918,20 @@ export class ApprovalService {
             'lodging_total as lodgingTotal',
             'moving_cost_checked as movingCostChecked',
             'moving_cost_rate as movingCostRate',
+            // International allowance fields
+            'allowance_abroad_flat_checked as allowanceAbroadFlatChecked',
+            'allowance_abroad_actual_checked as allowanceAbroadActualChecked',
+            'allowance_abroad_flat_rate as allowanceAbroadFlatRate',
+            'allowance_abroad_actual_rate as allowanceAbroadActualRate',
+            'allowance_abroad_days as allowanceAbroadDays',
+            'allowance_abroad_total as allowanceAbroadTotal',
+            // International meal fields
+            'has_meal_abroad_flat as hasMealAbroadFlat',
+            'has_meal_abroad_actual as hasMealAbroadActual',
+            'meal_abroad_flat_count as mealAbroadFlatCount',
+            'meal_abroad_actual_count as mealAbroadActualCount',
+            'meal_abroad_flat_amount as mealAbroadFlatAmount',
+            'meal_abroad_actual_amount as mealAbroadActualAmount',
           );
 
         // Get accommodation transport expenses for each accommodation expense
@@ -1252,6 +1268,7 @@ export class ApprovalService {
         remarks: updateDto.remarks,
         num_travelers: updateDto.numTravelers,
         document_no: updateDto.documentNo,
+        document_number: updateDto.documentNumber,
         document_tel: updateDto.documentTel,
         document_to: updateDto.documentTo,
         document_title: updateDto.documentTitle,
@@ -1487,50 +1504,64 @@ export class ApprovalService {
                 }
               }
 
-              // Process accommodation expenses
-              if (Array.isArray(workLocation.accommodationExpenses)) {
-                for (const expense of workLocation.accommodationExpenses) {
-                  const [accommodationExpense] = await trx(
-                    'approval_accommodation_expense',
-                  )
-                    .insert({
-                      approval_id: id,
-                      staff_member_id: insertedStaffMember.id,
-                      work_location_id: workLocationId.id,
-                      total_amount: expense.totalAmount,
-                      has_meal_out: expense.hasMealOut,
-                      has_meal_in: expense.hasMealIn,
-                      meal_out_amount: expense.mealOutAmount,
-                      meal_in_amount: expense.mealInAmount,
-                      meal_out_count: expense.mealOutCount,
-                      meal_in_count: expense.mealInCount,
-                      allowance_out_checked: expense.allowanceOutChecked,
-                      allowance_out_rate: expense.allowanceOutRate,
-                      allowance_out_days: expense.allowanceOutDays,
-                      allowance_out_total: expense.allowanceOutTotal,
-                      allowance_in_checked: expense.allowanceInChecked,
-                      allowance_in_rate: expense.allowanceInRate,
-                      allowance_in_days: expense.allowanceInDays,
-                      allowance_in_total: expense.allowanceInTotal,
-                      lodging_fixed_checked: expense.lodgingFixedChecked,
-                      lodging_double_checked: expense.lodgingDoubleChecked,
-                      lodging_single_checked: expense.lodgingSingleChecked,
-                      lodging_nights: expense.lodgingNights,
-                      lodging_rate: expense.lodgingRate,
-                      lodging_double_nights: expense.lodgingDoubleNights,
-                      lodging_double_rate: expense.lodgingDoubleRate,
-                      lodging_single_nights: expense.lodgingSingleNights,
-                      lodging_single_rate: expense.lodgingSingleRate,
-                      lodging_double_person: expense.lodgingDoublePerson,
-                      lodging_double_person_external:
-                        expense.lodgingDoublePersonExternal,
-                      lodging_total: expense.lodgingTotal,
-                      moving_cost_checked: expense.movingCostChecked,
-                      moving_cost_rate: expense.movingCostRate,
-                      created_at: new Date(),
-                      updated_at: new Date(),
-                    })
-                    .returning('id');
+                                // Process accommodation expenses
+                  if (Array.isArray(workLocation.accommodationExpenses)) {
+                    for (const expense of workLocation.accommodationExpenses) {
+                      const [accommodationExpense] = await trx(
+                        'approval_accommodation_expense',
+                      )
+                        .insert({
+                          approval_id: id,
+                          staff_member_id: insertedStaffMember.id,
+                          work_location_id: workLocationId.id,
+                          total_amount: expense.totalAmount,
+                          has_meal_out: expense.hasMealOut,
+                          has_meal_in: expense.hasMealIn,
+                          meal_out_amount: expense.mealOutAmount,
+                          meal_in_amount: expense.mealInAmount,
+                          meal_out_count: expense.mealOutCount,
+                          meal_in_count: expense.mealInCount,
+                          allowance_out_checked: expense.allowanceOutChecked,
+                          allowance_out_rate: expense.allowanceOutRate,
+                          allowance_out_days: expense.allowanceOutDays,
+                          allowance_out_total: expense.allowanceOutTotal,
+                          allowance_in_checked: expense.allowanceInChecked,
+                          allowance_in_rate: expense.allowanceInRate,
+                          allowance_in_days: expense.allowanceInDays,
+                          allowance_in_total: expense.allowanceInTotal,
+                          lodging_fixed_checked: expense.lodgingFixedChecked,
+                          lodging_double_checked: expense.lodgingDoubleChecked,
+                          lodging_single_checked: expense.lodgingSingleChecked,
+                          lodging_nights: expense.lodgingNights,
+                          lodging_rate: expense.lodgingRate,
+                          lodging_double_nights: expense.lodgingDoubleNights,
+                          lodging_double_rate: expense.lodgingDoubleRate,
+                          lodging_single_nights: expense.lodgingSingleNights,
+                          lodging_single_rate: expense.lodgingSingleRate,
+                          lodging_double_person: expense.lodgingDoublePerson,
+                          lodging_double_person_external:
+                            expense.lodgingDoublePersonExternal,
+                          lodging_total: expense.lodgingTotal,
+                          moving_cost_checked: expense.movingCostChecked,
+                          moving_cost_rate: expense.movingCostRate,
+                          // International allowance fields
+                          allowance_abroad_flat_checked: expense.allowanceAbroadFlatChecked,
+                          allowance_abroad_actual_checked: expense.allowanceAbroadActualChecked,
+                          allowance_abroad_flat_rate: expense.allowanceAbroadFlatRate,
+                          allowance_abroad_actual_rate: expense.allowanceAbroadActualRate,
+                          allowance_abroad_days: expense.allowanceAbroadDays,
+                          allowance_abroad_total: expense.allowanceAbroadTotal,
+                          // International meal fields
+                          has_meal_abroad_flat: expense.hasMealAbroadFlat,
+                          has_meal_abroad_actual: expense.hasMealAbroadActual,
+                          meal_abroad_flat_count: expense.mealAbroadFlatCount,
+                          meal_abroad_actual_count: expense.mealAbroadActualCount,
+                          meal_abroad_flat_amount: expense.mealAbroadFlatAmount,
+                          meal_abroad_actual_amount: expense.mealAbroadActualAmount,
+                          created_at: new Date(),
+                          updated_at: new Date(),
+                        })
+                        .returning('id');
 
                   // Process accommodation transport expenses
                   if (Array.isArray(workLocation.accommodationTransportExpenses)) {
@@ -3002,6 +3033,7 @@ export class ApprovalService {
         remarks: originalApproval.remarks,
         num_travelers: originalApproval.numTravelers,
         document_no: originalApproval.documentNo,
+        document_number: originalApproval.documentNumber,
         document_tel: originalApproval.documentTel,
         document_to: originalApproval.documentTo,
         document_title: originalApproval.documentTitle,
@@ -3209,51 +3241,65 @@ export class ApprovalService {
 
               // Copy accommodation expenses
               if (
-                workLocation.accommodationExpenses &&
-                workLocation.accommodationExpenses.length > 0
-              ) {
-                for (const expense of workLocation.accommodationExpenses) {
-                  const [newAccommodationExpense] = await trx(
-                    'approval_accommodation_expense',
-                  )
-                    .insert({
-                      approval_id: newApproval.id,
-                      staff_member_id: newStaffMember.id,
-                      work_location_id: newWorkLocation.id,
-                      total_amount: expense.totalAmount,
-                      has_meal_out: expense.hasMealOut,
-                      has_meal_in: expense.hasMealIn,
-                      meal_out_amount: expense.mealOutAmount,
-                      meal_in_amount: expense.mealInAmount,
-                      meal_out_count: expense.mealOutCount,
-                      meal_in_count: expense.mealInCount,
-                      allowance_out_checked: expense.allowanceOutChecked,
-                      allowance_out_rate: expense.allowanceOutRate,
-                      allowance_out_days: expense.allowanceOutDays,
-                      allowance_out_total: expense.allowanceOutTotal,
-                      allowance_in_checked: expense.allowanceInChecked,
-                      allowance_in_rate: expense.allowanceInRate,
-                      allowance_in_days: expense.allowanceInDays,
-                      allowance_in_total: expense.allowanceInTotal,
-                      lodging_fixed_checked: expense.lodgingFixedChecked,
-                      lodging_double_checked: expense.lodgingDoubleChecked,
-                      lodging_single_checked: expense.lodgingSingleChecked,
-                      lodging_nights: expense.lodgingNights,
-                      lodging_rate: expense.lodgingRate,
-                      lodging_double_nights: expense.lodgingDoubleNights,
-                      lodging_double_rate: expense.lodgingDoubleRate,
-                      lodging_single_nights: expense.lodgingSingleNights,
-                      lodging_single_rate: expense.lodgingSingleRate,
-                      lodging_double_person: expense.lodgingDoublePerson,
-                      lodging_double_person_external:
-                        expense.lodgingDoublePersonExternal,
-                      lodging_total: expense.lodgingTotal,
-                      moving_cost_checked: expense.movingCostChecked,
-                      moving_cost_rate: expense.movingCostRate,
-                      created_at: new Date(),
-                      updated_at: new Date(),
-                    })
-                    .returning('id');
+               workLocation.accommodationExpenses &&
+               workLocation.accommodationExpenses.length > 0
+             ) {
+               for (const expense of workLocation.accommodationExpenses) {
+                 const [newAccommodationExpense] = await trx(
+                   'approval_accommodation_expense',
+                 )
+                   .insert({
+                     approval_id: newApproval.id,
+                     staff_member_id: newStaffMember.id,
+                     work_location_id: newWorkLocation.id,
+                     total_amount: expense.totalAmount,
+                     has_meal_out: expense.hasMealOut,
+                     has_meal_in: expense.hasMealIn,
+                     meal_out_amount: expense.mealOutAmount,
+                     meal_in_amount: expense.mealInAmount,
+                     meal_out_count: expense.mealOutCount,
+                     meal_in_count: expense.mealInCount,
+                     allowance_out_checked: expense.allowanceOutChecked,
+                     allowance_out_rate: expense.allowanceOutRate,
+                     allowance_out_days: expense.allowanceOutDays,
+                     allowance_out_total: expense.allowanceOutTotal,
+                     allowance_in_checked: expense.allowanceInChecked,
+                     allowance_in_rate: expense.allowanceInRate,
+                     allowance_in_days: expense.allowanceInDays,
+                     allowance_in_total: expense.allowanceInTotal,
+                     lodging_fixed_checked: expense.lodgingFixedChecked,
+                     lodging_double_checked: expense.lodgingDoubleChecked,
+                     lodging_single_checked: expense.lodgingSingleChecked,
+                     lodging_nights: expense.lodgingNights,
+                     lodging_rate: expense.lodgingRate,
+                     lodging_double_nights: expense.lodgingDoubleNights,
+                     lodging_double_rate: expense.lodgingDoubleRate,
+                     lodging_single_nights: expense.lodgingSingleNights,
+                     lodging_single_rate: expense.lodgingSingleRate,
+                     lodging_double_person: expense.lodgingDoublePerson,
+                     lodging_double_person_external:
+                       expense.lodgingDoublePersonExternal,
+                     lodging_total: expense.lodgingTotal,
+                     moving_cost_checked: expense.movingCostChecked,
+                     moving_cost_rate: expense.movingCostRate,
+                     // International allowance fields
+                     allowance_abroad_flat_checked: expense.allowanceAbroadFlatChecked,
+                     allowance_abroad_actual_checked: expense.allowanceAbroadActualChecked,
+                     allowance_abroad_flat_rate: expense.allowanceAbroadFlatRate,
+                     allowance_abroad_actual_rate: expense.allowanceAbroadActualRate,
+                     allowance_abroad_days: expense.allowanceAbroadDays,
+                     allowance_abroad_total: expense.allowanceAbroadTotal,
+                     // International meal fields
+                     has_meal_abroad_flat: expense.hasMealAbroadFlat,
+                     has_meal_abroad_actual: expense.hasMealAbroadActual,
+                     meal_abroad_flat_count: expense.mealAbroadFlatCount,
+                     meal_abroad_actual_count: expense.mealAbroadActualCount,
+                     meal_abroad_flat_amount: expense.mealAbroadFlatAmount,
+                     meal_abroad_actual_amount: expense.mealAbroadActualAmount,
+                     created_at: new Date(),
+                     updated_at: new Date(),
+                   })
+                   .returning('id');
 
                   // Copy accommodation transport expenses
                   if (
@@ -3571,6 +3617,7 @@ export class ApprovalService {
         'approval.remarks',
         'approval.num_travelers as numTravelers',
         'approval.document_no as documentNo',
+        'approval.document_number as documentNumber',
         'approval.document_tel as documentTel',
         'approval.document_to as documentTo',
         'approval.document_title as documentTitle',

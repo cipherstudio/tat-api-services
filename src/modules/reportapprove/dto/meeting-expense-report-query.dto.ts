@@ -1,16 +1,21 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, IsNumber, IsEnum } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsNumber,
+  IsEnum,
+  IsDateString,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 
-export enum EntertainmentFormStatus {
-  DRAFT = 1,
-  PENDING = 2,
-  APPROVED = 3,
-  REJECTED = 4,
-  CANCELLED = 5,
+export enum MeetingExpenseReportStatus {
+  DRAFT = 'draft',
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
 }
 
-export class EntertainmentFormQueryDto {
+export class MeetingExpenseReportQueryDto {
   @ApiProperty({ example: 1, required: false })
   @IsOptional()
   @Transform(({ value }) => parseInt(value))
@@ -31,23 +36,32 @@ export class EntertainmentFormQueryDto {
   @ApiProperty({ example: 'John Doe', required: false })
   @IsOptional()
   @IsString()
-  employeeName?: string;
+  name?: string;
 
   @ApiProperty({ example: 'IT Department', required: false })
   @IsOptional()
   @IsString()
   department?: string;
 
+  @ApiProperty({ example: 'Development Team', required: false })
+  @IsOptional()
+  @IsString()
+  section?: string;
+
   @ApiProperty({ example: 'Project Alpha', required: false })
   @IsOptional()
   @IsString()
   job?: string;
 
-  @ApiProperty({ enum: EntertainmentFormStatus, required: false })
+  @ApiProperty({ example: 'ประชุมประจำเดือน', required: false })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
-  @IsEnum(EntertainmentFormStatus)
-  statusId?: EntertainmentFormStatus;
+  @IsString()
+  meetingType?: string;
+
+  @ApiProperty({ enum: MeetingExpenseReportStatus, required: false })
+  @IsOptional()
+  @IsEnum(MeetingExpenseReportStatus)
+  status?: MeetingExpenseReportStatus;
 
   @ApiProperty({ example: 'created_at', required: false })
   @IsOptional()
@@ -65,14 +79,7 @@ export class EntertainmentFormQueryDto {
     description: 'Start date in YYYY-MM-DD format',
   })
   @IsOptional()
-  @IsString()
-  @Transform(({ value }) => {
-    if (!value) return value;
-    // Ensure date is in YYYY-MM-DD format
-    const date = new Date(value);
-    if (isNaN(date.getTime())) return value;
-    return date.toISOString().split('T')[0];
-  })
+  @IsDateString()
   startDate?: string;
 
   @ApiProperty({
@@ -81,14 +88,7 @@ export class EntertainmentFormQueryDto {
     description: 'End date in YYYY-MM-DD format',
   })
   @IsOptional()
-  @IsString()
-  @Transform(({ value }) => {
-    if (!value) return value;
-    // Ensure date is in YYYY-MM-DD format
-    const date = new Date(value);
-    if (isNaN(date.getTime())) return value;
-    return date.toISOString().split('T')[0];
-  })
+  @IsDateString()
   endDate?: string;
 
   @ApiProperty({ example: 'search text', required: false })

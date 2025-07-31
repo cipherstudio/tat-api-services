@@ -364,6 +364,13 @@ export class ApprovalDetailResponseDto implements Approval {
   documentNo?: string;
 
   @ApiProperty({
+    description: 'Document number (เลขอ้างอิงงาน)',
+    required: false,
+    example: 'เลขอ้างอิงงาน 456/2567'
+  })
+  documentNumber?: string;
+
+  @ApiProperty({
     description: 'Document telephone',
     required: false,
     example: '0812345678'

@@ -45,6 +45,7 @@ export class ReportEntertainmentFormRepository extends KnexBaseRepository<Report
       direction = 'desc',
       startDate,
       endDate,
+      searchTerm,
     } = query;
 
     const offset = (page - 1) * limit;
@@ -80,19 +81,42 @@ export class ReportEntertainmentFormRepository extends KnexBaseRepository<Report
     }
 
     if (startDate) {
-      baseQuery = baseQuery.whereRaw(
-        "ref.created_at >= TO_DATE(?, 'YYYY-MM-DD')",
-        [startDate],
+      baseQuery = baseQuery.where(
+        'ref.created_at',
+        '>=',
+        this.knex.raw(`TO_DATE('${startDate}', 'YYYY-MM-DD')`),
       );
     }
 
     if (endDate) {
-      baseQuery = baseQuery.whereRaw(
-        "ref.created_at <= TO_DATE(?, 'YYYY-MM-DD')",
-        [endDate],
+      baseQuery = baseQuery.where(
+        'ref.created_at',
+        '<=',
+        this.knex.raw(`TO_DATE('${endDate}', 'YYYY-MM-DD')`),
       );
     }
 
+    if (searchTerm) {
+      baseQuery = baseQuery.where(
+        'ref.employee_name',
+        'like',
+        `%${searchTerm}%`,
+      );
+      baseQuery = baseQuery.orWhere(
+        'ref.employee_id',
+        'like',
+        `%${searchTerm}%`,
+      );
+      baseQuery = baseQuery.orWhere(
+        'ref.department',
+        'like',
+        `%${searchTerm}%`,
+      );
+      baseQuery = baseQuery.orWhere('ref.job', 'like', `%${searchTerm}%`);
+      // Note: section column might not exist in Oracle database
+      // Uncomment the following line if the section column exists
+      baseQuery = baseQuery.orWhere('ref.section', 'like', `%${searchTerm}%`);
+    }
     // Get total count
     const countResult = await baseQuery
       .clone()

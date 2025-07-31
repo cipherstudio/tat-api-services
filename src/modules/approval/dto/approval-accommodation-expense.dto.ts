@@ -140,6 +140,116 @@ export class ApprovalAccommodationExpenseDto {
   @IsNumber()
   allowanceInTotal?: number;
 
+  // International allowance properties
+  @ApiProperty({
+    description: 'Whether allowance abroad flat is checked',
+    example: true,
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  allowanceAbroadFlatChecked?: boolean;
+
+  @ApiProperty({
+    description: 'Whether allowance abroad actual is checked',
+    example: true,
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  allowanceAbroadActualChecked?: boolean;
+
+  @ApiProperty({
+    description: 'Rate for allowance abroad flat',
+    example: 1000,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  allowanceAbroadFlatRate?: number;
+
+  @ApiProperty({
+    description: 'Rate for allowance abroad actual',
+    example: 1200,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  allowanceAbroadActualRate?: number;
+
+  @ApiProperty({
+    description: 'Days for allowance abroad',
+    example: 5,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  allowanceAbroadDays?: number;
+
+  @ApiProperty({
+    description: 'Total for allowance abroad',
+    example: 5000,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  allowanceAbroadTotal?: number;
+
+  // International meal properties
+  @ApiProperty({
+    description: 'Whether has meal abroad flat',
+    example: true,
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  hasMealAbroadFlat?: boolean;
+
+  @ApiProperty({
+    description: 'Whether has meal abroad actual',
+    example: true,
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  hasMealAbroadActual?: boolean;
+
+  @ApiProperty({
+    description: 'Count of meals abroad flat',
+    example: 3,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  mealAbroadFlatCount?: number;
+
+  @ApiProperty({
+    description: 'Count of meals abroad actual',
+    example: 4,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  mealAbroadActualCount?: number;
+
+  @ApiProperty({
+    description: 'Amount for meal abroad flat',
+    example: 1500,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  mealAbroadFlatAmount?: number;
+
+  @ApiProperty({
+    description: 'Amount for meal abroad actual',
+    example: 2000,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  mealAbroadActualAmount?: number;
+
   // ค่าที่พัก
   @ApiProperty({
     description: 'Whether lodging fixed is checked',

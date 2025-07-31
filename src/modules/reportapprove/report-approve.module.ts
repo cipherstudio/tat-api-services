@@ -19,9 +19,20 @@ import { ReportEntertainmentFormRepository } from './repositories/report-enterta
 import { ReportEntertainmentItemsRepository } from './repositories/report-entertainment-items.repository';
 import { EntertainmentFormStatusRepository } from './repositories/entertainment-form-status.repository';
 
+// Meeting Expense Report Components
+import { MeetingExpenseReportController } from './controllers/meeting-expense-report.controller';
+import { MeetingExpenseReportService } from './services/meeting-expense-report.service';
+import { MeetingExpenseReportRepository } from './repositories/meeting-expense-report.repository';
+import { MeetingTypeRepository } from './repositories/meeting-type.repository';
+import { MeetingTypeRateRepository } from './repositories/meeting-type-rate.repository';
+
 @Module({
   imports: [RedisCacheModule],
-  controllers: [ReportApproveController, EntertainmentFormController],
+  controllers: [
+    ReportApproveController,
+    EntertainmentFormController,
+    MeetingExpenseReportController,
+  ],
   providers: [
     ReportApproveService,
     ReportApproveRepository,
@@ -39,7 +50,17 @@ import { EntertainmentFormStatusRepository } from './repositories/entertainment-
     ReportEntertainmentFormRepository,
     ReportEntertainmentItemsRepository,
     EntertainmentFormStatusRepository,
+
+    // Meeting Expense Report Providers
+    MeetingExpenseReportService,
+    MeetingExpenseReportRepository,
+    MeetingTypeRepository,
+    MeetingTypeRateRepository,
   ],
-  exports: [ReportApproveService, EntertainmentFormService],
+  exports: [
+    ReportApproveService,
+    EntertainmentFormService,
+    MeetingExpenseReportService,
+  ],
 })
 export class ReportApproveModule {}

@@ -82,6 +82,11 @@ export interface Approval {
   documentNo?: string;
 
   /**
+   * The document number (เลขอ้างอิงงาน)
+   */
+  documentNumber?: string;
+
+  /**
    * The document telephone
    */
   documentTel?: string;
@@ -318,6 +323,7 @@ export const approvalColumnMap = {
   remarks: 'remarks',
   num_travelers: 'numTravelers',
   document_no: 'documentNo',
+  document_number: 'documentNumber',
   document_tel: 'documentTel',
   document_to: 'documentTo',
   document_title: 'documentTitle',
@@ -375,6 +381,7 @@ export const approvalReverseColumnMap = {
   remarks: 'remarks',
   numTravelers: 'num_travelers',
   documentNo: 'document_no',
+  documentNumber: 'document_number',
   documentTel: 'document_tel',
   documentTo: 'document_to',
   documentTitle: 'document_title',
