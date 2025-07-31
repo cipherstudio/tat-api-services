@@ -13,6 +13,7 @@ import { RedisCacheService } from '../cache/redis-cache.service';
 import { AuditLogRepository } from './repositories/audit-log.repository';
 import { SessionRepository } from './repositories/session.repository';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
+import { EmployeeRepository } from '@modules/dataviews/repositories/employee.repository';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
     RedisCacheService,
     AuditLogRepository,
     SessionRepository,
+    EmployeeRepository,
   ],
   exports: [AuthService, SessionService, AuditLogService, AuditLogRepository],
 })

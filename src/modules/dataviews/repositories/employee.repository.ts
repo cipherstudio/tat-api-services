@@ -6,6 +6,7 @@ import { toCamelCase } from '../../../common/utils/case-mapping';
 import { QueryEmployeeDto } from '../dto/query-employee.dto';
 import { ViewPosition4ot } from '../entities/view-position-4ot.entity';
 import { OpLevelSalR } from '../entities/op-level-sal-r.entity';
+import { OpMasterT } from '../entities/op-master-t.entity';
 
 @Injectable()
 export class EmployeeRepository extends KnexBaseRepository<Employee> {
@@ -20,10 +21,11 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
     );
   }
 
-  async findByCode(
-    code: string,
-  ): Promise<
-    | (Employee & { salaryHistory?: { current?: any; previous?: any } })
+  async findByCode(code: string): Promise<
+    | (Employee & {
+        salaryHistory?: { current?: any; previous?: any };
+        isAdmin?: boolean;
+      })
     | undefined
   > {
     // Query ข้อมูลหลักจาก OP_MASTER_T
@@ -43,6 +45,21 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
           this.knex.raw('RTRIM("OP_MASTER_T"."PMT_POS_NO")'),
         );
       })
+      .leftJoin('employee_admin', (builder) => {
+        builder.on(
+          'employee_admin.pmt_code',
+          '=',
+          this.knex.raw('RTRIM("OP_MASTER_T"."PMT_CODE")'),
+        );
+      })
+      .select([
+        'OP_MASTER_T.*',
+        'EMPLOYEE.*',
+        'VIEW_POSITION_4OT.*',
+        this.knex.raw(
+          'CASE WHEN employee_admin.id IS NOT NULL THEN 1 ELSE 0 END as is_admin',
+        ),
+      ])
       .first();
 
     if (!dbEntity) return undefined;
@@ -178,7 +195,7 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
   }
 
   async findWithQueryWithPosition4ot(query: QueryEmployeeDto): Promise<{
-    data: (Employee & ViewPosition4ot & OpLevelSalR)[];
+    data: (Employee & ViewPosition4ot & OpLevelSalR & { isAdmin?: boolean })[];
     meta: { total: number; limit: number; offset: number; lastPage: number };
   }> {
     let baseBuilder = this.knex('OP_MASTER_T')
@@ -203,7 +220,14 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
           this.knex.raw('RTRIM("VIEW_POSITION_4OT"."POS_DEPT_ID")'),
         );
       })
-      .leftJoin('EMPLOYEE', 'OP_MASTER_T.PMT_CODE', 'EMPLOYEE.CODE');
+      .leftJoin('EMPLOYEE', 'OP_MASTER_T.PMT_CODE', 'EMPLOYEE.CODE')
+      .leftJoin('employee_admin', (builder) => {
+        builder.on(
+          'employee_admin.pmt_code',
+          '=',
+          this.knex.raw('RTRIM("OP_MASTER_T"."PMT_CODE")'),
+        );
+      });
 
     // Apply filters
     if (query.code) {
@@ -265,6 +289,9 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
         'OP_ORGANIZE_R.POG_DESC as department_name',
         'EMPLOYEE.*',
         this.knex.raw(
+          'CASE WHEN employee_admin.id IS NOT NULL THEN 1 ELSE 0 END as is_admin',
+        ),
+        this.knex.raw(
           `row_number() over (partition by "OP_MASTER_T"."PMT_CODE" order by "OP_MASTER_T"."PMT_CODE" ${query?.orderDir ?? 'asc'} ) as "rn"`,
         ),
       ])
@@ -293,7 +320,10 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
 
   async findByCodeWithPosition4ot(
     code: string,
-  ): Promise<(Employee & ViewPosition4ot & OpLevelSalR) | undefined> {
+  ): Promise<
+    | (OpMasterT & ViewPosition4ot & OpLevelSalR & { isAdmin?: boolean })
+    | undefined
+  > {
     const employee = await this.knex('OP_MASTER_T')
       .whereRaw('RTRIM("PMT_CODE") = ?', [code])
       .leftJoin('OP_LEVEL_SAL_R', (builder) => {
@@ -311,11 +341,37 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
         );
       })
       .leftJoin('EMPLOYEE', 'OP_MASTER_T.PMT_CODE', 'EMPLOYEE.CODE')
+      .leftJoin('employee_admin', (builder) => {
+        builder.on(
+          'employee_admin.pmt_code',
+          '=',
+          this.knex.raw('RTRIM("OP_MASTER_T"."PMT_CODE")'),
+        );
+      })
+      .select([
+        'OP_MASTER_T.*',
+        'OP_LEVEL_SAL_R.*',
+        'VIEW_POSITION_4OT.*',
+        'EMPLOYEE.*',
+        this.knex.raw(
+          'TO_NUMBER(CASE WHEN "employee_admin"."id" IS NOT NULL THEN 1 ELSE 0 END) AS "is_admin"',
+        ),
+      ])
       .first();
 
     const employeeCamel = employee ? await toCamelCase(employee) : undefined;
     return employeeCamel as
-      | (Employee & ViewPosition4ot & OpLevelSalR)
+      | (Employee & ViewPosition4ot & OpLevelSalR & { isAdmin?: boolean })
       | undefined;
+  }
+
+  async checkIsAdmin(pmtCode: string): Promise<boolean> {
+    const result = await this.knex('employee_admin')
+      .where('pmt_code', pmtCode)
+      .where('is_active', true)
+      .whereNull('deleted_at')
+      .first();
+
+    return !!result;
   }
 }

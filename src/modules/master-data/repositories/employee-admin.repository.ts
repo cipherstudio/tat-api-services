@@ -77,6 +77,39 @@ export class EmployeeAdminRepository extends KnexBaseRepository<EmployeeAdmin> {
       queryBuilder = queryBuilder.where('is_suspended', filters.is_suspended);
     }
 
+    if (filters.searchTerm) {
+      queryBuilder = queryBuilder.where(
+        'employee_name',
+        'like',
+        `%${filters.searchTerm}%`,
+      );
+      queryBuilder = queryBuilder.orWhere(
+        'employee_code',
+        'like',
+        `%${filters.searchTerm}%`,
+      );
+      queryBuilder = queryBuilder.orWhere(
+        'pmt_code',
+        'like',
+        `%${filters.searchTerm}%`,
+      );
+      queryBuilder = queryBuilder.orWhere(
+        'department',
+        'like',
+        `%${filters.searchTerm}%`,
+      );
+      queryBuilder = queryBuilder.orWhere(
+        'division',
+        'like',
+        `%${filters.searchTerm}%`,
+      );
+      queryBuilder = queryBuilder.orWhere(
+        'section',
+        'like',
+        `%${filters.searchTerm}%`,
+      );
+    }
+
     const totalCount = await queryBuilder.clone().count('* as count').first();
     const total = parseInt(totalCount.count as string);
 

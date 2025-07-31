@@ -99,6 +99,33 @@ export class DataviewsController {
   }
 
   @Version('1')
+  @Get('employees/:code/with-position4ot')
+  @ApiOperation({
+    summary: 'ดึงข้อมูลพนักงานรายคนพร้อมข้อมูลตำแหน่งและระดับเงินเดือน',
+    description:
+      'ดึงข้อมูลพนักงานพร้อมข้อมูลจาก VIEW_POSITION_4OT และ OP_LEVEL_SAL_R',
+  })
+  @ApiParam({ name: 'code', description: 'รหัสพนักงาน', required: true })
+  findEmployeeByCodeWithPosition4ot(@Param('code') code: string) {
+    return this.dataviewsService.findEmployeeByCodeWithPosition4ot(code);
+  }
+
+  @Version('1')
+  @Get('employees/:pmtCode/is-admin')
+  @ApiOperation({
+    summary: 'ตรวจสอบว่าพนักงานเป็นแอดมินหรือไม่',
+    description: 'ตรวจสอบจากตาราง employee_admin ว่าพนักงานเป็นแอดมินหรือไม่',
+  })
+  @ApiParam({
+    name: 'pmtCode',
+    description: 'PMT_CODE ของพนักงาน',
+    required: true,
+  })
+  checkEmployeeIsAdmin(@Param('pmtCode') pmtCode: string) {
+    return this.dataviewsService.checkEmployeeIsAdmin(pmtCode);
+  }
+
+  @Version('1')
   @Get('ab-deputies')
   @ApiOperation({
     summary: 'ค้นหาข้อมูล AB_DEPUTY ด้วยเงื่อนไข',

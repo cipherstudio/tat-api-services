@@ -69,7 +69,7 @@ export class ApprovalController {
       throw new Error('Employee data not found for user');
     }
     return this.approvalService.create(
-      createApprovalDto, 
+      createApprovalDto,
       req.user.employee.code,
       req.user.employee.name,
     );
@@ -302,10 +302,7 @@ export class ApprovalController {
     if (!req.user.employee) {
       throw new Error('Employee data not found for user');
     }
-    return this.approvalService.findAll(
-      queryOptions,
-      req.user.employee.code,
-    );
+    return this.approvalService.findAll(queryOptions, req.user.employee.code);
   }
 
   @Get('status')
@@ -455,7 +452,11 @@ export class ApprovalController {
     if (!req.user.employee) {
       throw new Error('Employee data not found for user');
     }
-    return this.approvalService.updateStatus(id, updateStatusDto, req.user.employee.code);
+    return this.approvalService.updateStatus(
+      id,
+      updateStatusDto,
+      req.user.employee.code,
+    );
   }
 
   @Delete(':id')

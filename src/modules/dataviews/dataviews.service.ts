@@ -84,6 +84,14 @@ export class DataviewsService {
     return this.employeeRepository.findByCode(code);
   }
 
+  async findEmployeeByCodeWithPosition4ot(code: string): Promise<any | undefined> {
+    return this.employeeRepository.findByCodeWithPosition4ot(code);
+  }
+
+  async checkEmployeeIsAdmin(pmtCode: string): Promise<boolean> {
+    return this.employeeRepository.checkIsAdmin(pmtCode);
+  }
+
   async findEmployeesWithQuery(
     query: QueryEmployeeDto,
   ): Promise<EmployeePaginate> {

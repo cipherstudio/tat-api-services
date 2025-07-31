@@ -2,13 +2,15 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
-import { UsersService } from '../../users/users.service';
+// import { UsersService } from '../../users/users.service';
+import { EmployeeRepository } from '@modules/dataviews/repositories/employee.repository';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     private readonly configService: ConfigService,
-    private readonly usersService: UsersService,
+    private readonly employeeRepository: EmployeeRepository,
+    // private readonly usersService: UsersService,
   ) {
     const jwtSecret = configService.get('JWT_SECRET');
     super({
@@ -20,13 +22,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: { sub: number; email: string }) {
     try {
-      const user = await this.usersService.getMe(payload.sub);
+      const user = await this.employeeRepository.findByCodeWithPosition4ot(
+        payload.sub.toString(),
+      );
 
-      if (!user || !user.isActive) {
+      if (!user) {
         throw new UnauthorizedException();
       }
 
-      return user;
+      const datauser = {
+        employee: user,
+      };
+
+      return datauser;
     } catch (error) {
       throw new UnauthorizedException();
     }

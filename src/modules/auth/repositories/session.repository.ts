@@ -31,6 +31,18 @@ export class SessionRepository extends KnexBaseRepository<Session> {
     );
   }
 
+  async findActiveSessionsByEmployeeCode(
+    employeeCode: string,
+  ): Promise<Session[]> {
+    const dbSessions = await this.find({
+      employee_code: employeeCode,
+      is_active: true,
+    });
+    return Promise.all(
+      dbSessions.map(async (s) => await toCamelCase<Session>(s)),
+    );
+  }
+
   async findOne(conditions: Record<string, any>): Promise<Session | undefined> {
     const dbSession = await super.findOne(conditions);
     return dbSession ? await toCamelCase<Session>(dbSession) : undefined;
@@ -47,6 +59,15 @@ export class SessionRepository extends KnexBaseRepository<Session> {
     const result = await this.knexService
       .knex('sessions')
       .where({ user_id: userId, is_active: true })
+      .update({ is_active: false });
+
+    return result;
+  }
+
+  async deactivateAllEmployeeSessions(employeeCode: string): Promise<number> {
+    const result = await this.knexService
+      .knex('sessions')
+      .where({ employee_code: employeeCode, is_active: true })
       .update({ is_active: false });
 
     return result;

@@ -11,6 +11,7 @@ export class SessionService {
     token: string,
     deviceInfo?: string,
     ipAddress?: string,
+    employeeCode?: string,
     expiresIn: number = 24 * 60 * 60 * 1000, // Default 24 hours
   ): Promise<Session> {
     const expiresAt = new Date(Date.now() + expiresIn);
@@ -20,6 +21,7 @@ export class SessionService {
       token,
       deviceInfo,
       ipAddress,
+      employeeCode,
       isActive: true,
       expiresAt,
     };
@@ -39,8 +41,18 @@ export class SessionService {
     return this.sessionRepository.findActiveSessionsByUserId(userId);
   }
 
+  async getEmployeeActiveSessions(employeeCode: string): Promise<Session[]> {
+    return this.sessionRepository.findActiveSessionsByEmployeeCode(
+      employeeCode,
+    );
+  }
+
   async deactivateAllUserSessions(userId: number): Promise<void> {
     await this.sessionRepository.deactivateAllUserSessions(userId);
+  }
+
+  async deactivateAllEmployeeSessions(employeeCode: string): Promise<void> {
+    await this.sessionRepository.deactivateAllEmployeeSessions(employeeCode);
   }
 
   async markSessionActive(sessionId: number, newToken: string): Promise<void> {

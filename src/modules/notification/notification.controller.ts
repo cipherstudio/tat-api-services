@@ -84,7 +84,8 @@ export class NotificationController {
   @Get('unread-count')
   @ApiOperation({
     summary: 'Get unread notification count',
-    description: 'Get the count of unread notifications for the authenticated employee',
+    description:
+      'Get the count of unread notifications for the authenticated employee',
   })
   @ApiResponse({
     status: 200,
@@ -135,7 +136,8 @@ export class NotificationController {
   @Patch('mark-all-read')
   @ApiOperation({
     summary: 'Mark all notifications as read',
-    description: 'Mark all notifications for the authenticated employee as read',
+    description:
+      'Mark all notifications for the authenticated employee as read',
   })
   @ApiResponse({
     status: 204,

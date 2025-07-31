@@ -33,4 +33,8 @@ export class QueryEmployeeAdminDto extends CommonQueryDto {
   @IsOptional()
   @IsBoolean()
   is_suspended?: boolean;
-} 
+
+  @IsOptional()
+  @IsString()
+  searchTerm?: string;
+}

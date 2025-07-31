@@ -37,9 +37,15 @@ import {
 import { Employee } from '@modules/dataviews/entities/employee.entity';
 import { ViewPosition4ot } from '@modules/dataviews/entities/view-position-4ot.entity';
 import { OpLevelSalR } from '@modules/dataviews/entities/op-level-sal-r.entity';
+import { OpMasterT } from '@modules/dataviews/entities/op-master-t.entity';
+import { EmployeeRepository } from '@modules/dataviews/repositories/employee.repository';
 
 interface RequestWithUser extends Request {
-  user: User & (Employee & ViewPosition4ot & OpLevelSalR);
+  user: User &
+    (Employee &
+      ViewPosition4ot &
+      OpLevelSalR &
+      OpMasterT & { isAdmin?: number });
 }
 
 @ApiTags('authentication')
@@ -50,6 +56,7 @@ export class AuthController {
     private readonly sessionService: SessionService,
     private readonly auditLogService: AuditLogService,
     private readonly usersService: UsersService,
+    private readonly employeeRepository: EmployeeRepository,
   ) {}
 
   @Version('1')
@@ -72,10 +79,8 @@ export class AuthController {
   @ApiBody({ type: LoginDto })
   async login(@Body() loginDto: LoginDto, @Req() req: RequestWithUser) {
     const user = req.user;
-    const tokens = await this.authService.login(user);
-    const session = await this.sessionService.createSession(
-      user.id,
-      tokens?.refresh_token || '',
+    const tokens = await this.authService.login(
+      user,
       req.headers['user-agent'] as string,
       req.ip,
     );
@@ -89,7 +94,7 @@ export class AuthController {
       category: AuditLogCategory.AUTH,
     });
 
-    return { ...tokens, sessionId: session.id };
+    return tokens;
   }
 
   @Version('1')
@@ -98,12 +103,6 @@ export class AuthController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Refresh JWT token' })
   @ApiResponse({ status: 200, description: 'Tokens refreshed.' })
-  @ApiResponse({ status: 401, description: 'Unauthorized.' })
-  @ApiBody({
-    schema: {
-      properties: { refreshToken: { type: 'string', example: '...' } },
-    },
-  })
   async refresh(
     @Body('refreshToken') refreshToken: string,
     @Req() req: Request,
@@ -112,13 +111,22 @@ export class AuthController {
     if (!session) {
       throw new UnauthorizedException('Invalid refresh token');
     }
-    const tokens = await this.authService.refreshTokens(session.userId);
+
+    const user = await this.employeeRepository.findByCodeWithPosition4ot(
+      session.employeeCode,
+    );
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const tokens = await this.authService.refreshTokens(user as any);
     await this.sessionService.deactivateSession(session.id);
     const newSession = await this.sessionService.createSession(
       session.userId,
       tokens.refreshToken,
       req.headers['user-agent'] as string,
       req.ip,
+      user.pmtCode,
     );
     return {
       accessToken: tokens.accessToken,
@@ -187,7 +195,7 @@ export class AuthController {
     @Req() req: RequestWithUser,
   ) {
     const user = req.user;
-    await this.authService.changePassword(user.id, changePasswordDto);
+    await this.authService.changePassword(user.pmtCode, changePasswordDto);
 
     await this.auditLogService.createLog({
       userId: user.id,
