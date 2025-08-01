@@ -56,7 +56,7 @@ export class UsersController {
   @Get('me')
   @ApiOperation({ summary: 'Get current user (me)' })
   getMe(@Req() req) {
-    return this.usersService.getMe(req.user.pmtCode);
+    return this.usersService.getMe(req.user.employee.pmtCode);
   }
 
   // @Version('1')

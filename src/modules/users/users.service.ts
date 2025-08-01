@@ -199,6 +199,6 @@ export class UsersService {
 
   async getMe(employeeCode: string) {
     console.log('employeeCode', employeeCode);
-    return this.userRepository.findByIdWithEmployee(employeeCode);
+    return this.employeeRepository.findByCodeWithPosition4ot(employeeCode);
   }
 }

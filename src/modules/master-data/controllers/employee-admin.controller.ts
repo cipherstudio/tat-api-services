@@ -16,6 +16,7 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiBody,
 } from '@nestjs/swagger';
 import { EmployeeAdminService } from '../services/employee-admin.service';
 import { CreateEmployeeAdminDto } from '../dto/create-employee-admin.dto';
@@ -41,6 +42,30 @@ export class EmployeeAdminController {
   @ApiResponse({
     status: 409,
     description: 'PMT_CODE or Employee Code already exists',
+  })
+  @ApiOperation({
+    summary: 'Create a new employee admin',
+    description: 'Create a new employee admin',
+  })
+  @ApiBody({
+    type: CreateEmployeeAdminDto,
+    examples: {
+      example1: {
+        value: {
+          pmt_code: '1234567890',
+          employee_code: '1234567890',
+          employee_name: 'John Doe',
+          position: 'ตำแหน่ง',
+          department: 'แผนก',
+          division: 'ฝ่าย',
+          section: 'ส่วน',
+          is_active: true,
+          is_suspended: false,
+          suspended_until: '2024-07-14T00:00:00.000Z',
+          created_by: 'John Doe',
+        },
+      },
+    },
   })
   async create(
     @Body() createDto: CreateEmployeeAdminDto,

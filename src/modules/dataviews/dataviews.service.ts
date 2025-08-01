@@ -84,7 +84,9 @@ export class DataviewsService {
     return this.employeeRepository.findByCode(code);
   }
 
-  async findEmployeeByCodeWithPosition4ot(code: string): Promise<any | undefined> {
+  async findEmployeeByCodeWithPosition4ot(
+    code: string,
+  ): Promise<any | undefined> {
     return this.employeeRepository.findByCodeWithPosition4ot(code);
   }
 

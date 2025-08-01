@@ -231,10 +231,13 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
 
     // Apply filters
     if (query.code) {
-      baseBuilder = baseBuilder.whereRaw('RTRIM("PMT_CODE") = ?', [query.code]);
+      baseBuilder = baseBuilder.whereRaw(
+        'RTRIM("OP_MASTER_T"."PMT_CODE") = ?',
+        [query.code],
+      );
     }
     if (query.name) {
-      baseBuilder = baseBuilder.where('EMPLOYEE.NAME', query.name);
+      baseBuilder = baseBuilder.where('OP_MASTER_T.PMT_NAME_T', query.name);
     }
     if (query.searchTerm) {
       baseBuilder = baseBuilder.where(
@@ -289,7 +292,7 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
         'OP_ORGANIZE_R.POG_DESC as department_name',
         'EMPLOYEE.*',
         this.knex.raw(
-          'CASE WHEN employee_admin.id IS NOT NULL THEN 1 ELSE 0 END as is_admin',
+          `TO_NUMBER(CASE WHEN "employee_admin"."id" IS NOT NULL THEN 1 ELSE 0 END) AS "is_admin"`,
         ),
         this.knex.raw(
           `row_number() over (partition by "OP_MASTER_T"."PMT_CODE" order by "OP_MASTER_T"."PMT_CODE" ${query?.orderDir ?? 'asc'} ) as "rn"`,
