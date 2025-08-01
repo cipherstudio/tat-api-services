@@ -55,8 +55,11 @@ export class UsersController {
   @Version('1')
   @Get('me')
   @ApiOperation({ summary: 'Get current user (me)' })
-  getMe(@Req() req) {
-    return this.usersService.getMe(req.user.employee.pmtCode);
+  async getMe(@Req() req) {
+    const user = await this.usersService.getMe(req.user.employee.pmtCode);
+    return {
+      employee: user,
+    };
   }
 
   // @Version('1')
