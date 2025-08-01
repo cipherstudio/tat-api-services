@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { UsersReports } from '../entities/users-reports.entity';
+import { CommuteReports } from '../entities/commute-reports.entity';
+import { ClothingReport } from '../entities/clothing-report.entity';
 import { KnexBaseRepository } from '../../../common/repositories/knex-base.repository';
 import { KnexService } from '../../../database/knex-service/knex.service';
 import { toCamelCase, toSnakeCase } from '../../../common/utils/case-mapping';
 
 @Injectable()
-export class UsersReportsRepository extends KnexBaseRepository<UsersReports> {
+export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
   constructor(knexService: KnexService) {
     super(knexService, 'approval');
   }
@@ -36,7 +37,7 @@ export class UsersReportsRepository extends KnexBaseRepository<UsersReports> {
         lastPage: totalPages,
       },
       data: await Promise.all(
-        result.data.map(async (e) => await toCamelCase<UsersReports>(e)),
+        result.data.map(async (e) => await toCamelCase<CommuteReports>(e)),
       ),
     };
   }
@@ -244,29 +245,148 @@ export class UsersReportsRepository extends KnexBaseRepository<UsersReports> {
 
   // Custom method for clothing reports
   async findClothingReports(query: any) {
+    // Extract pagination and sorting parameters
     const { page, limit, orderBy, orderDir, ...conditions } = query;
-    const dbConditions: Record<string, any> = {};
     
-    if (conditions.startDate) {
-      dbConditions.created_at = { $gte: conditions.startDate };
-    }
-    if (conditions.endDate) {
-      dbConditions.created_at = { ...dbConditions.created_at, $lte: conditions.endDate };
-    }
-    if (conditions.userId) {
-      dbConditions.user_id = conditions.userId;
-    }
-    if (conditions.clothingType) {
-      dbConditions.travel_type = conditions.clothingType;
+    // Build query with join to approval, approval_date_ranges, and EMPLOYEE
+    let dbQuery = this.knexService.knex('approval_clothing_expense')
+      .leftJoin('approval', 'approval_clothing_expense.approval_id', 'approval.id')
+      .leftJoin('EMPLOYEE', 'approval_clothing_expense.employee_code', 'EMPLOYEE.CODE')
+      .select(
+        'approval_clothing_expense.id',
+        'approval_clothing_expense.clothing_file_checked',
+        'approval_clothing_expense.clothing_amount',
+        'approval_clothing_expense.clothing_reason',
+        'approval_clothing_expense.reporting_date',
+        'approval_clothing_expense.next_claim_date',
+        'approval_clothing_expense.work_end_date',
+        'approval_clothing_expense.created_at',
+        'approval_clothing_expense.updated_at',
+        'approval_clothing_expense.staff_member_id',
+        'approval_clothing_expense.approval_id',
+        'approval_clothing_expense.employee_code',
+        'approval_clothing_expense.increment_id',
+        'approval_clothing_expense.destination_country',
+        'approval.increment_id as approval_increment_id',
+        'approval.document_title',
+        'approval.approval_date',
+        'approval.created_employee_code',
+        'approval.created_employee_name',
+        'EMPLOYEE.NAME as employee_name'
+      );
+
+    // Add date range conditions for approval date
+    if (conditions.startDate && conditions.endDate) {
+      // Both dates provided - filter by date range
+      dbQuery = dbQuery.whereBetween('approval.approval_date', [
+        conditions.startDate,
+        conditions.endDate,
+      ]);
+    } else if (conditions.startDate) {
+      // Only start date provided - filter from start date onwards
+      dbQuery = dbQuery.where('approval.approval_date', '>=', conditions.startDate);
+    } else if (conditions.endDate) {
+      // Only end date provided - filter up to end date
+      dbQuery = dbQuery.where('approval.approval_date', '<=', conditions.endDate);
     }
 
-    return this.findWithPagination(
-      page || 1,
-      limit || 10,
-      dbConditions,
-      orderBy || 'created_at',
-      orderDir || 'desc',
-    );
+    // Add employee name filter if provided
+    if (conditions.employeeName) {
+      dbQuery = dbQuery.where('EMPLOYEE.NAME', 'like', `%${conditions.employeeName}%`);
+    }
+
+    // Add order by
+    const orderByField = orderBy || 'approval_clothing_expense.created_at';
+    const orderDirection = orderDir || 'desc';
+    dbQuery = dbQuery.orderBy(orderByField, orderDirection);
+
+    // Get total count for pagination (without ORDER BY)
+    const countQuery = this.knexService.knex('approval_clothing_expense')
+      .leftJoin('approval', 'approval_clothing_expense.approval_id', 'approval.id')
+      .leftJoin('EMPLOYEE', 'approval_clothing_expense.employee_code', 'EMPLOYEE.CODE');
+
+    // Apply the same filters to count query
+    if (conditions.startDate && conditions.endDate) {
+      countQuery.whereBetween('approval.approval_date', [
+        conditions.startDate,
+        conditions.endDate,
+      ]);
+    } else if (conditions.startDate) {
+      countQuery.where('approval.approval_date', '>=', conditions.startDate);
+    } else if (conditions.endDate) {
+      countQuery.where('approval.approval_date', '<=', conditions.endDate);
+    }
+    if (conditions.employeeName) {
+      countQuery.where('EMPLOYEE.NAME', 'like', `%${conditions.employeeName}%`);
+    }
+
+    const total = await countQuery.count('* as count').first();
+
+    // Add pagination
+    const pageNum = page || 1;
+    const limitNum = limit || 10;
+    const offset = (pageNum - 1) * limitNum;
+    
+    dbQuery = dbQuery.limit(limitNum).offset(offset);
+
+    // Execute query
+    const data = await dbQuery;
+
+    // Get date ranges for all approvals
+    const approvalIds = data.map(item => item.approval_id).filter(id => id);
+    let dateRanges: any[] = [];
+    
+    if (approvalIds.length > 0) {
+      const dateRangePromises = approvalIds.map(async (approvalId) => {
+        const dateRangesForApproval = await this.knexService
+          .knex('approval_date_ranges')
+          .select('approval_id', 'start_date', 'end_date')
+          .where('approval_id', approvalId)
+          .orderBy('start_date', 'asc');
+        return dateRangesForApproval;
+      });
+
+      dateRanges = await Promise.all(dateRangePromises);
+    }
+
+    // Create a map of date ranges by approval ID
+    const dateRangeMap = new Map();
+    dateRanges.forEach((dateRangeArray) => {
+      if (dateRangeArray && dateRangeArray.length > 0) {
+        const approvalId = dateRangeArray[0].approval_id;
+        dateRangeMap.set(
+          approvalId,
+          dateRangeArray.map((range) => ({
+            startDate: range.start_date,
+            endDate: range.end_date,
+          })),
+        );
+      }
+    });
+
+    // Calculate pagination metadata
+    const totalCount = total ? parseInt(total.count as string) : 0;
+    const totalPages = Math.ceil(totalCount / limitNum);
+
+    // Transform data and add date ranges
+    const transformedData = await Promise.all(data.map(async (item) => {
+      const transformedItem = await toCamelCase<ClothingReport>(item);
+      return {
+        ...(transformedItem as any),
+        approvalDateRanges: dateRangeMap.get(item.approval_id) || [],
+      };
+    }));
+
+    return {
+      data: transformedData,
+      meta: {
+        total: totalCount,
+        page: pageNum,
+        limit: limitNum,
+        totalPages,
+        lastPage: totalPages,
+      },
+    };
   }
 
   // Custom method for activity reports

@@ -108,11 +108,7 @@ export class UsersReportsController {
   @ApiQuery({ name: 'orderDir', type: String, required: false, description: 'Order direction (ASC/DESC)' })
   @ApiQuery({ name: 'startDate', required: false, description: 'วันที่เริ่มต้น' })
   @ApiQuery({ name: 'endDate', required: false, description: 'วันที่สิ้นสุด' })
-  @ApiQuery({ name: 'userId', required: false, description: 'รหัสผู้ใช้' })
-  @ApiQuery({ name: 'clothingType', required: false, description: 'ประเภทเครื่องแต่งกาย' })
-  @ApiQuery({ name: 'claimStatus', required: false, description: 'สถานะการเบิก' })
-  @ApiQuery({ name: 'minAmount', required: false, description: 'จำนวนเงินขั้นต่ำ' })
-  @ApiQuery({ name: 'maxAmount', required: false, description: 'จำนวนเงินสูงสุด' })
+  @ApiQuery({ name: 'employeeName', required: false, description: 'ชื่อพนักงาน' })
   async getClothingReport(@Query() query: ClothingQueryDto) {
     const queryOptions = {
       page: query.page || 1,

@@ -35,30 +35,10 @@ export class ClothingQueryDto {
   @IsDateString()
   endDate?: string;
 
-  @ApiPropertyOptional({ description: 'รหัสผู้ใช้' })
+  @ApiPropertyOptional({ description: 'ชื่อพนักงาน' })
   @IsOptional()
   @IsString()
-  userId?: string;
+  employeeName?: string;
 
-  @ApiPropertyOptional({ description: 'ประเภทเครื่องแต่งกาย' })
-  @IsOptional()
-  @IsString()
-  clothingType?: string;
 
-  @ApiPropertyOptional({ description: 'สถานะการเบิก' })
-  @IsOptional()
-  @IsString()
-  claimStatus?: string;
-
-  @ApiPropertyOptional({ description: 'จำนวนเงินขั้นต่ำ' })
-  @IsOptional()
-  @IsNumber()
-  @Transform(({ value }) => parseFloat(value))
-  minAmount?: number;
-
-  @ApiPropertyOptional({ description: 'จำนวนเงินสูงสุด' })
-  @IsOptional()
-  @IsNumber()
-  @Transform(({ value }) => parseFloat(value))
-  maxAmount?: number;
 } 
