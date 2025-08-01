@@ -7,6 +7,7 @@ import { EmployeeRepository } from '../../dataviews/repositories/employee.reposi
 import { Employee } from '@modules/dataviews/entities/employee.entity';
 import { ViewPosition4ot } from '@modules/dataviews/entities/view-position-4ot.entity';
 import { OpLevelSalR } from '@modules/dataviews/entities/op-level-sal-r.entity';
+import { OpMasterT } from '@modules/dataviews/entities/op-master-t.entity';
 
 @Injectable()
 export class UserRepository extends KnexBaseRepository<User> {
@@ -143,9 +144,18 @@ export class UserRepository extends KnexBaseRepository<User> {
   }
 
   async findByIdWithEmployee(
-    id: number,
-  ): Promise<User & { employee?: Employee & ViewPosition4ot & OpLevelSalR }> {
-    const user = await this.knexService.knex('users').where({ id }).first();
+    employeeCode: string,
+  ): Promise<
+    User &
+      (Employee &
+        ViewPosition4ot &
+        OpLevelSalR &
+        OpMasterT & { isAdmin?: number })
+  > {
+    const user = await this.knexService
+      .knex('users')
+      .where({ employeeCamel: employeeCode })
+      .first();
     if (!user) return undefined;
     let employee;
     if (user.employee_code) {

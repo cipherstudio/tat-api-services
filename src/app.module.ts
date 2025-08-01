@@ -15,6 +15,7 @@ import { FilesModule } from './modules/files/files.module';
 import { DisbursementsupportingModule } from './modules/disbursementsupporting/disbursementsupporting.module';
 import { ApprovalModule } from './modules/approval/approval.module';
 import { ReportApproveModule } from './modules/reportapprove/report-approve.module';
+import { NotificationModule } from './modules/notification/notification.module';
 import { UsersReportsModule } from './modules/usersreports/users-reports.module';
 
 @Module({
@@ -32,6 +33,7 @@ import { UsersReportsModule } from './modules/usersreports/users-reports.module'
     DisbursementsupportingModule,
     ApprovalModule,
     ReportApproveModule,
+    NotificationModule,
     UsersReportsModule,
   ],
   controllers: [AppController],

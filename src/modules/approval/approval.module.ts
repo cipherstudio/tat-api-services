@@ -8,20 +8,18 @@ import { ApprovalAttachmentService } from './services/approval-attachment.servic
 import { RedisCacheModule } from '../cache/redis-cache.module';
 import { RedisCacheService } from '../cache/redis-cache.service';
 import { FilesModule } from '../files/files.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
-  imports: [
-    RedisCacheModule,
-    FilesModule,
-  ],
+  imports: [RedisCacheModule, FilesModule, NotificationModule],
   controllers: [ApprovalController],
   providers: [
-    ApprovalService, 
-    ApprovalRepository, 
-    ApprovalStatusLabelRepository, 
+    ApprovalService,
+    ApprovalRepository,
+    ApprovalStatusLabelRepository,
     ApprovalAttachmentRepository,
     ApprovalAttachmentService,
-    RedisCacheService
+    RedisCacheService,
   ],
   exports: [ApprovalService, ApprovalAttachmentService],
 })

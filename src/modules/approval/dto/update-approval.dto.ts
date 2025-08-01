@@ -228,6 +228,15 @@ export class StaffMemberDto {
   organizationPosition: string;
 
   @ApiProperty({
+    description: 'สถานะการยกเลิก',
+    example: false,
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  cancelled?: boolean;
+
+  @ApiProperty({
     description: 'สถานที่ทำงาน',
     type: [WorkLocationDto],
   })

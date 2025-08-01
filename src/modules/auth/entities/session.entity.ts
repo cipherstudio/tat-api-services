@@ -4,6 +4,7 @@ export interface Session {
   id: number;
   userId: number;
   user?: User;
+  employeeCode?: string;
   token: string;
   deviceInfo?: string;
   ipAddress?: string;
@@ -17,6 +18,7 @@ export interface Session {
 export const sessionColumnMap = {
   id: 'id',
   user_id: 'userId',
+  employee_code: 'employeeCode',
   token: 'token',
   device_info: 'deviceInfo',
   ip_address: 'ipAddress',
@@ -30,6 +32,7 @@ export const sessionColumnMap = {
 export const sessionReverseColumnMap = {
   id: 'id',
   userId: 'user_id',
+  employeeCode: 'employee_code',
   token: 'token',
   deviceInfo: 'device_info',
   ipAddress: 'ip_address',

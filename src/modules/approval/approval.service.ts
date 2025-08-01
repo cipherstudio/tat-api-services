@@ -31,6 +31,8 @@ import { UpdateApprovalContinuousDto } from './dto/update-approval-continuous.dt
 import { ApprovalAttachmentService } from './services/approval-attachment.service';
 import * as moment from 'moment-timezone';
 import { QueryApprovalsThatHasClothingExpenseDto } from './dto/query-approvals-that-has-clothing-expense';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationType, EntityType } from '../notification/entities/notification.entity';
 
 @Injectable()
 export class ApprovalService {
@@ -43,6 +45,7 @@ export class ApprovalService {
     private readonly knexService: KnexService,
     private readonly filesService: FilesService,
     private readonly attachmentService: ApprovalAttachmentService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   private async generateIncrementId(): Promise<string> {
@@ -89,66 +92,15 @@ export class ApprovalService {
     employeeCode: string,
     employeeName: string,
   ): Promise<Approval> {
-    // Start a transaction
-    const trx = await this.knexService.knex.transaction();
+    const savedApproval = await this.approvalRepository.create({
+      ...createApprovalDto,
+      employeeCode: employeeCode,
+    });
 
-    try {
-      // Generate increment ID
-      const incrementId = await this.generateIncrementId();
-      const approvalPrintNumber = await this.generateApprovalPrintNumber();
-      const expensePrintNumber = await this.generateApprovalPrintNumber(); // now use same approach
+    // Create notifications for related employees
+    await this.createNotificationsForApproval(savedApproval, employeeCode);
 
-      // Get the approval status label ID
-      const approvalStatusLabelId = await this.knexService
-        .knex('approval_status_labels')
-        .where('status_code', 'DRAFT')
-        .select('id')
-        .first();
-
-      // Transform data to snake case
-      const data = {
-        ...createApprovalDto,
-        incrementId,
-        approvalPrintNumber,
-        expensePrintNumber,
-        createdEmployeeCode: employeeCode,
-        createdEmployeeName: employeeName,
-        approvalStatusLabelId: approvalStatusLabelId.id,
-      };
-
-      // Create the approval record with increment ID and user ID
-      const savedApproval = await this.approvalRepository.create(data);
-
-      // Create the approval status record
-      await trx('approval_status_history').insert({
-        approval_status_label_id: approvalStatusLabelId.id,
-        created_by: employeeCode,
-        approval_id: savedApproval.id,
-        created_at: new Date(),
-        updated_at: new Date(),
-      });
-
-      // Commit the transaction
-      await trx.commit();
-
-      // Cache the new approval
-      await this.cacheService.set(
-        this.cacheService.generateKey(this.CACHE_PREFIX, savedApproval.id),
-        savedApproval,
-        this.CACHE_TTL,
-      );
-
-      // Invalidate the list cache
-      await this.cacheService.del(
-        this.cacheService.generateListKey(this.CACHE_PREFIX),
-      );
-
-      return savedApproval;
-    } catch (error) {
-      // Rollback the transaction in case of error
-      await trx.rollback();
-      throw error;
-    }
+    return savedApproval;
   }
 
   async findAll(
@@ -388,6 +340,7 @@ export class ApprovalService {
           'approval.use_file_signature as useFileSignature',
           'approval.signature_attachment_id as signatureAttachmentId',
           'approval.use_system_signature as useSystemSignature',
+          'approval.is_cancel_approval as isCancelApproval',
           'approval.approval_print_number as approvalPrintNumber',
           'approval.expense_print_number as expensePrintNumber',
           'approval.created_employee_code as createdEmployeeCode',
@@ -703,6 +656,7 @@ export class ApprovalService {
         'approval.use_file_signature as useFileSignature',
         'approval.signature_attachment_id as signatureAttachmentId',
         'approval.use_system_signature as useSystemSignature',
+        'approval.is_cancel_approval as isCancelApproval',
         'approval.created_at as createdAt',
         'approval.updated_at as updatedAt',
         'approval.deleted_at as deletedAt',
@@ -810,6 +764,7 @@ export class ApprovalService {
         'asm.position',
         'asm.right_equivalent as rightEquivalent',
         'asm.organization_position as organizationPosition',
+        'asm.cancelled',
         'omt.PMT_LEVEL_CODE as viewLevel',
         'et.POSITION as viewPosition',
         this.knexService.knex.raw(
@@ -1205,7 +1160,7 @@ export class ApprovalService {
           'travel_type as travelType',
           'document_title as documentTitle',
           'created_at as createdAt',
-          'updated_at as updatedAt'
+          'updated_at as updatedAt',
         )
         .first();
     }
@@ -1438,6 +1393,7 @@ export class ApprovalService {
               position: staffMember.position,
               right_equivalent: staffMember.rightEquivalent,
               organization_position: staffMember.organizationPosition,
+              cancelled: staffMember.cancelled || false,
               created_at: new Date(),
               updated_at: new Date(),
             })
@@ -1564,13 +1520,16 @@ export class ApprovalService {
                         .returning('id');
 
                   // Process accommodation transport expenses
-                  if (Array.isArray(workLocation.accommodationTransportExpenses)) {
+                  if (
+                    Array.isArray(workLocation.accommodationTransportExpenses)
+                  ) {
                     for (const transportExpense of workLocation.accommodationTransportExpenses) {
                       await trx(
                         'approval_accommodation_transport_expense',
                       ).insert({
                         approval_id: id,
-                        approval_accommodation_expense_id: accommodationExpense.id,
+                        approval_accommodation_expense_id:
+                          accommodationExpense.id,
                         type: transportExpense.type,
                         amount: transportExpense.amount,
                         checked: transportExpense.checked,
@@ -2568,7 +2527,9 @@ export class ApprovalService {
     };
   }
 
-  async getStatistics(employeeCode: string): Promise<ApprovalStatisticsResponseDto> {
+  async getStatistics(
+    employeeCode: string,
+  ): Promise<ApprovalStatisticsResponseDto> {
     const cacheKey = `${this.CACHE_PREFIX}:statistics:${employeeCode}`;
     const CACHE_TTL = 300; // 5 minutes
 
@@ -2819,32 +2780,55 @@ export class ApprovalService {
     const trx = await this.knexService.knex.transaction();
 
     try {
-      const updateData: any = {};
-
-      // Update status if provided
-      if (updateDto.statusCode) {
-        const approvalContinuousStatusId = await this.knexService
-          .knex('approval_continuous_status')
-          .where('status_code', updateDto.statusCode)
-          .select('id')
-          .first();
-
-        if (!approvalContinuousStatusId) {
-          throw new NotFoundException(
-            `Approval continuous status with code ${updateDto.statusCode} not found`,
-          );
-        }
-
-        updateData.approval_continuous_status_id =
-          approvalContinuousStatusId.id;
-      }
-
-      // get approval_continuous_status_id of PENDING
-      const approvalContinuousStatusIdPending = await this.knexService
+      // get approval_continuous_status id
+      const approvalContinuousStatusId = await this.knexService
         .knex('approval_continuous_status')
-        .where('status_code', 'PENDING')
+        .where('status_code', updateDto.statusCode)
         .select('id')
         .first();
+
+      if (!approvalContinuousStatusId) {
+        throw new NotFoundException(
+          `Approval continuous status with status code ${updateDto.statusCode} not found`,
+        );
+      }
+
+      // Prepare update data
+      const updateData: any = {
+        approval_continuous_status_id: approvalContinuousStatusId.id,
+      };
+
+      if (updateDto.signerName) {
+        updateData.signer_name = updateDto.signerName;
+      }
+
+      if (updateDto.signerDate) {
+        updateData.signer_date = updateDto.signerDate;
+      }
+
+      if (updateDto.documentEnding) {
+        updateData.document_ending = updateDto.documentEnding;
+      }
+
+      if (updateDto.documentEndingWording) {
+        updateData.document_ending_wording = updateDto.documentEndingWording;
+      }
+
+      if (updateDto.useFileSignature !== undefined) {
+        updateData.use_file_signature = updateDto.useFileSignature;
+      }
+
+      if (updateDto.signatureAttachmentId) {
+        updateData.signature_attachment_id = updateDto.signatureAttachmentId;
+      }
+
+      if (updateDto.useSystemSignature !== undefined) {
+        updateData.use_system_signature = updateDto.useSystemSignature;
+      }
+
+      if (updateDto.comments) {
+        updateData.comments = updateDto.comments;
+      }
 
       if (updateDto.statusCode === 'APPROVED') {
         // Add updated_by and updated_at
@@ -2895,6 +2879,14 @@ export class ApprovalService {
             created_at: new Date(),
             updated_at: new Date(),
           });
+
+          // Create notification for approval completion
+          await this.createApprovalCompletedNotification(
+            existingContinuous.approval_id,
+            'APPROVED',
+            employeeCode,
+            approval.final_staff_employee_code,
+          );
         } else {
           // insert approval_continuous // employee คนถัดไป
           await trx('approval_continuous').insert({
@@ -2906,9 +2898,15 @@ export class ApprovalService {
             signature_attachment_id: updateDto.signatureAttachmentId,
             use_system_signature: updateDto.useSystemSignature,
             comments: updateDto.comments,
-            approval_continuous_status_id: approvalContinuousStatusIdPending.id,
+            approval_continuous_status_id: approvalContinuousStatusId.id,
             created_by: employeeCode,
           });
+
+          // Create notification for next approver
+          await this.createApprovalNextApproverNotification(
+            existingContinuous.approval_id,
+            updateDto.employeeCode,
+          );
         }
       } else if (updateDto.statusCode === 'REJECTED') {
         // Add updated_by and updated_at
@@ -2965,9 +2963,17 @@ export class ApprovalService {
           signature_attachment_id: updateDto.signatureAttachmentId,
           use_system_signature: updateDto.useSystemSignature,
           comments: updateDto.comments,
-          approval_continuous_status_id: approvalContinuousStatusIdPending.id,
+          approval_continuous_status_id: approvalContinuousStatusId.id,
           created_by: employeeCode,
         });
+
+        // Create notification for rejection
+        await this.createApprovalCompletedNotification(
+          existingContinuous.approval_id,
+          'REJECTED',
+          employeeCode,
+          approval.final_staff_employee_code,
+        );
       }
 
       // Commit the transaction
@@ -2991,9 +2997,9 @@ export class ApprovalService {
   }
 
   async duplicate(
-    id: number, 
-    employeeCode: string, 
-    employeeName: string
+    id: number,
+    employeeCode: string,
+    employeeName: string,
   ): Promise<Approval> {
     // Get the original approval
     const originalApproval = await this.findById(id);
@@ -3163,6 +3169,7 @@ export class ApprovalService {
               position: staffMember.position,
               right_equivalent: staffMember.rightEquivalent,
               organization_position: staffMember.organizationPosition,
+              cancelled: staffMember.cancelled || false,
               created_at: new Date(),
               updated_at: new Date(),
             })
@@ -3311,7 +3318,8 @@ export class ApprovalService {
                         'approval_accommodation_transport_expense',
                       ).insert({
                         approval_id: newApproval.id,
-                        approval_accommodation_expense_id: newAccommodationExpense.id,
+                        approval_accommodation_expense_id:
+                          newAccommodationExpense.id,
                         type: transportExpense.type,
                         amount: transportExpense.amount,
                         checked: transportExpense.checked,
@@ -3332,7 +3340,8 @@ export class ApprovalService {
                         'approval_accommodation_holiday_expense',
                       ).insert({
                         approval_id: newApproval.id,
-                        approval_accommodation_expense_id: newAccommodationExpense.id,
+                        approval_accommodation_expense_id:
+                          newAccommodationExpense.id,
                         date: holidayExpense.date,
                         thai_date: holidayExpense.thaiDate,
                         checked: holidayExpense.checked,
@@ -3465,6 +3474,249 @@ export class ApprovalService {
       );
 
       return newApproval;
+    } catch (error) {
+      // Rollback the transaction in case of error
+      await trx.rollback();
+      throw error;
+    }
+  }
+
+  async duplicateCancel(
+    id: number, 
+    employeeCode: string, 
+    employeeName: string
+  ): Promise<Approval> {
+    const originalApproval = await this.findById(id);
+    if (!originalApproval) {
+      throw new NotFoundException(`Approval with ID ${id} not found`);
+    }
+
+    const trx = await this.knexService.knex.transaction();
+
+    try {
+      // Generate new increment ID and print numbers
+      const incrementId = await this.generateIncrementId();
+      const approvalPrintNumber = await this.generateApprovalPrintNumber();
+      const expensePrintNumber = await this.generateApprovalPrintNumber();
+
+      // Get the approval status label ID for DRAFT
+      const approvalStatusLabelId = await this.knexService
+        .knex('approval_status_labels')
+        .where('status_code', 'DRAFT')
+        .select('id')
+        .first();
+
+      // Create new approval record with modified data for cancellation
+      const newApprovalData = {
+        increment_id: incrementId,
+        record_type: originalApproval.recordType,
+        name: originalApproval.name,
+        employee_code: originalApproval.employeeCode,
+        travel_type: originalApproval.travelType,
+        international_sub_option: originalApproval.internationalSubOption,
+        approval_ref: originalApproval.id, // Reference to original approval
+        work_start_date: originalApproval.workStartDate,
+        work_end_date: originalApproval.workEndDate,
+        start_country: originalApproval.startCountry,
+        end_country: originalApproval.endCountry,
+        remarks: originalApproval.remarks,
+        num_travelers: originalApproval.numTravelers,
+        document_no: originalApproval.documentNo,
+        document_number: originalApproval.documentNumber,
+        document_tel: originalApproval.documentTel,
+        document_to: originalApproval.documentTo,
+        document_title: originalApproval.documentTitle,
+        attachment_id: null,
+        form3_total_outbound: 0,
+        form3_total_inbound: 0,
+        form3_total_amount: 0,
+        exceed_lodging_rights_checked: false,
+        exceed_lodging_rights_reason: null,
+        form4_total_amount: 0,
+        form5_total_amount: 0,
+        approval_date: originalApproval.approvalDate, // Copy approval date
+        staff: originalApproval.staff,
+        staff_employee_code: originalApproval.staffEmployeeCode,
+        final_staff_employee_code: originalApproval.finalStaffEmployeeCode,
+        confidentiality_level: originalApproval.confidentialityLevel,
+        urgency_level: originalApproval.urgencyLevel,
+        comments: originalApproval.comments,
+        final_staff: originalApproval.finalStaff,
+        signer_date: null, // Reset signer date
+        document_ending: originalApproval.documentEnding,
+        document_ending_wording: originalApproval.documentEndingWording,
+        signer_name: originalApproval.signerName,
+        use_file_signature: false,
+        signature_attachment_id: null,
+        use_system_signature: false,
+        approval_print_number: approvalPrintNumber,
+        expense_print_number: expensePrintNumber,
+        created_employee_code: employeeCode,
+        created_employee_name: employeeName,
+        is_cancel_approval: true,
+        approval_status_label_id: approvalStatusLabelId.id,
+        continuous_employee_code: originalApproval.continuousEmployeeCode,
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+
+      const [newApproval] = await trx('approval')
+        .insert(newApprovalData)
+        .returning('*');
+
+      await trx('approval_status_history').insert({
+        approval_status_label_id: approvalStatusLabelId.id,
+        created_by: employeeCode,
+        approval_id: newApproval.id,
+        created_at: new Date(),
+        updated_at: new Date(),
+      });
+
+      if (
+        originalApproval.travelDateRanges &&
+        originalApproval.travelDateRanges.length > 0
+      ) {
+        for (const dateRange of originalApproval.travelDateRanges as any) {
+          await trx('approval_date_ranges').insert({
+            approval_id: newApproval.id,
+            start_date: dateRange.startDate,
+            end_date: dateRange.endDate,
+          });
+        }
+      }
+
+      if (
+        originalApproval.approvalContents &&
+        originalApproval.approvalContents.length > 0
+      ) {
+        for (const content of originalApproval.approvalContents) {
+          await trx('approval_contents').insert({
+            approval_id: newApproval.id,
+            detail: content.detail,
+          });
+        }
+      }
+
+      if (
+        originalApproval.tripEntries &&
+        originalApproval.tripEntries.length > 0
+      ) {
+        for (const tripEntry of originalApproval.tripEntries) {
+          const [newTripEntry] = await trx('approval_trip_entries')
+            .insert({
+              approval_id: newApproval.id,
+              location: tripEntry.location,
+              destination: tripEntry.destination,
+              nearby_provinces: tripEntry.nearbyProvinces,
+              details: tripEntry.details,
+              destination_type: tripEntry.destinationType,
+              destination_id: tripEntry.destinationId,
+              destination_table: tripEntry.destinationTable,
+            })
+            .returning('id');
+
+          if (tripEntry.tripDateRanges && tripEntry.tripDateRanges.length > 0) {
+            for (const dateRange of tripEntry.tripDateRanges as any) {
+              await trx('approval_trip_date_ranges').insert({
+                approval_id: newApproval.id,
+                approval_trip_entries_id: newTripEntry.id,
+                start_date: dateRange.startDate,
+                end_date: dateRange.endDate,
+              });
+            }
+          }
+        }
+      }
+
+      if (
+        originalApproval.staffMembers &&
+        originalApproval.staffMembers.length > 0
+      ) {
+        for (const staffMember of originalApproval.staffMembers) {
+          const [newStaffMember] = await trx('approval_staff_members')
+            .insert({
+              approval_id: newApproval.id,
+              employee_code: staffMember.employeeCode,
+              type: staffMember.type,
+              name: staffMember.name,
+              role: staffMember.role,
+              position: staffMember.position,
+              right_equivalent: staffMember.rightEquivalent,
+              organization_position: staffMember.organizationPosition,
+              cancelled: staffMember.cancelled || false,
+              created_at: new Date(),
+              updated_at: new Date(),
+            })
+            .returning('id');
+
+          if (
+            staffMember.workLocations &&
+            staffMember.workLocations.length > 0
+          ) {
+            for (const workLocation of staffMember.workLocations) {
+              const [newWorkLocation] = await trx('approval_work_locations')
+                .insert({
+                  approval_id: newApproval.id,
+                  staff_member_id: newStaffMember.id,
+                  location: workLocation.location,
+                  destination: workLocation.destination,
+                  nearby_provinces: workLocation.nearbyProvinces,
+                  details: workLocation.details,
+                  checked: workLocation.checked,
+                  destination_type: workLocation.destinationType,
+                  destination_id: workLocation.destinationId,
+                  destination_table: workLocation.destinationTable,
+                  created_at: new Date(),
+                  updated_at: new Date(),
+                })
+                .returning('id');
+
+              if (
+                workLocation.tripDateRanges &&
+                workLocation.tripDateRanges.length > 0
+              ) {
+                for (const dateRange of workLocation.tripDateRanges as any) {
+                  await trx('approval_work_locations_date_ranges').insert({
+                    approval_id: newApproval.id,
+                    approval_work_locations_id: newWorkLocation.id,
+                    start_date: dateRange.startDate,
+                    end_date: dateRange.endDate,
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                  });
+                }
+              }
+            }
+          }
+
+        }
+      }
+
+      await trx.commit();
+
+      const { 
+        form3_total_outbound,
+        form3_total_inbound, 
+        form3_total_amount,
+        form4_total_amount,
+        form5_total_amount,
+        attachment_id,
+        exceed_lodging_rights_checked,
+        exceed_lodging_rights_reason,
+        ...responseData 
+      } = newApproval;
+
+      await this.cacheService.set(
+        this.cacheService.generateKey(this.CACHE_PREFIX, newApproval.id),
+        newApproval,
+        this.CACHE_TTL,
+      );
+
+      await this.cacheService.del(
+        this.cacheService.generateListKey(this.CACHE_PREFIX),
+      );
+
+      return responseData;
     } catch (error) {
       // Rollback the transaction in case of error
       await trx.rollback();
@@ -3789,5 +4041,109 @@ export class ApprovalService {
         pageTotal: Math.ceil(Number(totalResult?.total || 0) / limit),
       },
     };
+  }
+
+  // Helper methods for notifications
+  private async createNotificationsForApproval(
+    approval: Approval,
+    creatorEmployeeCode: string,
+  ): Promise<void> {
+    // Get related employee codes from approval_staff_members and approval_continuous
+    const relatedEmployeeCodes = await this.getRelatedEmployeeCodes(approval.id, creatorEmployeeCode);
+    
+    // Get approval title and creator name
+    const approvalTitle = approval.documentTitle || approval.name || `Approval #${approval.id}`;
+    const creatorName = await this.getEmployeeName(creatorEmployeeCode);
+
+    // Create notifications for all related employees
+    await this.notificationService.createApprovalCreatedNotification(
+      approval.id,
+      approvalTitle,
+      creatorEmployeeCode,
+      relatedEmployeeCodes,
+    );
+  }
+
+  private async createApprovalCompletedNotification(
+    approvalId: number,
+    status: 'APPROVED' | 'REJECTED',
+    employeeCode: string,
+    approverName: string,
+  ): Promise<void> {
+    const approval = await this.approvalRepository.findById(approvalId);
+    if (!approval) return;
+
+    const approvalTitle = approval.documentTitle || approval.name || `Approval #${approvalId}`;
+    
+    await this.notificationService.createApprovalStatusChangedNotification(
+      approvalId,
+      approvalTitle,
+      status,
+      employeeCode,
+      approverName,
+    );
+  }
+
+  private async createApprovalNextApproverNotification(
+    approvalId: number,
+    nextApproverEmployeeCode: string,
+  ): Promise<void> {
+    const approval = await this.approvalRepository.findById(approvalId);
+    if (!approval) return;
+
+    const approvalTitle = approval.documentTitle || approval.name || `Approval #${approvalId}`;
+    const creatorName = await this.getEmployeeName(approval.employeeCode);
+
+    await this.notificationService.createNotification(
+      nextApproverEmployeeCode,
+      'มีรายการอนุมัติที่รอการพิจารณา',
+      `รายการ "${approvalTitle}" จาก ${creatorName} รอการพิจารณาจากคุณ`,
+      NotificationType.APPROVAL_UPDATED,
+      EntityType.APPROVAL,
+      approvalId,
+      {
+        approvalId,
+        approvalTitle,
+        creatorName,
+        creatorEmployeeCode: approval.employeeCode,
+      },
+    );
+  }
+
+  private async getRelatedEmployeeCodes(approvalId: number, excludeEmployeeCode: string): Promise<string[]> {
+    // Get employee codes from approval_staff_members
+    const staffMembers = await this.knexService
+      .knex('approval_staff_members')
+      .where('approval_id', approvalId)
+      .select('employee_code');
+
+    // Get employee codes from approval_continuous
+    const continuousApprovers = await this.knexService
+      .knex('approval_continuous')
+      .where('approval_id', approvalId)
+      .select('employee_code');
+
+    // Combine and deduplicate employee codes
+    const allEmployeeCodes = [
+      ...staffMembers.map(sm => sm.employee_code),
+      ...continuousApprovers.map(ca => ca.employee_code),
+    ];
+
+    // Remove duplicates and exclude the creator
+    const uniqueEmployeeCodes = [...new Set(allEmployeeCodes)].filter(
+      code => code !== excludeEmployeeCode && code !== null && code !== undefined,
+    );
+
+    return uniqueEmployeeCodes;
+  }
+
+  private async getEmployeeName(employeeCode: string): Promise<string> {
+    const employee = await this.knexService
+      .knex('OP_MASTER_T')
+      .whereRaw('RTRIM("PMT_CODE") = ?', [employeeCode])
+      .select('PMT_NAME_T', 'PMT_NAME_E')
+      .first();
+
+    return employee?.PMT_NAME_T || employee?.PMT_NAME_E || employeeCode;
   }
 }
