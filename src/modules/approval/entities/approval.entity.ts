@@ -247,6 +247,21 @@ export interface Approval {
   expensePrintNumber?: string;
 
   /**
+   * Approval status label ID
+   */
+  approvalStatusLabelId?: number;
+
+  /**
+   * Created employee code
+   */
+  createdEmployeeCode?: string;
+
+  /**
+   * Created employee name
+   */
+  createdEmployeeName?: string;
+
+  /**
    * When the approval was created
    */
   createdAt: Date;
@@ -356,6 +371,7 @@ export const approvalColumnMap = {
   use_system_signature: 'useSystemSignature',
   approval_print_number: 'approvalPrintNumber',
   expense_print_number: 'expensePrintNumber',
+  approval_status_label_id: 'approvalStatusLabelId',
   created_employee_code: 'createdEmployeeCode',
   created_employee_name: 'createdEmployeeName',
   created_at: 'createdAt',
@@ -414,6 +430,7 @@ export const approvalReverseColumnMap = {
   useSystemSignature: 'use_system_signature',
   approvalPrintNumber: 'approval_print_number',
   expensePrintNumber: 'expense_print_number',
+  approvalStatusLabelId: 'approval_status_label_id',
   createdEmployeeCode: 'created_employee_code',
   createdEmployeeName: 'created_employee_name',
   createdAt: 'created_at',

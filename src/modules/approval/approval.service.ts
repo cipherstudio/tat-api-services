@@ -92,9 +92,36 @@ export class ApprovalService {
     employeeCode: string,
     employeeName: string,
   ): Promise<Approval> {
+    // Generate new increment ID and print numbers
+    const incrementId = await this.generateIncrementId();
+    const approvalPrintNumber = await this.generateApprovalPrintNumber();
+    const expensePrintNumber = await this.generateApprovalPrintNumber();
+
+    // Get the approval status label ID for DRAFT
+    const approvalStatusLabelId = await this.knexService
+      .knex('approval_status_labels')
+      .where('status_code', 'DRAFT')
+      .select('id')
+      .first();
+
     const savedApproval = await this.approvalRepository.create({
       ...createApprovalDto,
       employeeCode: employeeCode,
+      incrementId: incrementId,
+      approvalPrintNumber: approvalPrintNumber,
+      expensePrintNumber: expensePrintNumber,
+      approvalStatusLabelId: approvalStatusLabelId?.id,
+      createdEmployeeCode: employeeCode,
+      createdEmployeeName: employeeName,
+    });
+
+    // Create approval status history record
+    await this.knexService.knex('approval_status_history').insert({
+      approval_status_label_id: approvalStatusLabelId?.id,
+      created_by: employeeCode,
+      approval_id: savedApproval.id,
+      created_at: new Date(),
+      updated_at: new Date(),
     });
 
     // Create notifications for related employees
