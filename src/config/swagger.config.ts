@@ -4,7 +4,7 @@ import { INestApplication } from '@nestjs/common';
 export function setupSwagger(app: INestApplication): void {
   const config = new DocumentBuilder()
     .setTitle('TAT API Services')
-    .setDescription('The TAT API Services Documentation')
+    .setDescription('เอกสาร API บริการของ TAT')
     .setVersion('1.0')
     .addBearerAuth(
       {
@@ -12,14 +12,15 @@ export function setupSwagger(app: INestApplication): void {
         scheme: 'bearer',
         bearerFormat: 'JWT',
         name: 'JWT',
-        description: 'Enter JWT token',
+        description: 'ใส่ JWT token',
         in: 'header',
       },
       'JWT-auth', // This name here is important for matching up with @ApiBearerAuth() in your controller!
     )
-    .addTag('authentication', 'Authentication endpoints')
-    .addTag('users', 'User management endpoints')
-    .addTag('dataviews', 'Data views endpoints')
+    .addTag('authentication', 'การยืนยันตัวตน')
+    .addTag('users', 'การจัดการผู้ใช้')
+    .addTag('dataviews', 'การดูข้อมูล')
+    .addTag('ldap', 'การยืนยันตัวตนผ่าน LDAP')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
@@ -36,7 +37,7 @@ export function setupSwagger(app: INestApplication): void {
         theme: 'monokai',
       },
     },
-    customSiteTitle: 'TAT API Documentation',
+    customSiteTitle: 'เอกสาร API ของ TAT',
     customfavIcon: '/favicon.ico',
     customJs: [
       'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.min.js',

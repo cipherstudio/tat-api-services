@@ -77,7 +77,10 @@ export class NotificationService {
     return result;
   }
 
-  async markAsRead(notificationId: number, employeeCode: string): Promise<void> {
+  async markAsRead(
+    notificationId: number,
+    employeeCode: string,
+  ): Promise<void> {
     await this.notificationRepository.markAsRead(notificationId, employeeCode);
 
     // Invalidate cache
@@ -106,13 +109,17 @@ export class NotificationService {
       return cached;
     }
 
-    const count = await this.notificationRepository.getUnreadCount(employeeCode);
+    const count =
+      await this.notificationRepository.getUnreadCount(employeeCode);
     await this.cacheService.set(cacheKey, count, this.CACHE_TTL);
 
     return count;
   }
 
-  private sendRealtimeNotification(employeeCode: string, notification: Notification): void {
+  private sendRealtimeNotification(
+    employeeCode: string,
+    notification: Notification,
+  ): void {
     // Find WebSocket client by employee code
     const clients = this.websocketUtil['clients'] as Map<string, any>;
     let targetClient = null;
@@ -173,13 +180,15 @@ export class NotificationService {
     employeeCode: string,
     approverName: string,
   ): Promise<void> {
-    const title = status === 'APPROVED' 
-      ? 'รายการอนุมัติได้รับการอนุมัติ' 
-      : 'รายการอนุมัติถูกปฏิเสธ';
+    const title =
+      status === 'APPROVED'
+        ? 'รายการอนุมัติได้รับการอนุมัติ'
+        : 'รายการอนุมัติถูกปฏิเสธ';
     const message = `รายการ "${approvalTitle}" ${status === 'APPROVED' ? 'ได้รับการอนุมัติ' : 'ถูกปฏิเสธ'} โดย ${approverName}`;
-    const type = status === 'APPROVED' 
-      ? NotificationType.APPROVAL_APPROVED 
-      : NotificationType.APPROVAL_REJECTED;
+    const type =
+      status === 'APPROVED'
+        ? NotificationType.APPROVAL_APPROVED
+        : NotificationType.APPROVAL_REJECTED;
     const metadata = {
       approvalId,
       approvalTitle,
