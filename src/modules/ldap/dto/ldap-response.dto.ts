@@ -35,14 +35,42 @@ export class LdapUserDto {
 
 export class LdapAuthenticateResponseDto {
   @ApiProperty({
-    description: 'ข้อความตอบกลับ',
-    example: 'การยืนยันตัวตนสำเร็จ',
+    description: 'Access token สำหรับเข้าถึง API',
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
   })
-  message: string;
+  access_token: string;
+
+  @ApiProperty({
+    description: 'Refresh token สำหรับต่ออายุ access token',
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+  })
+  refresh_token: string;
+
+  @ApiProperty({
+    description: 'ข้อมูลผู้ใช้จากฐานข้อมูล',
+    example: {
+      id: 1,
+      email: 'phatthalaphon.ruan@tat.or.th',
+      fullName: 'Phatthalaphon Ruangsri',
+      role: 'user',
+      position: 'Software Developer',
+      employeeCode: 'phatthalaphon.ruan',
+      isAdmin: false,
+    },
+  })
+  user: {
+    id: number;
+    email: string;
+    fullName: string;
+    role: string;
+    position: string;
+    employeeCode: string;
+    isAdmin: boolean;
+  };
 
   @ApiProperty({
     description: 'ข้อมูลผู้ใช้จาก LDAP',
     type: LdapUserDto,
   })
-  user: LdapUserDto;
+  ldapUser: LdapUserDto;
 } 

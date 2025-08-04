@@ -29,10 +29,10 @@ export class LdapController {
   })
   async authenticate(@Body() body: LdapLoginDto) {
     console.log('body', body);
-    const user = await this.ldapService.authenticate(body.email, body.password);
-    return {
-      message: 'การยืนยันตัวตนสำเร็จ',
-      user,
-    };
+    const result = await this.ldapService.authenticate(
+      body.email,
+      body.password,
+    );
+    return result;
   }
 }
