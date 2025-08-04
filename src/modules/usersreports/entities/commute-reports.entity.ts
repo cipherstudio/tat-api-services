@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export interface UsersReports {
+export interface CommuteReports {
   /**
    * The unique identifier for the report
    */
