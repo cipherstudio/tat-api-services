@@ -3353,12 +3353,9 @@ export class ApprovalService {
                     })
                     .returning('id');
 
-                  // Copy accommodation transport expenses
-                  if (
-                    workLocation.accommodationTransportExpenses &&
-                    workLocation.accommodationTransportExpenses.length > 0
-                  ) {
-                    for (const transportExpense of workLocation.accommodationTransportExpenses) {
+                  // Copy accommodation transport expenses for this accommodation expense
+                  if (expense.accommodationTransportExpenses && expense.accommodationTransportExpenses.length > 0) {
+                    for (const transportExpense of expense.accommodationTransportExpenses) {
                       await trx(
                         'approval_accommodation_transport_expense',
                       ).insert({
@@ -3375,30 +3372,54 @@ export class ApprovalService {
                     }
                   }
 
-                  // Copy accommodation holiday expenses
-                  if (
-                    workLocation.accommodationHolidayExpenses &&
-                    workLocation.accommodationHolidayExpenses.length > 0
-                  ) {
-                    for (const holidayExpense of workLocation.accommodationHolidayExpenses) {
-                      await trx(
-                        'approval_accommodation_holiday_expense',
-                      ).insert({
-                        approval_id: newApproval.id,
-                        approval_accommodation_expense_id:
-                          newAccommodationExpense.id,
-                        date: holidayExpense.date,
-                        thai_date: holidayExpense.thaiDate,
-                        checked: holidayExpense.checked,
-                        time: holidayExpense.time,
-                        hours: holidayExpense.hours,
-                        total: holidayExpense.total,
-                        note: holidayExpense.note,
-                        created_at: new Date(),
-                        updated_at: new Date(),
-                      });
-                    }
-                  }
+
+                }
+              }
+
+              // Copy accommodation transport expenses at work location level
+              if (
+                workLocation.accommodationTransportExpenses &&
+                workLocation.accommodationTransportExpenses.length > 0
+              ) {
+                for (const transportExpense of workLocation.accommodationTransportExpenses) {
+                  await trx(
+                    'approval_accommodation_transport_expense',
+                  ).insert({
+                    approval_id: newApproval.id,
+                    approval_accommodation_expense_id: null, // This will be null for work location level
+                    type: transportExpense.type,
+                    amount: transportExpense.amount,
+                    checked: transportExpense.checked,
+                    flight_route: transportExpense.flightRoute,
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                  });
+                }
+              } else {
+                console.log('No accommodation transport expenses at work location level to copy');
+              }
+
+              // Copy accommodation holiday expenses at work location level
+              if (
+                workLocation.accommodationHolidayExpenses &&
+                workLocation.accommodationHolidayExpenses.length > 0
+              ) {
+                for (const holidayExpense of workLocation.accommodationHolidayExpenses) {
+                  await trx(
+                    'approval_accommodation_holiday_expense',
+                  ).insert({
+                    approval_id: newApproval.id,
+                    approval_accommodation_expense_id: null, // This will be null for work location level
+                    date: holidayExpense.date,
+                    thai_date: holidayExpense.thaiDate,
+                    checked: holidayExpense.checked,
+                    time: holidayExpense.time,
+                    hours: holidayExpense.hours,
+                    total: holidayExpense.total,
+                    note: holidayExpense.note,
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                  });
                 }
               }
             }
