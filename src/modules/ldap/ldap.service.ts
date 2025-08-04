@@ -129,16 +129,16 @@ export class LdapService {
 
             res.on('searchEntry', (entry) => {
               entryCount++;
-              console.log('Search entry found:', entryCount);
-              console.log('Entry DN:', entry.dn);
+              //   console.log('Search entry found:', entryCount);
+              //   console.log('Entry DN:', entry.dn);
 
               // ตรวจสอบว่า entry.object มีค่าหรือไม่
               if (entry.object) {
-                console.log('Entry attributes:', Object.keys(entry.object));
-                console.log('Found user:', entry.object);
+                // console.log('Entry attributes:', Object.keys(entry.object));
+                // console.log('Found user:', entry.object);
                 user = entry.object;
               } else {
-                console.log('Entry object is null or undefined');
+                // console.log('Entry object is null or undefined');
                 // ลองใช้ entry.attributes แทน
                 if (entry.attributes) {
                   const userObj: any = {};
@@ -147,7 +147,7 @@ export class LdapService {
                       userObj[attr.type] = attr.vals[0].toString();
                     }
                   });
-                  console.log('Constructed user object:', userObj);
+                  //   console.log('Constructed user object:', userObj);
                   user = userObj;
                 }
               }
