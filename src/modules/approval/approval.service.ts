@@ -2941,6 +2941,19 @@ export class ApprovalService {
         );
       }
 
+      // get PENDING status id for new records
+      const pendingStatusId = await this.knexService
+        .knex('approval_continuous_status')
+        .where('status_code', 'PENDING')
+        .select('id')
+        .first();
+
+      if (!pendingStatusId) {
+        throw new NotFoundException(
+          'Approval continuous status with status code PENDING not found',
+        );
+      }
+
       // Prepare update data
       const updateData: any = {
         approval_continuous_status_id: approvalContinuousStatusId.id,
@@ -3046,7 +3059,7 @@ export class ApprovalService {
             signature_attachment_id: updateDto.signatureAttachmentId,
             use_system_signature: updateDto.useSystemSignature,
             comments: updateDto.comments,
-            approval_continuous_status_id: approvalContinuousStatusId.id,
+            approval_continuous_status_id: pendingStatusId.id,
             created_by: employeeCode,
           });
 
@@ -3111,7 +3124,7 @@ export class ApprovalService {
           signature_attachment_id: updateDto.signatureAttachmentId,
           use_system_signature: updateDto.useSystemSignature,
           comments: updateDto.comments,
-          approval_continuous_status_id: approvalContinuousStatusId.id,
+          approval_continuous_status_id: pendingStatusId.id,
           created_by: employeeCode,
         });
 
