@@ -90,6 +90,9 @@ import { MealAllowanceRepository } from './repositories/meal-allowance.repositor
 import { EmployeeAdminController } from './controllers/employee-admin.controller';
 import { EmployeeAdminService } from './services/employee-admin.service';
 import { EmployeeAdminRepository } from './repositories/employee-admin.repository';
+import { MenuItemsAccessController } from './controllers/menu-items-access.controller';
+import { MenuItemsAccessService } from './services/menu-items-access.service';
+import { MenuItemsAccessRepository } from './repositories/menu-items-access.repository';
 
 @Module({
   imports: [RedisCacheModule],
@@ -120,6 +123,7 @@ import { EmployeeAdminRepository } from './repositories/employee-admin.repositor
     MasterdataLabelsController,
     MealAllowanceController,
     EmployeeAdminController,
+    MenuItemsAccessController,
   ],
   providers: [
     // Services
@@ -148,7 +152,9 @@ import { EmployeeAdminRepository } from './repositories/employee-admin.repositor
     PrivilegeService,
     MasterdataLabelsService,
     MealAllowanceService,
+    MenuItemsAccessService,
     EmployeeAdminService,
+    MenuItemsAccessService,
     // Repositories
     CountriesRepository,
     PlacesRepository,
@@ -176,6 +182,7 @@ import { EmployeeAdminRepository } from './repositories/employee-admin.repositor
     MasterdataLabelsRepository,
     MealAllowanceRepository,
     EmployeeAdminRepository,
+    MenuItemsAccessRepository,
     // Shared services
     RedisCacheService,
     HolidayWorkRate,

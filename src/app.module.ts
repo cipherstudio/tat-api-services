@@ -17,6 +17,7 @@ import { ApprovalModule } from './modules/approval/approval.module';
 import { ReportApproveModule } from './modules/reportapprove/report-approve.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { UsersReportsModule } from './modules/usersreports/users-reports.module';
+import { LdapModule } from './modules/ldap/ldap.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { UsersReportsModule } from './modules/usersreports/users-reports.module'
     ReportApproveModule,
     NotificationModule,
     UsersReportsModule,
+    LdapModule,
   ],
   controllers: [AppController],
   providers: [AppService],

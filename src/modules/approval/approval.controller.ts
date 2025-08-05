@@ -559,9 +559,13 @@ export class ApprovalController {
   @Post('duplicate-cancel/:id')
   @ApiOperation({
     summary: 'Duplicate approval for cancellation',
-    description: 'Create a duplicate of an existing approval record for cancellation purposes',
+    description:
+      'Create a duplicate of an existing approval record for cancellation purposes',
   })
-  @ApiResponse({ status: 201, description: 'Cancellation approval duplicated successfully' })
+  @ApiResponse({
+    status: 201,
+    description: 'Cancellation approval duplicated successfully',
+  })
   @ApiResponse({ status: 404, description: 'Approval not found' })
   duplicateCancel(
     @Param('id', ParseIntPipe) id: number,

@@ -32,7 +32,10 @@ import { ApprovalAttachmentService } from './services/approval-attachment.servic
 import * as moment from 'moment-timezone';
 import { QueryApprovalsThatHasClothingExpenseDto } from './dto/query-approvals-that-has-clothing-expense';
 import { NotificationService } from '../notification/notification.service';
-import { NotificationType, EntityType } from '../notification/entities/notification.entity';
+import {
+  NotificationType,
+  EntityType,
+} from '../notification/entities/notification.entity';
 
 @Injectable()
 export class ApprovalService {
@@ -87,19 +90,119 @@ export class ApprovalService {
     return `${sequence.toString().padStart(4, '0')} : ${beYear}${currentMonth}${currentDay} : ${currentTime}`;
   }
 
+    private async getUserPrivilegeLevel(employeeCode: string): Promise<string> {
+    try {
+      const employee = await this.knexService
+        .knex('OP_MASTER_T')
+        .whereRaw('RTRIM("PMT_CODE") = ?', [employeeCode])
+        .leftJoin('VIEW_POSITION_4OT', (builder) => {
+          builder.on(
+            'VIEW_POSITION_4OT.POS_POSITIONCODE',
+            '=',
+            this.knexService.knex.raw('RTRIM("OP_MASTER_T"."PMT_POS_NO")'),
+          );
+        })
+        .leftJoin('EMPLOYEE', 'OP_MASTER_T.PMT_CODE', 'EMPLOYEE.CODE')
+        .select([
+          'OP_MASTER_T.PMT_LEVEL_CODE as pmtLevelCode',
+          'OP_MASTER_T.PMT_POS_WK as pmtPosWk',
+          'VIEW_POSITION_4OT.POS_POSITIONNAME as posPositionname',
+          'EMPLOYEE.POSITION as position'
+        ])
+        .first();
+
+      if (!employee) {
+        return 'NORMAL';
+      }
+
+      const privileges = await this.knexService
+        .knex('privilege')
+        .select('name', 'confidential_level')
+        .whereNotNull('confidential_level');
+
+      const levelCode = employee.pmtLevelCode?.trim();
+      const posName = employee.posPositionname?.trim();
+      const position = employee.position?.trim();
+
+      let matchedPrivilege = null;
+
+      const extractNumericLevel = (privilegeName: string): number | null => {
+        const match = privilegeName.match(/^C(\d+)/);
+        return match ? parseInt(match[1], 10) : null;
+      };
+
+      const convertLevelCodeToNumber = (levelCode: string): number | null => {
+        const num = parseInt(levelCode, 10);
+        return isNaN(num) ? null : num;
+      };
+
+      if (levelCode) {
+        const levelCodeNum = convertLevelCodeToNumber(levelCode);
+        if (levelCodeNum !== null) {
+          matchedPrivilege = privileges.find(p => {
+            const privilegeLevel = extractNumericLevel(p.name);
+            return privilegeLevel === levelCodeNum;
+          });
+        }
+      }
+
+      if (!matchedPrivilege) {
+        const positionNames = [posName, position].filter(Boolean);
+        
+        matchedPrivilege = privileges.find(p => {
+          const privilegeName = p.name;
+          
+          return positionNames.some(positionName => {
+            const isMatch = positionName.includes(privilegeName) || privilegeName.includes(positionName);
+            return isMatch;
+          });
+        });
+      }
+
+      const result = matchedPrivilege?.confidential_level || 'NORMAL';
+      
+      return result;
+    } catch (error) {
+      return 'NORMAL';
+    }
+  }
+  
   async create(
     createApprovalDto: CreateApprovalDto,
     employeeCode: string,
     employeeName: string,
   ): Promise<Approval> {
+    // Generate new increment ID and print numbers
+    const incrementId = await this.generateIncrementId();
+    const approvalPrintNumber = await this.generateApprovalPrintNumber();
+    const expensePrintNumber = await this.generateApprovalPrintNumber();
+
+    // Get the approval status label ID for DRAFT
+    const approvalStatusLabelId = await this.knexService
+      .knex('approval_status_labels')
+      .where('status_code', 'DRAFT')
+      .select('id')
+      .first();
+
     const savedApproval = await this.approvalRepository.create({
       ...createApprovalDto,
       employeeCode: employeeCode,
+      incrementId: incrementId,
+      approvalPrintNumber: approvalPrintNumber,
+      expensePrintNumber: expensePrintNumber,
+      approvalStatusLabelId: approvalStatusLabelId?.id,
+      createdEmployeeCode: employeeCode,
+      createdEmployeeName: employeeName,
     });
 
-    // Create notifications for related employees
-    await this.createNotificationsForApproval(savedApproval, employeeCode);
-
+    // Create approval status history record
+    await this.knexService.knex('approval_status_history').insert({
+      approval_status_label_id: approvalStatusLabelId?.id,
+      created_by: employeeCode,
+      approval_id: savedApproval.id,
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
     return savedApproval;
   }
 
@@ -282,6 +385,36 @@ export class ApprovalService {
     } else if (latestApprovalStatus && !approvalStatusLabelId) {
       // If status code not found, return empty result
       query = query.where('approval.id', 0); // This will return no results
+    }
+
+    // Add privilege level filtering based on user's position
+    if (employeeCode) {
+      const userPrivilegeLevel = await this.getUserPrivilegeLevel(employeeCode);
+      
+      const levelHierarchy: Record<string, number> = {
+        'ปกติ': 1,
+        'ลับ': 2,
+        'ลับมาก': 3,
+        'ลับที่สุด': 4
+      };
+      
+      const privilegeToConfidentialityMap: Record<string, string> = {
+        'NORMAL': 'ปกติ',
+        'CONFIDENTIAL': 'ลับ',
+        'SECRET': 'ลับมาก',
+        'TOP_SECRET': 'ลับที่สุด'
+      };
+      
+      const userConfidentialityLevel = privilegeToConfidentialityMap[userPrivilegeLevel] || 'ปกติ';
+      const userLevelNum = levelHierarchy[userConfidentialityLevel] || 1;
+      const accessibleLevels = Object.keys(levelHierarchy).filter(level => 
+        levelHierarchy[level] <= userLevelNum
+      );
+      
+      query = query.where(function() {
+        this.whereIn('approval.confidentiality_level', accessibleLevels)
+          .orWhereNull('approval.confidentiality_level');
+      });
     }
 
     // join file table (attachment_id, signature_attachment_id)
@@ -1476,64 +1609,68 @@ export class ApprovalService {
                 }
               }
 
-                                // Process accommodation expenses
-                  if (Array.isArray(workLocation.accommodationExpenses)) {
-                    for (const expense of workLocation.accommodationExpenses) {
-                      const [accommodationExpense] = await trx(
-                        'approval_accommodation_expense',
-                      )
-                        .insert({
-                          approval_id: id,
-                          staff_member_id: insertedStaffMember.id,
-                          work_location_id: workLocationId.id,
-                          total_amount: expense.totalAmount,
-                          has_meal_out: expense.hasMealOut,
-                          has_meal_in: expense.hasMealIn,
-                          meal_out_amount: expense.mealOutAmount,
-                          meal_in_amount: expense.mealInAmount,
-                          meal_out_count: expense.mealOutCount,
-                          meal_in_count: expense.mealInCount,
-                          allowance_out_checked: expense.allowanceOutChecked,
-                          allowance_out_rate: expense.allowanceOutRate,
-                          allowance_out_days: expense.allowanceOutDays,
-                          allowance_out_total: expense.allowanceOutTotal,
-                          allowance_in_checked: expense.allowanceInChecked,
-                          allowance_in_rate: expense.allowanceInRate,
-                          allowance_in_days: expense.allowanceInDays,
-                          allowance_in_total: expense.allowanceInTotal,
-                          lodging_fixed_checked: expense.lodgingFixedChecked,
-                          lodging_double_checked: expense.lodgingDoubleChecked,
-                          lodging_single_checked: expense.lodgingSingleChecked,
-                          lodging_nights: expense.lodgingNights,
-                          lodging_rate: expense.lodgingRate,
-                          lodging_double_nights: expense.lodgingDoubleNights,
-                          lodging_double_rate: expense.lodgingDoubleRate,
-                          lodging_single_nights: expense.lodgingSingleNights,
-                          lodging_single_rate: expense.lodgingSingleRate,
-                          lodging_double_person: expense.lodgingDoublePerson,
-                          lodging_double_person_external:
-                            expense.lodgingDoublePersonExternal,
-                          lodging_total: expense.lodgingTotal,
-                          moving_cost_checked: expense.movingCostChecked,
-                          moving_cost_rate: expense.movingCostRate,
-                          // International allowance fields
-                          allowance_abroad_flat_checked: expense.allowanceAbroadFlatChecked,
-                          allowance_abroad_actual_checked: expense.allowanceAbroadActualChecked,
-                          allowance_abroad_flat_rate: expense.allowanceAbroadFlatRate,
-                          allowance_abroad_actual_rate: expense.allowanceAbroadActualRate,
-                          allowance_abroad_days: expense.allowanceAbroadDays,
-                          allowance_abroad_total: expense.allowanceAbroadTotal,
-                          // International meal fields
-                          has_meal_abroad_flat: expense.hasMealAbroadFlat,
-                          has_meal_abroad_actual: expense.hasMealAbroadActual,
-                          meal_abroad_flat_count: expense.mealAbroadFlatCount,
-                          meal_abroad_actual_count: expense.mealAbroadActualCount,
-                          meal_abroad_flat_amount: expense.mealAbroadFlatAmount,
-                          meal_abroad_actual_amount: expense.mealAbroadActualAmount,
-                          created_at: new Date(),
-                          updated_at: new Date(),
-                        })
-                        .returning('id');
+              // Process accommodation expenses
+              if (Array.isArray(workLocation.accommodationExpenses)) {
+                for (const expense of workLocation.accommodationExpenses) {
+                  const [accommodationExpense] = await trx(
+                    'approval_accommodation_expense',
+                  )
+                    .insert({
+                      approval_id: id,
+                      staff_member_id: insertedStaffMember.id,
+                      work_location_id: workLocationId.id,
+                      total_amount: expense.totalAmount,
+                      has_meal_out: expense.hasMealOut,
+                      has_meal_in: expense.hasMealIn,
+                      meal_out_amount: expense.mealOutAmount,
+                      meal_in_amount: expense.mealInAmount,
+                      meal_out_count: expense.mealOutCount,
+                      meal_in_count: expense.mealInCount,
+                      allowance_out_checked: expense.allowanceOutChecked,
+                      allowance_out_rate: expense.allowanceOutRate,
+                      allowance_out_days: expense.allowanceOutDays,
+                      allowance_out_total: expense.allowanceOutTotal,
+                      allowance_in_checked: expense.allowanceInChecked,
+                      allowance_in_rate: expense.allowanceInRate,
+                      allowance_in_days: expense.allowanceInDays,
+                      allowance_in_total: expense.allowanceInTotal,
+                      lodging_fixed_checked: expense.lodgingFixedChecked,
+                      lodging_double_checked: expense.lodgingDoubleChecked,
+                      lodging_single_checked: expense.lodgingSingleChecked,
+                      lodging_nights: expense.lodgingNights,
+                      lodging_rate: expense.lodgingRate,
+                      lodging_double_nights: expense.lodgingDoubleNights,
+                      lodging_double_rate: expense.lodgingDoubleRate,
+                      lodging_single_nights: expense.lodgingSingleNights,
+                      lodging_single_rate: expense.lodgingSingleRate,
+                      lodging_double_person: expense.lodgingDoublePerson,
+                      lodging_double_person_external:
+                        expense.lodgingDoublePersonExternal,
+                      lodging_total: expense.lodgingTotal,
+                      moving_cost_checked: expense.movingCostChecked,
+                      moving_cost_rate: expense.movingCostRate,
+                      // International allowance fields
+                      allowance_abroad_flat_checked:
+                        expense.allowanceAbroadFlatChecked,
+                      allowance_abroad_actual_checked:
+                        expense.allowanceAbroadActualChecked,
+                      allowance_abroad_flat_rate:
+                        expense.allowanceAbroadFlatRate,
+                      allowance_abroad_actual_rate:
+                        expense.allowanceAbroadActualRate,
+                      allowance_abroad_days: expense.allowanceAbroadDays,
+                      allowance_abroad_total: expense.allowanceAbroadTotal,
+                      // International meal fields
+                      has_meal_abroad_flat: expense.hasMealAbroadFlat,
+                      has_meal_abroad_actual: expense.hasMealAbroadActual,
+                      meal_abroad_flat_count: expense.mealAbroadFlatCount,
+                      meal_abroad_actual_count: expense.mealAbroadActualCount,
+                      meal_abroad_flat_amount: expense.mealAbroadFlatAmount,
+                      meal_abroad_actual_amount: expense.mealAbroadActualAmount,
+                      created_at: new Date(),
+                      updated_at: new Date(),
+                    })
+                    .returning('id');
 
                   // Process accommodation transport expenses
                   if (
@@ -1808,6 +1945,17 @@ export class ApprovalService {
             }
           }
         }
+
+        const memberCodes = updateDto.staffMembers.map(
+          (staff) => staff.employeeCode,
+        );
+        //create notification for wach member
+        await this.notificationService.createApprovalCreatedNotification(
+          id,
+          updateDto.documentTitle,
+          employeeCode,
+          memberCodes,
+        );
       }
 
       // After processing all staff members, clean up old clothing expenses
@@ -2809,6 +2957,19 @@ export class ApprovalService {
         );
       }
 
+      // get PENDING status id for new records
+      const pendingStatusId = await this.knexService
+        .knex('approval_continuous_status')
+        .where('status_code', 'PENDING')
+        .select('id')
+        .first();
+
+      if (!pendingStatusId) {
+        throw new NotFoundException(
+          'Approval continuous status with status code PENDING not found',
+        );
+      }
+
       // Prepare update data
       const updateData: any = {
         approval_continuous_status_id: approvalContinuousStatusId.id,
@@ -2914,7 +3075,7 @@ export class ApprovalService {
             signature_attachment_id: updateDto.signatureAttachmentId,
             use_system_signature: updateDto.useSystemSignature,
             comments: updateDto.comments,
-            approval_continuous_status_id: approvalContinuousStatusId.id,
+            approval_continuous_status_id: pendingStatusId.id,
             created_by: employeeCode,
           });
 
@@ -2979,7 +3140,7 @@ export class ApprovalService {
           signature_attachment_id: updateDto.signatureAttachmentId,
           use_system_signature: updateDto.useSystemSignature,
           comments: updateDto.comments,
-          approval_continuous_status_id: approvalContinuousStatusId.id,
+          approval_continuous_status_id: pendingStatusId.id,
           created_by: employeeCode,
         });
 
@@ -3264,72 +3425,73 @@ export class ApprovalService {
 
               // Copy accommodation expenses
               if (
-               workLocation.accommodationExpenses &&
-               workLocation.accommodationExpenses.length > 0
-             ) {
-               for (const expense of workLocation.accommodationExpenses) {
-                 const [newAccommodationExpense] = await trx(
-                   'approval_accommodation_expense',
-                 )
-                   .insert({
-                     approval_id: newApproval.id,
-                     staff_member_id: newStaffMember.id,
-                     work_location_id: newWorkLocation.id,
-                     total_amount: expense.totalAmount,
-                     has_meal_out: expense.hasMealOut,
-                     has_meal_in: expense.hasMealIn,
-                     meal_out_amount: expense.mealOutAmount,
-                     meal_in_amount: expense.mealInAmount,
-                     meal_out_count: expense.mealOutCount,
-                     meal_in_count: expense.mealInCount,
-                     allowance_out_checked: expense.allowanceOutChecked,
-                     allowance_out_rate: expense.allowanceOutRate,
-                     allowance_out_days: expense.allowanceOutDays,
-                     allowance_out_total: expense.allowanceOutTotal,
-                     allowance_in_checked: expense.allowanceInChecked,
-                     allowance_in_rate: expense.allowanceInRate,
-                     allowance_in_days: expense.allowanceInDays,
-                     allowance_in_total: expense.allowanceInTotal,
-                     lodging_fixed_checked: expense.lodgingFixedChecked,
-                     lodging_double_checked: expense.lodgingDoubleChecked,
-                     lodging_single_checked: expense.lodgingSingleChecked,
-                     lodging_nights: expense.lodgingNights,
-                     lodging_rate: expense.lodgingRate,
-                     lodging_double_nights: expense.lodgingDoubleNights,
-                     lodging_double_rate: expense.lodgingDoubleRate,
-                     lodging_single_nights: expense.lodgingSingleNights,
-                     lodging_single_rate: expense.lodgingSingleRate,
-                     lodging_double_person: expense.lodgingDoublePerson,
-                     lodging_double_person_external:
-                       expense.lodgingDoublePersonExternal,
-                     lodging_total: expense.lodgingTotal,
-                     moving_cost_checked: expense.movingCostChecked,
-                     moving_cost_rate: expense.movingCostRate,
-                     // International allowance fields
-                     allowance_abroad_flat_checked: expense.allowanceAbroadFlatChecked,
-                     allowance_abroad_actual_checked: expense.allowanceAbroadActualChecked,
-                     allowance_abroad_flat_rate: expense.allowanceAbroadFlatRate,
-                     allowance_abroad_actual_rate: expense.allowanceAbroadActualRate,
-                     allowance_abroad_days: expense.allowanceAbroadDays,
-                     allowance_abroad_total: expense.allowanceAbroadTotal,
-                     // International meal fields
-                     has_meal_abroad_flat: expense.hasMealAbroadFlat,
-                     has_meal_abroad_actual: expense.hasMealAbroadActual,
-                     meal_abroad_flat_count: expense.mealAbroadFlatCount,
-                     meal_abroad_actual_count: expense.mealAbroadActualCount,
-                     meal_abroad_flat_amount: expense.mealAbroadFlatAmount,
-                     meal_abroad_actual_amount: expense.mealAbroadActualAmount,
-                     created_at: new Date(),
-                     updated_at: new Date(),
-                   })
-                   .returning('id');
+                workLocation.accommodationExpenses &&
+                workLocation.accommodationExpenses.length > 0
+              ) {
+                for (const expense of workLocation.accommodationExpenses) {
+                  const [newAccommodationExpense] = await trx(
+                    'approval_accommodation_expense',
+                  )
+                    .insert({
+                      approval_id: newApproval.id,
+                      staff_member_id: newStaffMember.id,
+                      work_location_id: newWorkLocation.id,
+                      total_amount: expense.totalAmount,
+                      has_meal_out: expense.hasMealOut,
+                      has_meal_in: expense.hasMealIn,
+                      meal_out_amount: expense.mealOutAmount,
+                      meal_in_amount: expense.mealInAmount,
+                      meal_out_count: expense.mealOutCount,
+                      meal_in_count: expense.mealInCount,
+                      allowance_out_checked: expense.allowanceOutChecked,
+                      allowance_out_rate: expense.allowanceOutRate,
+                      allowance_out_days: expense.allowanceOutDays,
+                      allowance_out_total: expense.allowanceOutTotal,
+                      allowance_in_checked: expense.allowanceInChecked,
+                      allowance_in_rate: expense.allowanceInRate,
+                      allowance_in_days: expense.allowanceInDays,
+                      allowance_in_total: expense.allowanceInTotal,
+                      lodging_fixed_checked: expense.lodgingFixedChecked,
+                      lodging_double_checked: expense.lodgingDoubleChecked,
+                      lodging_single_checked: expense.lodgingSingleChecked,
+                      lodging_nights: expense.lodgingNights,
+                      lodging_rate: expense.lodgingRate,
+                      lodging_double_nights: expense.lodgingDoubleNights,
+                      lodging_double_rate: expense.lodgingDoubleRate,
+                      lodging_single_nights: expense.lodgingSingleNights,
+                      lodging_single_rate: expense.lodgingSingleRate,
+                      lodging_double_person: expense.lodgingDoublePerson,
+                      lodging_double_person_external:
+                        expense.lodgingDoublePersonExternal,
+                      lodging_total: expense.lodgingTotal,
+                      moving_cost_checked: expense.movingCostChecked,
+                      moving_cost_rate: expense.movingCostRate,
+                      // International allowance fields
+                      allowance_abroad_flat_checked:
+                        expense.allowanceAbroadFlatChecked,
+                      allowance_abroad_actual_checked:
+                        expense.allowanceAbroadActualChecked,
+                      allowance_abroad_flat_rate:
+                        expense.allowanceAbroadFlatRate,
+                      allowance_abroad_actual_rate:
+                        expense.allowanceAbroadActualRate,
+                      allowance_abroad_days: expense.allowanceAbroadDays,
+                      allowance_abroad_total: expense.allowanceAbroadTotal,
+                      // International meal fields
+                      has_meal_abroad_flat: expense.hasMealAbroadFlat,
+                      has_meal_abroad_actual: expense.hasMealAbroadActual,
+                      meal_abroad_flat_count: expense.mealAbroadFlatCount,
+                      meal_abroad_actual_count: expense.mealAbroadActualCount,
+                      meal_abroad_flat_amount: expense.mealAbroadFlatAmount,
+                      meal_abroad_actual_amount: expense.mealAbroadActualAmount,
+                      created_at: new Date(),
+                      updated_at: new Date(),
+                    })
+                    .returning('id');
 
-                  // Copy accommodation transport expenses
-                  if (
-                    workLocation.accommodationTransportExpenses &&
-                    workLocation.accommodationTransportExpenses.length > 0
-                  ) {
-                    for (const transportExpense of workLocation.accommodationTransportExpenses) {
+                  // Copy accommodation transport expenses for this accommodation expense
+                  if (expense.accommodationTransportExpenses && expense.accommodationTransportExpenses.length > 0) {
+                    for (const transportExpense of expense.accommodationTransportExpenses) {
                       await trx(
                         'approval_accommodation_transport_expense',
                       ).insert({
@@ -3346,30 +3508,54 @@ export class ApprovalService {
                     }
                   }
 
-                  // Copy accommodation holiday expenses
-                  if (
-                    workLocation.accommodationHolidayExpenses &&
-                    workLocation.accommodationHolidayExpenses.length > 0
-                  ) {
-                    for (const holidayExpense of workLocation.accommodationHolidayExpenses) {
-                      await trx(
-                        'approval_accommodation_holiday_expense',
-                      ).insert({
-                        approval_id: newApproval.id,
-                        approval_accommodation_expense_id:
-                          newAccommodationExpense.id,
-                        date: holidayExpense.date,
-                        thai_date: holidayExpense.thaiDate,
-                        checked: holidayExpense.checked,
-                        time: holidayExpense.time,
-                        hours: holidayExpense.hours,
-                        total: holidayExpense.total,
-                        note: holidayExpense.note,
-                        created_at: new Date(),
-                        updated_at: new Date(),
-                      });
-                    }
-                  }
+
+                }
+              }
+
+              // Copy accommodation transport expenses at work location level
+              if (
+                workLocation.accommodationTransportExpenses &&
+                workLocation.accommodationTransportExpenses.length > 0
+              ) {
+                for (const transportExpense of workLocation.accommodationTransportExpenses) {
+                  await trx(
+                    'approval_accommodation_transport_expense',
+                  ).insert({
+                    approval_id: newApproval.id,
+                    approval_accommodation_expense_id: null, // This will be null for work location level
+                    type: transportExpense.type,
+                    amount: transportExpense.amount,
+                    checked: transportExpense.checked,
+                    flight_route: transportExpense.flightRoute,
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                  });
+                }
+              } else {
+                console.log('No accommodation transport expenses at work location level to copy');
+              }
+
+              // Copy accommodation holiday expenses at work location level
+              if (
+                workLocation.accommodationHolidayExpenses &&
+                workLocation.accommodationHolidayExpenses.length > 0
+              ) {
+                for (const holidayExpense of workLocation.accommodationHolidayExpenses) {
+                  await trx(
+                    'approval_accommodation_holiday_expense',
+                  ).insert({
+                    approval_id: newApproval.id,
+                    approval_accommodation_expense_id: null, // This will be null for work location level
+                    date: holidayExpense.date,
+                    thai_date: holidayExpense.thaiDate,
+                    checked: holidayExpense.checked,
+                    time: holidayExpense.time,
+                    hours: holidayExpense.hours,
+                    total: holidayExpense.total,
+                    note: holidayExpense.note,
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                  });
                 }
               }
             }
@@ -3498,9 +3684,9 @@ export class ApprovalService {
   }
 
   async duplicateCancel(
-    id: number, 
-    employeeCode: string, 
-    employeeName: string
+    id: number,
+    employeeCode: string,
+    employeeName: string,
   ): Promise<Approval> {
     const originalApproval = await this.findById(id);
     if (!originalApproval) {
@@ -3704,22 +3890,21 @@ export class ApprovalService {
               }
             }
           }
-
         }
       }
 
       await trx.commit();
 
-      const { 
+      const {
         form3_total_outbound,
-        form3_total_inbound, 
+        form3_total_inbound,
         form3_total_amount,
         form4_total_amount,
         form5_total_amount,
         attachment_id,
         exceed_lodging_rights_checked,
         exceed_lodging_rights_reason,
-        ...responseData 
+        ...responseData
       } = newApproval;
 
       await this.cacheService.set(
@@ -4065,10 +4250,14 @@ export class ApprovalService {
     creatorEmployeeCode: string,
   ): Promise<void> {
     // Get related employee codes from approval_staff_members and approval_continuous
-    const relatedEmployeeCodes = await this.getRelatedEmployeeCodes(approval.id, creatorEmployeeCode);
-    
+    const relatedEmployeeCodes = await this.getRelatedEmployeeCodes(
+      approval.id,
+      creatorEmployeeCode,
+    );
+
     // Get approval title and creator name
-    const approvalTitle = approval.documentTitle || approval.name || `Approval #${approval.id}`;
+    const approvalTitle =
+      approval.documentTitle || approval.name || `Approval #${approval.id}`;
     const creatorName = await this.getEmployeeName(creatorEmployeeCode);
 
     // Create notifications for all related employees
@@ -4089,8 +4278,9 @@ export class ApprovalService {
     const approval = await this.approvalRepository.findById(approvalId);
     if (!approval) return;
 
-    const approvalTitle = approval.documentTitle || approval.name || `Approval #${approvalId}`;
-    
+    const approvalTitle =
+      approval.documentTitle || approval.name || `Approval #${approvalId}`;
+
     await this.notificationService.createApprovalStatusChangedNotification(
       approvalId,
       approvalTitle,
@@ -4107,7 +4297,8 @@ export class ApprovalService {
     const approval = await this.approvalRepository.findById(approvalId);
     if (!approval) return;
 
-    const approvalTitle = approval.documentTitle || approval.name || `Approval #${approvalId}`;
+    const approvalTitle =
+      approval.documentTitle || approval.name || `Approval #${approvalId}`;
     const creatorName = await this.getEmployeeName(approval.employeeCode);
 
     await this.notificationService.createNotification(
@@ -4126,7 +4317,10 @@ export class ApprovalService {
     );
   }
 
-  private async getRelatedEmployeeCodes(approvalId: number, excludeEmployeeCode: string): Promise<string[]> {
+  private async getRelatedEmployeeCodes(
+    approvalId: number,
+    excludeEmployeeCode: string,
+  ): Promise<string[]> {
     // Get employee codes from approval_staff_members
     const staffMembers = await this.knexService
       .knex('approval_staff_members')
@@ -4141,13 +4335,14 @@ export class ApprovalService {
 
     // Combine and deduplicate employee codes
     const allEmployeeCodes = [
-      ...staffMembers.map(sm => sm.employee_code),
-      ...continuousApprovers.map(ca => ca.employee_code),
+      ...staffMembers.map((sm) => sm.employee_code),
+      ...continuousApprovers.map((ca) => ca.employee_code),
     ];
 
     // Remove duplicates and exclude the creator
     const uniqueEmployeeCodes = [...new Set(allEmployeeCodes)].filter(
-      code => code !== excludeEmployeeCode && code !== null && code !== undefined,
+      (code) =>
+        code !== excludeEmployeeCode && code !== null && code !== undefined,
     );
 
     return uniqueEmployeeCodes;

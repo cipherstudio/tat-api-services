@@ -28,6 +28,9 @@ export class NotificationService {
     entityId: number,
     metadata?: Record<string, any>,
   ): Promise<Notification> {
+    // Convert metadata object to JSON string for Oracle DB compatibility
+    const metadataString = metadata ? JSON.stringify(metadata) : null;
+
     const notification = await this.notificationRepository.create({
       employeeCode,
       title,
@@ -35,9 +38,18 @@ export class NotificationService {
       type,
       entityType,
       entityId,
-      metadata,
+      metadata: metadataString,
       isRead: false,
     });
+
+    // Parse metadata back to object for consistency
+    if (notification.metadata && typeof notification.metadata === 'string') {
+      try {
+        notification.metadata = JSON.parse(notification.metadata);
+      } catch (error) {
+        console.error('Error parsing notification metadata:', error);
+      }
+    }
 
     // Send realtime notification via WebSocket
     this.sendRealtimeNotification(employeeCode, notification);
@@ -73,11 +85,26 @@ export class NotificationService {
       isRead,
     );
 
+    // Parse metadata from JSON string back to object for all notifications
+    result.data = result.data.map((notification) => {
+      if (notification.metadata && typeof notification.metadata === 'string') {
+        try {
+          notification.metadata = JSON.parse(notification.metadata);
+        } catch (error) {
+          console.error('Error parsing notification metadata:', error);
+        }
+      }
+      return notification;
+    });
+
     await this.cacheService.set(cacheKey, result, this.CACHE_TTL);
     return result;
   }
 
-  async markAsRead(notificationId: number, employeeCode: string): Promise<void> {
+  async markAsRead(
+    notificationId: number,
+    employeeCode: string,
+  ): Promise<void> {
     await this.notificationRepository.markAsRead(notificationId, employeeCode);
 
     // Invalidate cache
@@ -106,13 +133,17 @@ export class NotificationService {
       return cached;
     }
 
-    const count = await this.notificationRepository.getUnreadCount(employeeCode);
+    const count =
+      await this.notificationRepository.getUnreadCount(employeeCode);
     await this.cacheService.set(cacheKey, count, this.CACHE_TTL);
 
     return count;
   }
 
-  private sendRealtimeNotification(employeeCode: string, notification: Notification): void {
+  private sendRealtimeNotification(
+    employeeCode: string,
+    notification: Notification,
+  ): void {
     // Find WebSocket client by employee code
     const clients = this.websocketUtil['clients'] as Map<string, any>;
     let targetClient = null;
@@ -173,13 +204,15 @@ export class NotificationService {
     employeeCode: string,
     approverName: string,
   ): Promise<void> {
-    const title = status === 'APPROVED' 
-      ? 'รายการอนุมัติได้รับการอนุมัติ' 
-      : 'รายการอนุมัติถูกปฏิเสธ';
+    const title =
+      status === 'APPROVED'
+        ? 'รายการอนุมัติได้รับการอนุมัติ'
+        : 'รายการอนุมัติถูกปฏิเสธ';
     const message = `รายการ "${approvalTitle}" ${status === 'APPROVED' ? 'ได้รับการอนุมัติ' : 'ถูกปฏิเสธ'} โดย ${approverName}`;
-    const type = status === 'APPROVED' 
-      ? NotificationType.APPROVAL_APPROVED 
-      : NotificationType.APPROVAL_REJECTED;
+    const type =
+      status === 'APPROVED'
+        ? NotificationType.APPROVAL_APPROVED
+        : NotificationType.APPROVAL_REJECTED;
     const metadata = {
       approvalId,
       approvalTitle,

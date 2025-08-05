@@ -57,7 +57,7 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
         'EMPLOYEE.*',
         'VIEW_POSITION_4OT.*',
         this.knex.raw(
-          'CASE WHEN employee_admin.id IS NOT NULL THEN 1 ELSE 0 END as is_admin',
+          'TO_NUMBER(CASE WHEN "employee_admin"."id" IS NOT NULL THEN 1 ELSE 0 END) AS "is_admin"',
         ),
       ])
       .first();
