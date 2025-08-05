@@ -2423,7 +2423,7 @@ export class ApprovalService {
     }));
 
     if (
-      !['international', 'temporary-international'].includes(
+      !['international', 'temporary-international', 'training-international', 'temporary-both'].includes(
         checkEligibilityDto.travelType,
       )
     ) {
@@ -2434,6 +2434,16 @@ export class ApprovalService {
     if (checkEligibilityDto.travelType === 'international') {
       await this.processInternationalEligibility(checkEligibilityDto, result);
     } else if (checkEligibilityDto.travelType === 'temporary-international') {
+      await this.processTemporaryInternationalEligibility(
+        checkEligibilityDto,
+        result,
+      );
+    } else if (checkEligibilityDto.travelType === 'training-international') {
+      await this.processTemporaryInternationalEligibility(
+        checkEligibilityDto,
+        result,
+      );
+    } else if (checkEligibilityDto.travelType === 'temporary-both') {
       await this.processTemporaryInternationalEligibility(
         checkEligibilityDto,
         result,
