@@ -90,7 +90,7 @@ export class ApprovalService {
     return `${sequence.toString().padStart(4, '0')} : ${beYear}${currentMonth}${currentDay} : ${currentTime}`;
   }
 
-    private async getUserPrivilegeLevel(employeeCode: string): Promise<string> {
+  private async getUserPrivilegeLevel(employeeCode: string): Promise<string> {
     try {
       const employee = await this.knexService
         .knex('OP_MASTER_T')
@@ -107,7 +107,7 @@ export class ApprovalService {
           'OP_MASTER_T.PMT_LEVEL_CODE as pmtLevelCode',
           'OP_MASTER_T.PMT_POS_WK as pmtPosWk',
           'VIEW_POSITION_4OT.POS_POSITIONNAME as posPositionname',
-          'EMPLOYEE.POSITION as position'
+          'EMPLOYEE.POSITION as position',
         ])
         .first();
 
@@ -139,7 +139,7 @@ export class ApprovalService {
       if (levelCode) {
         const levelCodeNum = convertLevelCodeToNumber(levelCode);
         if (levelCodeNum !== null) {
-          matchedPrivilege = privileges.find(p => {
+          matchedPrivilege = privileges.find((p) => {
             const privilegeLevel = extractNumericLevel(p.name);
             return privilegeLevel === levelCodeNum;
           });
@@ -148,25 +148,27 @@ export class ApprovalService {
 
       if (!matchedPrivilege) {
         const positionNames = [posName, position].filter(Boolean);
-        
-        matchedPrivilege = privileges.find(p => {
+
+        matchedPrivilege = privileges.find((p) => {
           const privilegeName = p.name;
-          
-          return positionNames.some(positionName => {
-            const isMatch = positionName.includes(privilegeName) || privilegeName.includes(positionName);
+
+          return positionNames.some((positionName) => {
+            const isMatch =
+              positionName.includes(privilegeName) ||
+              privilegeName.includes(positionName);
             return isMatch;
           });
         });
       }
 
       const result = matchedPrivilege?.confidential_level || 'NORMAL';
-      
+
       return result;
     } catch (error) {
       return 'NORMAL';
     }
   }
-  
+
   async create(
     createApprovalDto: CreateApprovalDto,
     employeeCode: string,
@@ -390,30 +392,33 @@ export class ApprovalService {
     // Add privilege level filtering based on user's position
     if (employeeCode) {
       const userPrivilegeLevel = await this.getUserPrivilegeLevel(employeeCode);
-      
+
       const levelHierarchy: Record<string, number> = {
-        'ปกติ': 1,
-        'ลับ': 2,
-        'ลับมาก': 3,
-        'ลับที่สุด': 4
+        ปกติ: 1,
+        ลับ: 2,
+        ลับมาก: 3,
+        ลับที่สุด: 4,
       };
-      
+
       const privilegeToConfidentialityMap: Record<string, string> = {
-        'NORMAL': 'ปกติ',
-        'CONFIDENTIAL': 'ลับ',
-        'SECRET': 'ลับมาก',
-        'TOP_SECRET': 'ลับที่สุด'
+        NORMAL: 'ปกติ',
+        CONFIDENTIAL: 'ลับ',
+        SECRET: 'ลับมาก',
+        TOP_SECRET: 'ลับที่สุด',
       };
-      
-      const userConfidentialityLevel = privilegeToConfidentialityMap[userPrivilegeLevel] || 'ปกติ';
+
+      const userConfidentialityLevel =
+        privilegeToConfidentialityMap[userPrivilegeLevel] || 'ปกติ';
       const userLevelNum = levelHierarchy[userConfidentialityLevel] || 1;
-      const accessibleLevels = Object.keys(levelHierarchy).filter(level => 
-        levelHierarchy[level] <= userLevelNum
+      const accessibleLevels = Object.keys(levelHierarchy).filter(
+        (level) => levelHierarchy[level] <= userLevelNum,
       );
-      
-      query = query.where(function() {
-        this.whereIn('approval.confidentiality_level', accessibleLevels)
-          .orWhereNull('approval.confidentiality_level');
+
+      query = query.where(function () {
+        this.whereIn(
+          'approval.confidentiality_level',
+          accessibleLevels,
+        ).orWhereNull('approval.confidentiality_level');
       });
     }
 
@@ -3461,7 +3466,10 @@ export class ApprovalService {
                     .returning('id');
 
                   // Copy accommodation transport expenses for this accommodation expense
-                  if (expense.accommodationTransportExpenses && expense.accommodationTransportExpenses.length > 0) {
+                  if (
+                    expense.accommodationTransportExpenses &&
+                    expense.accommodationTransportExpenses.length > 0
+                  ) {
                     for (const transportExpense of expense.accommodationTransportExpenses) {
                       await trx(
                         'approval_accommodation_transport_expense',
@@ -3478,8 +3486,6 @@ export class ApprovalService {
                       });
                     }
                   }
-
-
                 }
               }
 
@@ -3489,9 +3495,7 @@ export class ApprovalService {
                 workLocation.accommodationTransportExpenses.length > 0
               ) {
                 for (const transportExpense of workLocation.accommodationTransportExpenses) {
-                  await trx(
-                    'approval_accommodation_transport_expense',
-                  ).insert({
+                  await trx('approval_accommodation_transport_expense').insert({
                     approval_id: newApproval.id,
                     approval_accommodation_expense_id: null, // This will be null for work location level
                     type: transportExpense.type,
@@ -3503,7 +3507,9 @@ export class ApprovalService {
                   });
                 }
               } else {
-                console.log('No accommodation transport expenses at work location level to copy');
+                console.log(
+                  'No accommodation transport expenses at work location level to copy',
+                );
               }
 
               // Copy accommodation holiday expenses at work location level
@@ -3512,9 +3518,7 @@ export class ApprovalService {
                 workLocation.accommodationHolidayExpenses.length > 0
               ) {
                 for (const holidayExpense of workLocation.accommodationHolidayExpenses) {
-                  await trx(
-                    'approval_accommodation_holiday_expense',
-                  ).insert({
+                  await trx('approval_accommodation_holiday_expense').insert({
                     approval_id: newApproval.id,
                     approval_accommodation_expense_id: null, // This will be null for work location level
                     date: holidayExpense.date,

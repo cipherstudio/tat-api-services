@@ -20,6 +20,11 @@ import { WebSocketUtil } from '../../common/utils/websocket.util';
         const wsPort = process.env.WS_PORT
           ? parseInt(process.env.WS_PORT)
           : 8080;
+        
+        console.log(`🚀 WebSocket Server starting on port: ${wsPort}`);
+        console.log(`🔗 WebSocket URL: ws://localhost:${wsPort}`);
+        console.log(`📡 Frontend should connect to: ${process.env.NEXT_PUBLIC_WS_URL || `ws://localhost:${wsPort}`}`);
+        
         return new WebSocketUtil(wsPort);
       },
     },

@@ -79,10 +79,14 @@ async function bootstrap() {
   });
 
   const port = configService.get('PORT', 3000);
+  const wsPort = configService.get('WS_PORT', 8080);
+  
   await app.listen(port);
-  logger.log(`Application is running on: ${await app.getUrl()}`);
+  logger.log(`🚀 Application is running on: ${await app.getUrl()}`);
   logger.log(
-    `API documentation is available at: ${await app.getUrl()}/documentation`,
+    `📚 API documentation is available at: ${await app.getUrl()}/documentation`,
   );
+  logger.log(`🔗 WebSocket Server will start on port: ${wsPort}`);
+  logger.log(`📡 Frontend WebSocket URL: ws://localhost:${wsPort}`);
 }
 bootstrap();

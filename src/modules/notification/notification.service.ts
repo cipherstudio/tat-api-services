@@ -156,6 +156,10 @@ export class NotificationService {
     }
 
     if (targetClient) {
+      console.log(
+        `📨 Sending notification to employee ${employeeCode}:`,
+        notification.title,
+      );
       this.websocketUtil.sendTo(targetClient.id, {
         type: 'notification',
         data: {
@@ -163,6 +167,8 @@ export class NotificationService {
           unreadCount: this.getUnreadCount(employeeCode),
         },
       });
+    } else {
+      console.log(`⚠️ No WebSocket client found for employee ${employeeCode}`);
     }
   }
 
