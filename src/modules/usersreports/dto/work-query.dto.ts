@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsDateString, IsNumber, IsEnum } from 'class-validator';
+import { IsOptional, IsString, IsNumber, IsEnum } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class WorkQueryDto {
@@ -25,33 +25,13 @@ export class WorkQueryDto {
   @IsEnum(['ASC', 'DESC'])
   orderDir?: 'ASC' | 'DESC';
 
-  @ApiPropertyOptional({ description: 'วันที่เริ่มต้น' })
-  @IsOptional()
-  @IsDateString()
-  startDate?: string;
-
-  @ApiPropertyOptional({ description: 'วันที่สิ้นสุด' })
-  @IsOptional()
-  @IsDateString()
-  endDate?: string;
-
-  @ApiPropertyOptional({ description: 'รหัสผู้ใช้' })
+  @ApiPropertyOptional({ description: 'หมายเลขเอกสาร' })
   @IsOptional()
   @IsString()
-  userId?: string;
+  documentNumber?: string;
 
   @ApiPropertyOptional({ description: 'ชื่อเอกสาร' })
   @IsOptional()
   @IsString()
-  documentTitle?: string;
-
-  @ApiPropertyOptional({ description: 'สถานะการอนุมัติ' })
-  @IsOptional()
-  @IsString()
-  approvalStatus?: string;
-
-  @ApiPropertyOptional({ description: 'ระดับความเร่งด่วน' })
-  @IsOptional()
-  @IsString()
-  urgencyLevel?: string;
+  title?: string;
 } 

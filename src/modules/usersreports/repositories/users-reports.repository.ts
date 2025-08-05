@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { CommuteReports } from '../entities/commute-reports.entity';
 import { ClothingReport } from '../entities/clothing-report.entity';
+import { ActivityReport } from '../entities/activity-report.entity';
 import { KnexBaseRepository } from '../../../common/repositories/knex-base.repository';
 import { KnexService } from '../../../database/knex-service/knex.service';
 import { toCamelCase, toSnakeCase } from '../../../common/utils/case-mapping';
@@ -194,26 +195,83 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
 
   // Custom method for work reports
   async findWorkReports(query: any) {
+    // Extract pagination and sorting parameters
     const { page, limit, orderBy, orderDir, ...conditions } = query;
-    const dbConditions: Record<string, any> = {};
     
-    if (conditions.startDate) {
-      dbConditions.created_at = { $gte: conditions.startDate };
-    }
-    if (conditions.endDate) {
-      dbConditions.created_at = { ...dbConditions.created_at, $lte: conditions.endDate };
-    }
-    if (conditions.userId) {
-      dbConditions.user_id = conditions.userId;
+    // Build query with join to report_approve_status
+    let dbQuery = this.knexService.knex('report_approve')
+      .leftJoin('report_approve_status', 'report_approve.status', 'report_approve_status.id')
+      .select(
+        'report_approve.id',
+        'report_approve.document_number',
+        'report_approve.title',
+        'report_approve.creator_name',
+        'report_approve.creator_code',
+        'report_approve.approve_id',
+        'report_approve.status',
+        'report_approve.created_at',
+        'report_approve.updated_at',
+        'report_approve_status.status as status_name'
+      );
+
+    // Add LIKE conditions for document_number and title
+    if (conditions.documentNumber) {
+      dbQuery = dbQuery.where('report_approve.document_number', 'like', `%${conditions.documentNumber}%`);
     }
 
-    return this.findWithPagination(
-      page || 1,
-      limit || 10,
-      dbConditions,
-      orderBy || 'created_at',
-      orderDir || 'desc',
-    );
+    if (conditions.title) {
+      dbQuery = dbQuery.where('report_approve.title', 'like', `%${conditions.title}%`);
+    }
+
+    // Add order by
+    const orderByField = orderBy || 'report_approve.created_at';
+    const orderDirection = orderDir || 'desc';
+    dbQuery = dbQuery.orderBy(orderByField, orderDirection);
+
+    // Get total count for pagination (without ORDER BY)
+    const countQuery = this.knexService.knex('report_approve')
+      .leftJoin('report_approve_status', 'report_approve.status', 'report_approve_status.id');
+
+    // Apply the same filters to count query
+    if (conditions.documentNumber) {
+      countQuery.where('report_approve.document_number', 'like', `%${conditions.documentNumber}%`);
+    }
+    if (conditions.title) {
+      countQuery.where('report_approve.title', 'like', `%${conditions.title}%`);
+    }
+
+    const total = await countQuery.count('* as count').first();
+
+    // Add pagination
+    const pageNum = page || 1;
+    const limitNum = limit || 10;
+    const offset = (pageNum - 1) * limitNum;
+    
+    dbQuery = dbQuery.limit(limitNum).offset(offset);
+
+    // Execute query
+    const data = await dbQuery;
+
+    // Calculate pagination metadata
+    const totalCount = total ? parseInt(total.count as string) : 0;
+    const totalPages = Math.ceil(totalCount / limitNum);
+
+    // Transform data
+    const transformedData = await Promise.all(data.map(async (item) => {
+      const transformedItem = await toCamelCase(item);
+      return transformedItem;
+    }));
+
+    return {
+      data: transformedData,
+      meta: {
+        total: totalCount,
+        page: pageNum,
+        limit: limitNum,
+        totalPages,
+        lastPage: totalPages,
+      },
+    };
   }
 
   // Custom method for expenditure reports
@@ -390,29 +448,96 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
   }
 
   // Custom method for activity reports
-  async findActivityReports(query: any) {
-    const { page, limit, orderBy, orderDir, ...conditions } = query;
-    const dbConditions: Record<string, any> = {};
+  async findActivityReports(queryParams: any) {
+    const { page, limit, orderBy, orderDir, ...conditions } = queryParams;
     
-    if (conditions.startDate) {
-      dbConditions.created_at = { $gte: conditions.startDate };
+    // Build query with join to EMPLOYEE table
+    let dbQuery = this.knexService.knex('sessions')
+      .leftJoin('EMPLOYEE', 'sessions.employee_code', 'EMPLOYEE.CODE')
+      .where('sessions.is_active', 1)
+      .select(
+        'sessions.id',
+        'sessions.employee_code',
+        'sessions.ip_address',
+        'sessions.device_info',
+        'sessions.created_at',
+        'sessions.updated_at',
+        'sessions.expires_at',
+        'sessions.is_active',
+        'EMPLOYEE.NAME as employee_name'
+      );
+
+    // Apply filters
+    if (conditions.startDate && conditions.endDate) {
+      dbQuery = dbQuery.whereBetween('sessions.created_at', [
+        conditions.startDate,
+        conditions.endDate,
+      ]);
+    } else if (conditions.startDate) {
+      dbQuery = dbQuery.where('sessions.created_at', '>=', conditions.startDate);
+    } else if (conditions.endDate) {
+      dbQuery = dbQuery.where('sessions.created_at', '<=', conditions.endDate);
     }
-    if (conditions.endDate) {
-      dbConditions.created_at = { ...dbConditions.created_at, $lte: conditions.endDate };
-    }
-    if (conditions.userId) {
-      dbConditions.user_id = conditions.userId;
-    }
-    if (conditions.activityType) {
-      dbConditions.travel_type = conditions.activityType;
+    if (conditions.employeeName) {
+      dbQuery = dbQuery.where('EMPLOYEE.NAME', 'like', `%${conditions.employeeName}%`);
     }
 
-    return this.findWithPagination(
-      page || 1,
-      limit || 10,
-      dbConditions,
-      orderBy || 'created_at',
-      orderDir || 'desc',
-    );
+    const orderByField = orderBy || 'sessions.created_at';
+    const orderDirection = orderDir || 'desc';
+    dbQuery = dbQuery.orderBy(orderByField, orderDirection);
+
+    // Get total count for pagination (separated query)
+    const countQuery = this.knexService.knex('sessions')
+      .leftJoin('EMPLOYEE', 'sessions.employee_code', 'EMPLOYEE.CODE')
+      .where('sessions.is_active', 1);
+
+    // Apply the same filters to count query
+    if (conditions.startDate && conditions.endDate) {
+      countQuery.whereBetween('sessions.created_at', [
+        conditions.startDate,
+        conditions.endDate,
+      ]);
+    } else if (conditions.startDate) {
+      countQuery.where('sessions.created_at', '>=', conditions.startDate);
+    } else if (conditions.endDate) {
+      countQuery.where('sessions.created_at', '<=', conditions.endDate);
+    }
+    if (conditions.employeeName) {
+      countQuery.where('EMPLOYEE.NAME', 'like', `%${conditions.employeeName}%`);
+    }
+
+    // Count total sessions
+    const total = await countQuery.count('* as count').first();
+
+    // Add pagination
+    const pageNum = page || 1;
+    const limitNum = limit || 10;
+    const offset = (pageNum - 1) * limitNum;
+    
+    dbQuery = dbQuery.limit(limitNum).offset(offset);
+
+    // Execute query
+    const data = await dbQuery;
+
+    // Calculate pagination metadata
+    const totalCount = total ? parseInt(total.count as string) : 0;
+    const totalPages = Math.ceil(totalCount / limitNum);
+
+    // Transform data
+    const transformedData = await Promise.all(data.map(async (item) => {
+      const transformedItem = await toCamelCase<ActivityReport>(item);
+      return transformedItem;
+    }));
+
+    return {
+      data: transformedData,
+      meta: {
+        total: totalCount,
+        page: pageNum,
+        limit: limitNum,
+        totalPages,
+        lastPage: totalPages,
+      },
+    };
   }
 } 

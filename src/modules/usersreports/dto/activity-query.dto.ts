@@ -35,28 +35,8 @@ export class ActivityQueryDto {
   @IsDateString()
   endDate?: string;
 
-  @ApiPropertyOptional({ description: 'รหัสผู้ใช้' })
+  @ApiPropertyOptional({ description: 'ชื่อ-สกุล' })
   @IsOptional()
   @IsString()
-  userId?: string;
-
-  @ApiPropertyOptional({ description: 'ประเภทกิจกรรม' })
-  @IsOptional()
-  @IsString()
-  activityType?: string;
-
-  @ApiPropertyOptional({ description: 'IP Address' })
-  @IsOptional()
-  @IsString()
-  ipAddress?: string;
-
-  @ApiPropertyOptional({ description: 'User Agent' })
-  @IsOptional()
-  @IsString()
-  userAgent?: string;
-
-  @ApiPropertyOptional({ description: 'สถานะการเข้าใช้งาน' })
-  @IsOptional()
-  @IsString()
-  loginStatus?: string;
+  employeeName?: string;
 } 
