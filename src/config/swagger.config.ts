@@ -6,6 +6,7 @@ export function setupSwagger(app: INestApplication): void {
     .setTitle('TAT API Services')
     .setDescription('เอกสาร API บริการของ TAT')
     .setVersion('1.0')
+    .addServer('/service', 'API Server with /service prefix')
     .addBearerAuth(
       {
         type: 'http',
