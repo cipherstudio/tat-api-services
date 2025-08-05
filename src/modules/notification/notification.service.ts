@@ -28,6 +28,9 @@ export class NotificationService {
     entityId: number,
     metadata?: Record<string, any>,
   ): Promise<Notification> {
+    // Convert metadata object to JSON string for Oracle DB compatibility
+    const metadataString = metadata ? JSON.stringify(metadata) : null;
+
     const notification = await this.notificationRepository.create({
       employeeCode,
       title,
@@ -35,9 +38,18 @@ export class NotificationService {
       type,
       entityType,
       entityId,
-      metadata,
+      metadata: metadataString,
       isRead: false,
     });
+
+    // Parse metadata back to object for consistency
+    if (notification.metadata && typeof notification.metadata === 'string') {
+      try {
+        notification.metadata = JSON.parse(notification.metadata);
+      } catch (error) {
+        console.error('Error parsing notification metadata:', error);
+      }
+    }
 
     // Send realtime notification via WebSocket
     this.sendRealtimeNotification(employeeCode, notification);
@@ -72,6 +84,18 @@ export class NotificationService {
       limit,
       isRead,
     );
+
+    // Parse metadata from JSON string back to object for all notifications
+    result.data = result.data.map((notification) => {
+      if (notification.metadata && typeof notification.metadata === 'string') {
+        try {
+          notification.metadata = JSON.parse(notification.metadata);
+        } catch (error) {
+          console.error('Error parsing notification metadata:', error);
+        }
+      }
+      return notification;
+    });
 
     await this.cacheService.set(cacheKey, result, this.CACHE_TTL);
     return result;

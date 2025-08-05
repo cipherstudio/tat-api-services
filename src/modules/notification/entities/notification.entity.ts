@@ -22,7 +22,7 @@ export interface Notification {
   type: NotificationType;
   entityType: EntityType;
   entityId: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, any> | string; // Support both object and JSON string for Oracle DB
   isRead: boolean;
   readAt?: Date;
   createdAt: Date;
