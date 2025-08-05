@@ -998,6 +998,22 @@ export class ApprovalService {
       )
       .leftJoin('EMPLOYEE as et', 'ac.employee_code', 'et.CODE')
       .leftJoin('EMPLOYEE as et2', 'ac.created_by', 'et2.CODE')
+      .leftJoin('OP_MASTER_T as omt', 'et.CODE', 'omt.PMT_CODE')
+      .leftJoin('VIEW_POSITION_4OT as vp4ot', (builder) => {
+        builder.on(
+          'vp4ot.POS_POSITIONCODE',
+          '=',
+          this.knexService.knex.raw('RTRIM("omt"."PMT_POS_NO")'),
+        );
+      })
+      .leftJoin('OP_MASTER_T as omt2', 'et2.CODE', 'omt2.PMT_CODE')
+      .leftJoin('VIEW_POSITION_4OT as vp4ot2', (builder) => {
+        builder.on(
+          'vp4ot2.POS_POSITIONCODE',
+          '=',
+          this.knexService.knex.raw('RTRIM("omt2"."PMT_POS_NO")'),
+        );
+      })
       .where('ac.approval_id', id);
 
     const subQuery = approvalQuery
@@ -1005,7 +1021,7 @@ export class ApprovalService {
       .select([
         'ac.id as approvalContinuousId',
         'ac.employee_code as employeeCode', // ผู้รับ
-        'et.POSITION as position', // ผู้รับ
+        'vp4ot.POS_POSITIONNAME as position', // ผู้รับ
         'et.NAME as signerName', // ผู้รับ
         'ac.signer_date as signerDate',
         'ac.document_ending as documentEnding',
@@ -1020,7 +1036,7 @@ export class ApprovalService {
         // ผู้ส่ง
         'et2.CODE as createdEmployeeCode',
         'et2.NAME as createdName',
-        'et2.POSITION as createdPosition',
+        'vp4ot2.POS_POSITIONNAME as createdPosition',
 
         'acs.status_code as statusCode',
         'acs.label as statusLabel',
