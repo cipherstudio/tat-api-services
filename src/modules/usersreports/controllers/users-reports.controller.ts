@@ -129,11 +129,7 @@ export class UsersReportsController {
   @ApiQuery({ name: 'orderDir', type: String, required: false, description: 'Order direction (ASC/DESC)' })
   @ApiQuery({ name: 'startDate', required: false, description: 'วันที่เริ่มต้น' })
   @ApiQuery({ name: 'endDate', required: false, description: 'วันที่สิ้นสุด' })
-  @ApiQuery({ name: 'userId', required: false, description: 'รหัสผู้ใช้' })
-  @ApiQuery({ name: 'activityType', required: false, description: 'ประเภทกิจกรรม' })
-  @ApiQuery({ name: 'ipAddress', required: false, description: 'IP Address' })
-  @ApiQuery({ name: 'userAgent', required: false, description: 'User Agent' })
-  @ApiQuery({ name: 'loginStatus', required: false, description: 'สถานะการเข้าใช้งาน' })
+  @ApiQuery({ name: 'employeeName', required: false, description: 'ชื่อ-สกุล' })
   async getActivityReport(@Query() query: ActivityQueryDto) {
     const queryOptions = {
       page: query.page || 1,
