@@ -10,11 +10,13 @@ services:
       - LOG_MAX_FILES=45d
       - LOG_HTTP_MAX_FILES=30d
       - LOG_MAX_SIZE=50m
+      - WS_PORT=8080
     volumes:
       - ./logs:/app/logs
       - ./uploads:/app/uploads
     ports:
-      - "8080:3000"
+      - 3000:3000
+      - 8080:8080
     command: npm run start:prod
     restart: always
 

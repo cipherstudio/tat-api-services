@@ -10,6 +10,7 @@ export interface WebSocketMessage {
 export interface WebSocketClient extends WebSocket {
   id: string;
   isAlive: boolean;
+  employeeCode?: string;
 }
 
 interface WebSocketEvents {
@@ -65,6 +66,16 @@ export class WebSocketUtil extends EventEmitter {
     const client = ws as WebSocketClient;
     client.id = this.generateClientId(req);
     client.isAlive = true;
+    
+    // Extract employee code from query parameters
+    const url = new URL(req.url || '', `http://${req.headers.host}`);
+    const token = url.searchParams.get('token');
+    if (token) {
+      // TODO: Verify JWT token and extract employee code
+      // For now, we'll store the token as employee code
+      client.employeeCode = token;
+    }
+    
     this.clients.set(client.id, client);
     this.emit('connection', client);
     return client;
