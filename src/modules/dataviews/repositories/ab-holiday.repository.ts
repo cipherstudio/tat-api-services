@@ -11,9 +11,7 @@ export class AbHolidayRepository extends KnexBaseRepository<AbHoliday> {
     super(knexService, 'AB_HOLIDAY');
   }
 
-  async findWithQuery(
-    query: QueryAbHolidayDto,
-  ): Promise<AbHolidayPaginate> {
+  async findWithQuery(query: QueryAbHolidayDto): Promise<AbHolidayPaginate> {
     const conditions: Record<string, any> = {};
     if (query.pogCode) conditions['POG_CODE'] = query.pogCode;
 
@@ -47,17 +45,20 @@ export class AbHolidayRepository extends KnexBaseRepository<AbHoliday> {
               const endDate = new Date(range.endDate);
               // Set end date to end of day
               endDate.setHours(23, 59, 59, 999);
-              
+
               if (index === 0) {
                 dateBuilder.whereBetween('HOLIDAY_DATE', [startDate, endDate]);
               } else {
-                dateBuilder.orWhereBetween('HOLIDAY_DATE', [startDate, endDate]);
+                dateBuilder.orWhereBetween('HOLIDAY_DATE', [
+                  startDate,
+                  endDate,
+                ]);
               }
             }
           });
         });
       }
-    } 
+    }
     // Handle single date (backward compatibility)
     else if (query.holidayDate) {
       const date = new Date(query.holidayDate);
@@ -69,15 +70,14 @@ export class AbHolidayRepository extends KnexBaseRepository<AbHoliday> {
 
     // Count total
     const countQuery = this.knex(this.tableName).where(conditions);
-    
+
     // Apply same date filtering to count query
     if (query.startDate && query.endDate) {
       const startDate = new Date(query.startDate);
       const endDate = new Date(query.endDate);
       endDate.setHours(23, 59, 59, 999);
       countQuery.whereBetween('HOLIDAY_DATE', [startDate, endDate]);
-    }
-    else if (query.dateRanges && query.dateRanges.length > 0) {
+    } else if (query.dateRanges && query.dateRanges.length > 0) {
       // Additional parsing fallback for count query
       let dateRanges = query.dateRanges;
       if (typeof query.dateRanges === 'string') {
@@ -95,11 +95,14 @@ export class AbHolidayRepository extends KnexBaseRepository<AbHoliday> {
               const startDate = new Date(range.startDate);
               const endDate = new Date(range.endDate);
               endDate.setHours(23, 59, 59, 999);
-              
+
               if (index === 0) {
                 dateBuilder.whereBetween('HOLIDAY_DATE', [startDate, endDate]);
               } else {
-                dateBuilder.orWhereBetween('HOLIDAY_DATE', [startDate, endDate]);
+                dateBuilder.orWhereBetween('HOLIDAY_DATE', [
+                  startDate,
+                  endDate,
+                ]);
               }
             }
           });
@@ -113,7 +116,20 @@ export class AbHolidayRepository extends KnexBaseRepository<AbHoliday> {
     const countResult = await countQuery.count('* as count').first();
     const total = Number(countResult?.count || 0);
 
-    const dbEntities = await builder.select().orderBy('HOLIDAY_DATE', 'asc');
+    const dbEntities = await builder
+      .select([
+        'HOLIDAY_DATE',
+        this.knex.raw('TO_CHAR(DESCRIPTION) AS DESCRIPTION'),
+        'CREATE_DATE',
+        this.knex.raw('TO_CHAR(PSN_CODE) AS PSN_CODE'),
+        'POG_CODE',
+        'HOLIDAY_FLAG',
+        'POG_TYPE',
+        'ID',
+      ])
+      // .select('TO_CHAR(DESCRIPTION) AS DESCRIPTION')
+      // .select('TO_CHAR(PSN_CODE) AS PSN_CODE')
+      .orderBy('HOLIDAY_DATE', 'asc');
     const data = await Promise.all(
       dbEntities.map(async (e) => await toCamelCase<AbHoliday>(e)),
     );
