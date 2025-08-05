@@ -51,18 +51,14 @@ export class UsersReportsController {
   }
 
   @Get('work')
-  @ApiOperation({ summary: 'รายงานการจัดทำรายงานเดินทางปฏิบัติงาน' })
-  @ApiOkResponse({ description: 'รายงานการจัดทำรายงานเดินทางปฏิบัติงานสำเร็จ' })
+  @ApiOperation({ summary: 'รายงานการจัดทำรายงานปฏิบัติงาน' })
+  @ApiOkResponse({ description: 'รายงานการจัดทำรายงานปฏิบัติงานสำเร็จ' })
   @ApiQuery({ name: 'page', type: Number, required: false, description: 'Page number' })
   @ApiQuery({ name: 'limit', type: Number, required: false, description: 'Number of items per page' })
   @ApiQuery({ name: 'orderBy', type: String, required: false, description: 'Field to order by' })
   @ApiQuery({ name: 'orderDir', type: String, required: false, description: 'Order direction (ASC/DESC)' })
-  @ApiQuery({ name: 'startDate', required: false, description: 'วันที่เริ่มต้น' })
-  @ApiQuery({ name: 'endDate', required: false, description: 'วันที่สิ้นสุด' })
-  @ApiQuery({ name: 'userId', required: false, description: 'รหัสผู้ใช้' })
-  @ApiQuery({ name: 'documentTitle', required: false, description: 'ชื่อเอกสาร' })
-  @ApiQuery({ name: 'approvalStatus', required: false, description: 'สถานะการอนุมัติ' })
-  @ApiQuery({ name: 'urgencyLevel', required: false, description: 'ระดับความเร่งด่วน' })
+  @ApiQuery({ name: 'documentNumber', required: false, description: 'หมายเลขเอกสาร' })
+  @ApiQuery({ name: 'title', required: false, description: 'ชื่อเอกสาร' })
   async getWorkReport(@Query() query: WorkQueryDto) {
     const queryOptions = {
       page: query.page || 1,
@@ -140,4 +136,6 @@ export class UsersReportsController {
     };
     return this.usersReportsService.getActivityReport(queryOptions);
   }
+
+
 } 
