@@ -90,6 +90,83 @@ export class ApprovalService {
     return `${sequence.toString().padStart(4, '0')} : ${beYear}${currentMonth}${currentDay} : ${currentTime}`;
   }
 
+    private async getUserPrivilegeLevel(employeeCode: string): Promise<string> {
+    try {
+      const employee = await this.knexService
+        .knex('OP_MASTER_T')
+        .whereRaw('RTRIM("PMT_CODE") = ?', [employeeCode])
+        .leftJoin('VIEW_POSITION_4OT', (builder) => {
+          builder.on(
+            'VIEW_POSITION_4OT.POS_POSITIONCODE',
+            '=',
+            this.knexService.knex.raw('RTRIM("OP_MASTER_T"."PMT_POS_NO")'),
+          );
+        })
+        .leftJoin('EMPLOYEE', 'OP_MASTER_T.PMT_CODE', 'EMPLOYEE.CODE')
+        .select([
+          'OP_MASTER_T.PMT_LEVEL_CODE as pmtLevelCode',
+          'OP_MASTER_T.PMT_POS_WK as pmtPosWk',
+          'VIEW_POSITION_4OT.POS_POSITIONNAME as posPositionname',
+          'EMPLOYEE.POSITION as position'
+        ])
+        .first();
+
+      if (!employee) {
+        return 'NORMAL';
+      }
+
+      const privileges = await this.knexService
+        .knex('privilege')
+        .select('name', 'confidential_level')
+        .whereNotNull('confidential_level');
+
+      const levelCode = employee.pmtLevelCode?.trim();
+      const posName = employee.posPositionname?.trim();
+      const position = employee.position?.trim();
+
+      let matchedPrivilege = null;
+
+      const extractNumericLevel = (privilegeName: string): number | null => {
+        const match = privilegeName.match(/^C(\d+)/);
+        return match ? parseInt(match[1], 10) : null;
+      };
+
+      const convertLevelCodeToNumber = (levelCode: string): number | null => {
+        const num = parseInt(levelCode, 10);
+        return isNaN(num) ? null : num;
+      };
+
+      if (levelCode) {
+        const levelCodeNum = convertLevelCodeToNumber(levelCode);
+        if (levelCodeNum !== null) {
+          matchedPrivilege = privileges.find(p => {
+            const privilegeLevel = extractNumericLevel(p.name);
+            return privilegeLevel === levelCodeNum;
+          });
+        }
+      }
+
+      if (!matchedPrivilege) {
+        const positionNames = [posName, position].filter(Boolean);
+        
+        matchedPrivilege = privileges.find(p => {
+          const privilegeName = p.name;
+          
+          return positionNames.some(positionName => {
+            const isMatch = positionName.includes(privilegeName) || privilegeName.includes(positionName);
+            return isMatch;
+          });
+        });
+      }
+
+      const result = matchedPrivilege?.confidential_level || 'NORMAL';
+      
+      return result;
+    } catch (error) {
+      return 'NORMAL';
+    }
+  }
+  
   async create(
     createApprovalDto: CreateApprovalDto,
     employeeCode: string,
@@ -308,6 +385,36 @@ export class ApprovalService {
     } else if (latestApprovalStatus && !approvalStatusLabelId) {
       // If status code not found, return empty result
       query = query.where('approval.id', 0); // This will return no results
+    }
+
+    // Add privilege level filtering based on user's position
+    if (employeeCode) {
+      const userPrivilegeLevel = await this.getUserPrivilegeLevel(employeeCode);
+      
+      const levelHierarchy: Record<string, number> = {
+        'ปกติ': 1,
+        'ลับ': 2,
+        'ลับมาก': 3,
+        'ลับที่สุด': 4
+      };
+      
+      const privilegeToConfidentialityMap: Record<string, string> = {
+        'NORMAL': 'ปกติ',
+        'CONFIDENTIAL': 'ลับ',
+        'SECRET': 'ลับมาก',
+        'TOP_SECRET': 'ลับที่สุด'
+      };
+      
+      const userConfidentialityLevel = privilegeToConfidentialityMap[userPrivilegeLevel] || 'ปกติ';
+      const userLevelNum = levelHierarchy[userConfidentialityLevel] || 1;
+      const accessibleLevels = Object.keys(levelHierarchy).filter(level => 
+        levelHierarchy[level] <= userLevelNum
+      );
+      
+      query = query.where(function() {
+        this.whereIn('approval.confidentiality_level', accessibleLevels)
+          .orWhereNull('approval.confidentiality_level');
+      });
     }
 
     // join file table (attachment_id, signature_attachment_id)
