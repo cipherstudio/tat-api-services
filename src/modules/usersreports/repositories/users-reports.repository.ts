@@ -562,62 +562,59 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
   async findActivityReports(queryParams: any) {
     const { page, limit, orderBy, orderDir, ...conditions } = queryParams;
     
-    // Build query with join to EMPLOYEE table
-    let dbQuery = this.knexService.knex('sessions')
-      .leftJoin('EMPLOYEE', 'sessions.employee_code', 'EMPLOYEE.CODE')
-      .where('sessions.is_active', 1)
+    // Build query from audit_logs table
+    let dbQuery = this.knexService.knex('audit_logs')
+      .where('audit_logs.action', 'LOGIN')
+      .where('audit_logs.category', 'auth')
+      .where('audit_logs.status', 'success')
       .select(
-        'sessions.id',
-        'sessions.employee_code',
-        'sessions.ip_address',
-        'sessions.device_info',
-        'sessions.created_at',
-        'sessions.updated_at',
-        'sessions.expires_at',
-        'sessions.is_active',
-        'EMPLOYEE.NAME as employee_name'
+        'audit_logs.id',
+        'audit_logs.employee_code',
+        'audit_logs.created_at',
+        'audit_logs.employee_name'
       );
 
     // Apply filters
     if (conditions.startDate && conditions.endDate) {
-      dbQuery = dbQuery.whereBetween('sessions.created_at', [
+      dbQuery = dbQuery.whereBetween('audit_logs.created_at', [
         conditions.startDate,
         conditions.endDate,
       ]);
     } else if (conditions.startDate) {
-      dbQuery = dbQuery.where('sessions.created_at', '>=', conditions.startDate);
+      dbQuery = dbQuery.where('audit_logs.created_at', '>=', conditions.startDate);
     } else if (conditions.endDate) {
-      dbQuery = dbQuery.where('sessions.created_at', '<=', conditions.endDate);
+      dbQuery = dbQuery.where('audit_logs.created_at', '<=', conditions.endDate);
     }
     if (conditions.employeeName) {
-      dbQuery = dbQuery.where('EMPLOYEE.NAME', 'like', `%${conditions.employeeName}%`);
+      dbQuery = dbQuery.where('audit_logs.employee_name', 'like', `%${conditions.employeeName}%`);
     }
 
-    const orderByField = orderBy || 'sessions.created_at';
+    const orderByField = orderBy || 'audit_logs.created_at';
     const orderDirection = orderDir || 'desc';
     dbQuery = dbQuery.orderBy(orderByField, orderDirection);
 
     // Get total count for pagination (separated query)
-    const countQuery = this.knexService.knex('sessions')
-      .leftJoin('EMPLOYEE', 'sessions.employee_code', 'EMPLOYEE.CODE')
-      .where('sessions.is_active', 1);
+    const countQuery = this.knexService.knex('audit_logs')
+      .where('audit_logs.action', 'LOGIN')
+      .where('audit_logs.category', 'auth')
+      .where('audit_logs.status', 'success');
 
     // Apply the same filters to count query
     if (conditions.startDate && conditions.endDate) {
-      countQuery.whereBetween('sessions.created_at', [
+      countQuery.whereBetween('audit_logs.created_at', [
         conditions.startDate,
         conditions.endDate,
       ]);
     } else if (conditions.startDate) {
-      countQuery.where('sessions.created_at', '>=', conditions.startDate);
+      countQuery.where('audit_logs.created_at', '>=', conditions.startDate);
     } else if (conditions.endDate) {
-      countQuery.where('sessions.created_at', '<=', conditions.endDate);
+      countQuery.where('audit_logs.created_at', '<=', conditions.endDate);
     }
     if (conditions.employeeName) {
-      countQuery.where('EMPLOYEE.NAME', 'like', `%${conditions.employeeName}%`);
+      countQuery.where('audit_logs.employee_name', 'like', `%${conditions.employeeName}%`);
     }
 
-    // Count total sessions
+    // Count total audit logs
     const total = await countQuery.count('* as count').first();
 
     // Add pagination
