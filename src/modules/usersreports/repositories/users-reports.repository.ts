@@ -577,13 +577,13 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     // Apply filters
     if (conditions.startDate && conditions.endDate) {
       dbQuery = dbQuery.whereBetween('audit_logs.created_at', [
-        conditions.startDate,
-        conditions.endDate,
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD\')', [conditions.startDate]),
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']),
       ]);
     } else if (conditions.startDate) {
-      dbQuery = dbQuery.where('audit_logs.created_at', '>=', conditions.startDate);
+      dbQuery = dbQuery.where('audit_logs.created_at', '>=', this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD\')', [conditions.startDate]));
     } else if (conditions.endDate) {
-      dbQuery = dbQuery.where('audit_logs.created_at', '<=', conditions.endDate);
+      dbQuery = dbQuery.where('audit_logs.created_at', '<=', this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']));
     }
     if (conditions.employeeName) {
       dbQuery = dbQuery.where('audit_logs.employee_name', 'like', `%${conditions.employeeName}%`);
@@ -602,13 +602,13 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     // Apply the same filters to count query
     if (conditions.startDate && conditions.endDate) {
       countQuery.whereBetween('audit_logs.created_at', [
-        conditions.startDate,
-        conditions.endDate,
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD\')', [conditions.startDate]),
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']),
       ]);
     } else if (conditions.startDate) {
-      countQuery.where('audit_logs.created_at', '>=', conditions.startDate);
+      countQuery.where('audit_logs.created_at', '>=', this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD\')', [conditions.startDate]));
     } else if (conditions.endDate) {
-      countQuery.where('audit_logs.created_at', '<=', conditions.endDate);
+      countQuery.where('audit_logs.created_at', '<=', this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']));
     }
     if (conditions.employeeName) {
       countQuery.where('audit_logs.employee_name', 'like', `%${conditions.employeeName}%`);
