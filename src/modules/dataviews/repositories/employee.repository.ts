@@ -377,4 +377,51 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
 
     return !!result;
   }
+
+  async findByEmailWithPosition4ot(
+    email: string,
+  ): Promise<
+    | (OpMasterT & ViewPosition4ot & OpLevelSalR & { isAdmin?: boolean })
+    | undefined
+  > {
+    const employee = await this.knex('OP_MASTER_T')
+      .whereRaw('RTRIM("PMT_EMAIL_ADDR") = ?', [email])
+      .leftJoin('OP_LEVEL_SAL_R', (builder) => {
+        builder.on(
+          'OP_LEVEL_SAL_R.PLV_CODE',
+          '=',
+          this.knex.raw('RTRIM("OP_MASTER_T"."PMT_LEVEL_CODE")'),
+        );
+      })
+      .leftJoin('VIEW_POSITION_4OT', (builder) => {
+        builder.on(
+          'VIEW_POSITION_4OT.POS_POSITIONCODE',
+          '=',
+          this.knex.raw('RTRIM("OP_MASTER_T"."PMT_POS_NO")'),
+        );
+      })
+      .leftJoin('EMPLOYEE', 'OP_MASTER_T.PMT_CODE', 'EMPLOYEE.CODE')
+      .leftJoin('employee_admin', (builder) => {
+        builder.on(
+          'employee_admin.pmt_code',
+          '=',
+          this.knex.raw('RTRIM("OP_MASTER_T"."PMT_CODE")'),
+        );
+      })
+      .select([
+        'OP_MASTER_T.*',
+        'OP_LEVEL_SAL_R.*',
+        'VIEW_POSITION_4OT.*',
+        'EMPLOYEE.*',
+        this.knex.raw(
+          'TO_NUMBER(CASE WHEN "employee_admin"."id" IS NOT NULL THEN 1 ELSE 0 END) AS "is_admin"',
+        ),
+      ])
+      .first();
+
+    const employeeCamel = employee ? await toCamelCase(employee) : undefined;
+    return employeeCamel as
+      | (Employee & ViewPosition4ot & OpLevelSalR & { isAdmin?: boolean })
+      | undefined;
+  }
 }

@@ -136,17 +136,17 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    // Create session with employee_code
+    // Create session with employee_code and employee_name
     const accessToken = this.jwtService.sign(payload);
     const refreshToken = this.jwtService.sign(payload, {
       expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN'),
     });
     await this.sessionService.createSession(
-      existingUser.id,
+      user.pmtCode, // employee_code
+      user.pmtNameT, // employee_name
       refreshToken,
       deviceInfo,
       ipAddress,
-      user.pmtCode, // employee_code
     );
 
     return {

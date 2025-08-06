@@ -40,7 +40,7 @@ import { OpLevelSalR } from '@modules/dataviews/entities/op-level-sal-r.entity';
 import { OpMasterT } from '@modules/dataviews/entities/op-master-t.entity';
 import { EmployeeRepository } from '@modules/dataviews/repositories/employee.repository';
 
-interface RequestWithUser extends Request {
+export interface RequestWithUser extends Request {
   user: User &
     (Employee &
       ViewPosition4ot &
@@ -86,7 +86,8 @@ export class AuthController {
     );
 
     await this.auditLogService.createLog({
-      userId: user.id,
+      employeeCode: user.pmtCode,
+      employeeName: user.pmtNameT,
       action: 'LOGIN',
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'] as string,
@@ -105,9 +106,9 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Tokens refreshed.' })
   async refresh(
     @Body('refreshToken') refreshToken: string,
-    @Req() req: Request,
+    // @Req() req: Request,
   ) {
-    const session = await this.sessionService.getSessionByToken(refreshToken);
+    const session = await this.sessionService.findSessionByToken(refreshToken);
     if (!session) {
       throw new UnauthorizedException('Invalid refresh token');
     }
@@ -121,17 +122,20 @@ export class AuthController {
 
     const tokens = await this.authService.refreshTokens(user as any);
     await this.sessionService.deactivateSession(session.id);
-    const newSession = await this.sessionService.createSession(
-      session.userId,
-      tokens.refreshToken,
-      req.headers['user-agent'] as string,
-      req.ip,
-      user.pmtCode,
-    );
+
+    // await this.auditLogService.createLog({
+    //   employeeCode: user.pmtCode,
+    //   employeeName: user.pmtNameT,
+    //   action: 'REFRESH_TOKEN',
+    //   ipAddress: req.ip,
+    //   userAgent: req.headers['user-agent'] as string,
+    //   status: AuditLogStatus.SUCCESS,
+    //   category: AuditLogCategory.AUTH,
+    // });
     return {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
-      sessionId: newSession.id,
+      // sessionId: newSession.id,
     };
   }
 
@@ -148,7 +152,8 @@ export class AuthController {
     const user = await this.authService.sendPasswordResetEmail(email);
 
     await this.auditLogService.createLog({
-      userId: user.id,
+      employeeCode: user.employeeCode || email, // Use employeeCode if available, otherwise use email
+      employeeName: user.fullName || 'Unknown',
       action: 'PASSWORD_RESET_REQUEST',
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'] as string,
@@ -169,10 +174,10 @@ export class AuthController {
     @Req() req: Request,
   ) {
     await this.authService.resetPassword(resetPasswordDto);
-    const user = await this.usersService.findByEmail(resetPasswordDto.email);
 
     await this.auditLogService.createLog({
-      userId: user.id,
+      employeeCode: resetPasswordDto.email, // Using email as employeeCode for now
+      employeeName: 'Unknown', // Will be updated when user is found
       action: 'PASSWORD_RESET',
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'] as string,
@@ -198,8 +203,9 @@ export class AuthController {
     await this.authService.changePassword(user.pmtCode, changePasswordDto);
 
     await this.auditLogService.createLog({
-      userId: user.id,
-      action: 'PASSWORD_CHANGE',
+      employeeCode: user.pmtCode,
+      employeeName: user.pmtNameT,
+      action: 'CHANGE_PASSWORD',
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'] as string,
       status: AuditLogStatus.SUCCESS,
@@ -214,12 +220,15 @@ export class AuthController {
   @Get('sessions')
   async getSessions(@Req() req: RequestWithUser) {
     const user = req.user;
-    return this.sessionService.getUserActiveSessions(user.id);
+    return this.sessionService.getEmployeeActiveSessions(user.pmtCode);
   }
 
   @Version('1')
   @UseGuards(JwtAuthGuard)
   @Delete('sessions/:id')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Revoke specific session' })
+  @ApiResponse({ status: 200, description: 'Session revoked successfully.' })
   async revokeSession(
     @Param('id', ParseIntPipe) sessionId: number,
     @Req() req: RequestWithUser,
@@ -228,11 +237,12 @@ export class AuthController {
     await this.sessionService.deactivateSession(sessionId);
 
     await this.auditLogService.createLog({
-      userId: user.id,
-      action: 'SESSION_REVOKE',
+      employeeCode: user.pmtCode,
+      employeeName: user.pmtNameT,
+      action: 'REVOKE_SESSION',
+      details: { sessionId },
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'] as string,
-      details: { sessionId },
       status: AuditLogStatus.SUCCESS,
       category: AuditLogCategory.SECURITY,
     });
@@ -243,16 +253,22 @@ export class AuthController {
   @Version('1')
   @UseGuards(JwtAuthGuard)
   @Delete('sessions')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Revoke all sessions' })
+  @ApiResponse({
+    status: 200,
+    description: 'All sessions revoked successfully.',
+  })
   async revokeAllSessions(@Req() req: RequestWithUser) {
     const user = req.user;
-    await this.sessionService.deactivateAllUserSessions(user.id);
+    await this.sessionService.deactivateAllEmployeeSessions(user.pmtCode);
 
     await this.auditLogService.createLog({
-      userId: user.id,
-      action: 'ALL_SESSIONS_REVOKE',
+      employeeCode: user.pmtCode,
+      employeeName: user.pmtNameT,
+      action: 'REVOKE_ALL_SESSIONS',
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'] as string,
-      details: { allSessions: true },
       status: AuditLogStatus.SUCCESS,
       category: AuditLogCategory.SECURITY,
     });
@@ -263,15 +279,16 @@ export class AuthController {
   @Version('1')
   @UseGuards(JwtAuthGuard)
   @Get('security-events')
-  @ApiOperation({ summary: 'Get security events with pagination' })
-  @ApiResponse({ status: 200, description: 'Returns security events.' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get security events' })
+  @ApiResponse({ status: 200, description: 'Security events retrieved.' })
   async getSecurityEvents(
     @Req() req: RequestWithUser,
     @Query('page') page = 1,
     @Query('limit') limit = 10,
   ) {
     const user = req.user;
-    return this.auditLogService.getSecurityEvents(user.id, page, limit);
+    return this.auditLogService.getSecurityEvents(user.pmtCode, page, limit);
   }
 
   @Version('1')

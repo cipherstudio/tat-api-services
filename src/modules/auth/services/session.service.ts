@@ -7,21 +7,21 @@ export class SessionService {
   constructor(private readonly sessionRepository: SessionRepository) {}
 
   async createSession(
-    userId: number,
+    employeeCode: string,
+    employeeName: string,
     token: string,
     deviceInfo?: string,
     ipAddress?: string,
-    employeeCode?: string,
     expiresIn: number = 24 * 60 * 60 * 1000, // Default 24 hours
   ): Promise<Session> {
     const expiresAt = new Date(Date.now() + expiresIn);
 
     const session = {
-      userId,
+      employeeCode,
+      employeeName,
       token,
       deviceInfo,
       ipAddress,
-      employeeCode,
       isActive: true,
       expiresAt,
     };
@@ -30,39 +30,37 @@ export class SessionService {
   }
 
   async getSessionByToken(token: string): Promise<Session | undefined> {
-    return this.sessionRepository.findByToken(token);
-  }
-
-  async deactivateSession(sessionId: number): Promise<void> {
-    await this.sessionRepository.update(sessionId, { isActive: false });
-  }
-
-  async getUserActiveSessions(userId: number): Promise<Session[]> {
-    return this.sessionRepository.findActiveSessionsByUserId(userId);
+    return this.sessionRepository.findOne({ token });
   }
 
   async getEmployeeActiveSessions(employeeCode: string): Promise<Session[]> {
-    return this.sessionRepository.findActiveSessionsByEmployeeCode(
-      employeeCode,
-    );
+    return this.sessionRepository.getEmployeeActiveSessions(employeeCode);
   }
 
-  async deactivateAllUserSessions(userId: number): Promise<void> {
-    await this.sessionRepository.deactivateAllUserSessions(userId);
+  async getEmployeeActiveSessionsByName(
+    employeeName: string,
+  ): Promise<Session[]> {
+    return this.sessionRepository.getEmployeeActiveSessionsByName(employeeName);
   }
 
   async deactivateAllEmployeeSessions(employeeCode: string): Promise<void> {
     await this.sessionRepository.deactivateAllEmployeeSessions(employeeCode);
   }
 
-  async markSessionActive(sessionId: number, newToken: string): Promise<void> {
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+  async deactivateAllEmployeeSessionsByName(
+    employeeName: string,
+  ): Promise<void> {
+    await this.sessionRepository.deactivateAllEmployeeSessionsByName(
+      employeeName,
+    );
+  }
 
-    await this.sessionRepository.update(sessionId, {
-      token: newToken,
-      isActive: true,
-      expiresAt,
-    });
+  async findSessionByToken(token: string): Promise<Session | undefined> {
+    return this.sessionRepository.findOne({ token });
+  }
+
+  async deactivateSession(sessionId: number): Promise<void> {
+    await this.sessionRepository.update(sessionId, { isActive: false });
   }
 
   async cleanupExpiredSessions(): Promise<number> {

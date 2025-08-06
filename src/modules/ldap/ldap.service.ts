@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import { SessionService } from '../auth/services/session.service';
 import * as ldap from 'ldapjs';
+import { EmployeeRepository } from '@modules/dataviews/repositories/employee.repository';
 
 @Injectable()
 export class LdapService {
@@ -16,6 +17,7 @@ export class LdapService {
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
     private readonly usersService: UsersService,
+    private readonly employeeRepository: EmployeeRepository,
     private readonly sessionService: SessionService,
   ) {}
 
@@ -177,9 +179,14 @@ export class LdapService {
                 return reject(new UnauthorizedException('User not found.'));
               }
               console.log('Resolving user:', user);
-
-              // ใช้ userPrincipalName (email) ไปค้นหา user ในฐานข้อมูล
               const userPrincipalName = user.userPrincipalName;
+              let tempEmail = 'sanchai.tham@tat.or.th';
+
+              //** สำหรับทดสอบการยืนยันตัวตนผ่าน LDAP ของ TAT */
+              if (userPrincipalName !== 'phatthalaphon.ruan@tat.or.th') {
+                // ใช้ userPrincipalName (email) ไปค้นหา user ในฐานข้อมูล
+                tempEmail = user.userPrincipalName;
+              }
               if (!userPrincipalName) {
                 return reject(
                   new UnauthorizedException(
@@ -191,7 +198,9 @@ export class LdapService {
               try {
                 // ค้นหา user ในฐานข้อมูล
                 const dbUser =
-                  await this.usersService.findByEmail(userPrincipalName);
+                  await this.employeeRepository.findByEmailWithPosition4ot(
+                    tempEmail,
+                  );
                 if (!dbUser) {
                   return reject(
                     new NotFoundException('User not found in database.'),
@@ -201,8 +210,8 @@ export class LdapService {
                 // สร้าง JWT payload
                 const payload = {
                   sub: dbUser.pmtCode,
-                  email: dbUser.email,
-                  role: dbUser.role,
+                  email: dbUser.pmtEmailAddr,
+                  role: 'admin',
                   employeeCode: dbUser.pmtCode,
                 };
 
@@ -214,11 +223,11 @@ export class LdapService {
 
                 // สร้าง session
                 await this.sessionService.createSession(
-                  dbUser.id,
+                  dbUser.pmtCode.toString(),
+                  dbUser.pmtNameT,
                   refreshToken,
                   'LDAP Authentication',
                   'LDAP',
-                  dbUser.pmtCode,
                 );
 
                 // ส่งคืน response เหมือน login ปกติ
@@ -226,13 +235,13 @@ export class LdapService {
                   access_token: accessToken,
                   refresh_token: refreshToken,
                   user: {
-                    id: dbUser.id,
+                    id: dbUser.pmtCode,
                     email: dbUser.pmtEmailAddr,
                     fullName: dbUser.pmtNameT,
-                    role: dbUser.role,
+                    role: 'admin',
                     position: dbUser.posPositionname,
                     employeeCode: dbUser.pmtCode,
-                    isAdmin: dbUser.isAdmin === 1,
+                    isAdmin: dbUser.isAdmin ?? false,
                   },
                   ldapUser: user, // ข้อมูลจาก LDAP
                 });

@@ -80,7 +80,7 @@ async function bootstrap() {
 
   const port = configService.get('PORT', 3000);
   const wsPort = configService.get('WS_PORT', 8080);
-  
+
   await app.listen(port);
   logger.log(`🚀 Application is running on: ${await app.getUrl()}`);
   logger.log(

@@ -15,8 +15,8 @@ export enum AuditLogCategory {
 
 export interface AuditLog {
   id: number;
-  userId?: number;
-  user?: User;
+  employeeCode?: string;
+  employeeName?: string;
   action: string;
   details?: any;
   ipAddress?: string;
@@ -29,7 +29,8 @@ export interface AuditLog {
 // Snake case to camel case mapping for database results
 export const auditLogColumnMap = {
   id: 'id',
-  user_id: 'userId',
+  employee_code: 'employeeCode',
+  employee_name: 'employeeName',
   action: 'action',
   details: 'details',
   ip_address: 'ipAddress',
@@ -42,7 +43,8 @@ export const auditLogColumnMap = {
 // Camel case to snake case mapping for database inserts
 export const auditLogReverseColumnMap = {
   id: 'id',
-  userId: 'user_id',
+  employeeCode: 'employee_code',
+  employeeName: 'employee_name',
   action: 'action',
   details: 'details',
   ipAddress: 'ip_address',

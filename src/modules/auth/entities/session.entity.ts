@@ -2,9 +2,8 @@ import { User } from '../../users/entities/user.entity';
 
 export interface Session {
   id: number;
-  userId: number;
-  user?: User;
   employeeCode?: string;
+  employeeName?: string;
   token: string;
   deviceInfo?: string;
   ipAddress?: string;
@@ -17,8 +16,8 @@ export interface Session {
 // Snake case to camel case mapping for database results
 export const sessionColumnMap = {
   id: 'id',
-  user_id: 'userId',
   employee_code: 'employeeCode',
+  employee_name: 'employeeName',
   token: 'token',
   device_info: 'deviceInfo',
   ip_address: 'ipAddress',
@@ -31,8 +30,8 @@ export const sessionColumnMap = {
 // Camel case to snake case mapping for database inserts
 export const sessionReverseColumnMap = {
   id: 'id',
-  userId: 'user_id',
   employeeCode: 'employee_code',
+  employeeName: 'employee_name',
   token: 'token',
   deviceInfo: 'device_info',
   ipAddress: 'ip_address',

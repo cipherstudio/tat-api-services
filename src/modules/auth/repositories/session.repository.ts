@@ -16,19 +16,10 @@ export class SessionRepository extends KnexBaseRepository<Session> {
     return await toCamelCase<Session>(created);
   }
 
-  async findByToken(token: string): Promise<Session | undefined> {
-    const dbSession = await this.findOne({ token });
-    return dbSession ? await toCamelCase<Session>(dbSession) : undefined;
-  }
-
-  async findActiveSessionsByUserId(userId: number): Promise<Session[]> {
-    const dbSessions = await this.find({
-      user_id: userId,
-      is_active: true,
-    });
-    return Promise.all(
-      dbSessions.map(async (s) => await toCamelCase<Session>(s)),
-    );
+  async update(id: number, session: Partial<Session>): Promise<Session> {
+    const dbSession = await toSnakeCase(session);
+    const updated = await super.update(id, dbSession);
+    return await toCamelCase<Session>(updated);
   }
 
   async findActiveSessionsByEmployeeCode(
@@ -36,6 +27,18 @@ export class SessionRepository extends KnexBaseRepository<Session> {
   ): Promise<Session[]> {
     const dbSessions = await this.find({
       employee_code: employeeCode,
+      is_active: true,
+    });
+    return Promise.all(
+      dbSessions.map(async (s) => await toCamelCase<Session>(s)),
+    );
+  }
+
+  async findActiveSessionsByEmployeeName(
+    employeeName: string,
+  ): Promise<Session[]> {
+    const dbSessions = await this.find({
+      employee_name: employeeName,
       is_active: true,
     });
     return Promise.all(
@@ -55,22 +58,38 @@ export class SessionRepository extends KnexBaseRepository<Session> {
     );
   }
 
-  async deactivateAllUserSessions(userId: number): Promise<number> {
+  async deactivateAllEmployeeSessions(employeeCode: string): Promise<number> {
     const result = await this.knexService
-      .knex('sessions')
-      .where({ user_id: userId, is_active: true })
+      .knex(this.tableName)
+      .where('employee_code', employeeCode)
+      .where('is_active', true)
       .update({ is_active: false });
 
     return result;
   }
 
-  async deactivateAllEmployeeSessions(employeeCode: string): Promise<number> {
+  async deactivateAllEmployeeSessionsByName(
+    employeeName: string,
+  ): Promise<number> {
     const result = await this.knexService
-      .knex('sessions')
-      .where({ employee_code: employeeCode, is_active: true })
+      .knex(this.tableName)
+      .where('employee_name', employeeName)
+      .where('is_active', true)
       .update({ is_active: false });
 
     return result;
+  }
+
+  async getEmployeeActiveSessions(
+    employeeCode: string,
+  ): Promise<Session[]> {
+    return this.findActiveSessionsByEmployeeCode(employeeCode);
+  }
+
+  async getEmployeeActiveSessionsByName(
+    employeeName: string,
+  ): Promise<Session[]> {
+    return this.findActiveSessionsByEmployeeName(employeeName);
   }
 
   async cleanupExpiredSessions(): Promise<number> {
