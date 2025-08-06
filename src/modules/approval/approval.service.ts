@@ -2461,6 +2461,158 @@ export class ApprovalService {
     result: ClothingExpenseEligibilityResponseDto[],
   ): Promise<void> {
     for (const employeeCode of result.map((r) => r.employeeCode)) {
+            // เช็คข้อมูลจาก approval_clothing_expense ก่อน
+      const existingClothingExpense = await this.knexService
+        .knex('approval_clothing_expense')
+        .where('employee_code', employeeCode)
+        .orderBy('created_at', 'desc')
+        .first();
+
+      if (existingClothingExpense) {
+        // มีประวัติการเบิก
+        if (existingClothingExpense.next_claim_date) {
+          // มี next_claim_date → เช็คว่าถึงเวลาหรือยัง
+          const nextClaimDate = new Date(existingClothingExpense.next_claim_date);
+          const today = new Date();
+
+          if (today < nextClaimDate) {
+            this.updateEligibility(result, employeeCode, false);
+            continue; // ข้ามไปพนักงานถัดไป
+          }
+        } else {
+          // next_claim_date เป็น null → เช็คประเภทประเทศต่อ
+        }
+
+        // เช็คประเภทประเทศ (A/B/C) จากข้อมูลการเบิกครั้งก่อน
+      // หา กลุ่มประเทศค่าเครื่องแต่งกายจากใบเก่า
+      let oldDestinationGroup;
+      if (existingClothingExpense.destination_country) {
+        // ลองหาใน countries ก่อนด้วยชื่อประเทศ
+        const oldCountry = await this.knexService
+          .knex('countries')
+          .where('name_th', existingClothingExpense.destination_country)
+          .first();
+        if (oldCountry) {
+          // หา group จาก country
+          oldDestinationGroup = await this.knexService
+            .knex('attire_destination_group_countries as adgc')
+            .join('attire_destination_groups as adg', 'adgc.destination_group_id', 'adg.id')
+            .where('adgc.country_id', oldCountry.id)
+            .where('adg.assignment_type', 'PERMANENT')
+            .select('adg.*')
+            .first();
+
+          // ถ้าไม่เจอ group → ให้ถือว่าเป็น PERM_A
+          if (!oldDestinationGroup) {
+            oldDestinationGroup = await this.knexService
+              .knex('attire_destination_groups')
+              .where('group_code', 'PERM_A')
+              .where('assignment_type', 'PERMANENT')
+              .first();
+          }
+        } else {
+          // ลองหาใน office_international ด้วยชื่อ office
+          const oldOffice = await this.knexService
+            .knex('office_international')
+            .where('office_international.name', existingClothingExpense.destination_country)
+            .join('countries', 'office_international.country_id', 'countries.id')
+            .select('countries.*')
+            .first();
+          if (oldOffice) {
+            // หา group จาก country ของ office
+            oldDestinationGroup = await this.knexService
+              .knex('attire_destination_group_countries as adgc')
+              .join('attire_destination_groups as adg', 'adgc.destination_group_id', 'adg.id')
+              .where('adgc.country_id', oldOffice.id)
+              .where('adg.assignment_type', 'PERMANENT')
+              .select('adg.*')
+              .first();
+
+            // ถ้าไม่เจอ group → ให้ถือว่าเป็น PERM_A
+            if (!oldDestinationGroup) {
+              oldDestinationGroup = await this.knexService
+                .knex('attire_destination_groups')
+                .where('group_code', 'PERM_A')
+                .where('assignment_type', 'PERMANENT')
+                .first();
+            }
+          }
+        }
+      }
+      // หา กลุ่มประเทศค่าเครื่องแต่งกายของ current destination employee
+      const destination = checkEligibilityDto.employees.find(
+        (emp) => emp.employeeCode === employeeCode,
+      );
+      let currentDestinationGroup;
+      if (destination.destinationTable === 'countries') {
+        const currentCountry = await this.knexService
+          .knex('countries')
+          .where('id', destination.destinationId)
+          .first();
+        if (currentCountry) {
+          currentDestinationGroup = await this.knexService
+            .knex('attire_destination_group_countries as adgc')
+            .join('attire_destination_groups as adg', 'adgc.destination_group_id', 'adg.id')
+            .where('adgc.country_id', currentCountry.id)
+            .where('adg.assignment_type', 'PERMANENT')
+            .select('adg.*')
+            .first();
+
+          // ถ้าไม่เจอ group → ให้ถือว่าเป็น PERM_A
+          if (!currentDestinationGroup) {
+            currentDestinationGroup = await this.knexService
+              .knex('attire_destination_groups')
+              .where('group_code', 'PERM_A')
+              .where('assignment_type', 'PERMANENT')
+              .first();
+          }
+        }
+      } else if (destination.destinationTable === 'tatOffices') {
+        const currentOffice = await this.knexService
+          .knex('office_international')
+          .where('office_international.id', destination.destinationId)
+          .join('countries', 'office_international.country_id', 'countries.id')
+          .select('countries.*')
+          .first();
+        if (currentOffice) {
+          currentDestinationGroup = await this.knexService
+            .knex('attire_destination_group_countries as adgc')
+            .join('attire_destination_groups as adg', 'adgc.destination_group_id', 'adg.id')
+            .where('adgc.country_id', currentOffice.id)
+            .where('adg.assignment_type', 'PERMANENT')
+            .select('adg.*')
+            .first();
+
+          // ถ้าไม่เจอ group → ให้ถือว่าเป็น PERM_A
+          if (!currentDestinationGroup) {
+            currentDestinationGroup = await this.knexService
+              .knex('attire_destination_groups')
+              .where('group_code', 'PERM_A')
+              .where('assignment_type', 'PERMANENT')
+              .first();
+          }
+        }
+      }
+      if (currentDestinationGroup && oldDestinationGroup) {
+        // ถ้าเป็นกลุ่มประเทศค่าเครื่องแต่งกายของ ใบเก่า และ ใบใหม่ ไม่เหมือนกัน, set isEligible true
+        if (currentDestinationGroup.group_code !== oldDestinationGroup.group_code) {
+          this.updateEligibility(result, employeeCode, true);
+          continue; // ข้ามไปพนักงานถัดไป
+        } else {
+          // ถ้ากลุ่มเหมือนกัน → เช็ค 2 ปี
+          const isOverTwoYears = this.isOverTwoYears(
+            existingClothingExpense.created_at,
+            checkEligibilityDto.workStartDate,
+          );
+          this.updateEligibility(result, employeeCode, isOverTwoYears);
+          continue; // ข้ามไปพนักงานถัดไป
+        }
+      } else {
+      }
+      } else {
+      }
+
+      // ถ้าไม่มีข้อมูลการเบิกหรือถึงวันที่เบิกได้แล้ว → เช็ค PS_PW_JOB
       const pwJob = await this.getPwJob(employeeCode);
 
       // ถ้าไม่เจอข้อมูลการเบิกล่าสุด, set isEligible true
@@ -2482,6 +2634,33 @@ export class ApprovalService {
     result: ClothingExpenseEligibilityResponseDto[],
   ): Promise<void> {
     for (const employeeCode of result.map((r) => r.employeeCode)) {
+      
+      // เช็คข้อมูลจาก approval_clothing_expense ก่อน
+      const existingClothingExpense = await this.knexService
+        .knex('approval_clothing_expense')
+        .where('employee_code', employeeCode)
+        .orderBy('created_at', 'desc')
+        .first();
+
+      if (existingClothingExpense) {
+        // มีประวัติการเบิก
+        if (existingClothingExpense.next_claim_date) {
+          // มี next_claim_date → เช็คว่าถึงเวลาหรือยัง
+          const nextClaimDate = new Date(existingClothingExpense.next_claim_date);
+          const today = new Date();
+          
+          if (today < nextClaimDate) {
+            this.updateEligibility(result, employeeCode, false);
+            continue; // ข้ามไปพนักงานถัดไป
+          }
+        } else {
+          // next_claim_date เป็น null → เบิกไม่ได้
+          this.updateEligibility(result, employeeCode, false);
+          continue; // ข้ามไปพนักงานถัดไป
+        }
+      }
+
+      // ถ้าไม่มีข้อมูลการเบิกหรือถึงวันที่เบิกได้แล้ว → เช็ค PS_PW_JOB
       const pwJob = await this.getPwJob(employeeCode);
 
       // ถ้าไม่เจอข้อมูลการเบิกล่าสุด, set isEligible true
@@ -2499,17 +2678,26 @@ export class ApprovalService {
   }
 
   private async getPwJob(employeeCode: string | number) {
+    // จัดการ employee code ที่มี '-'
+    let cleanEmployeeCode = employeeCode;
     if (typeof employeeCode === 'string' && employeeCode.includes('-')) {
-      return null;
+      // เอาเฉพาะตัวเลข
+      cleanEmployeeCode = employeeCode.replace(/\D/g, '');
+      if (!cleanEmployeeCode) {
+        return null;
+      }
     }
 
-    return await this.knexService
+    const query = this.knexService
       .knex('PS_PW_JOB')
-      .where('EMPLID', employeeCode)
+      .where('EMPLID', cleanEmployeeCode)
       .andWhere('ACTION', 'XFR')
       .andWhere('ACTION_REASON', '008')
-      .orderBy('EFFDT', 'desc')
-      .first();
+      .orderBy('EFFDT', 'desc');
+    
+    const result = await query.first();
+    
+    return result;
   }
 
   private async processPwJobForInternational(
@@ -2529,37 +2717,98 @@ export class ApprovalService {
       // ถ้าเป็นหน่วยงานต่างประเทศ
       // เอา organize.POG_CODE ไปเช็ค table office_international ว่าเป็นสำนักงาน นั้นเป็น ประเภทไหน
 
-      // หา ประเภท A B C ของ office internatinal จากใบเก่า
-      const oldDestination = await this.knexService
+      // หา กลุ่มประเทศค่าเครื่องแต่งกายของ office international จากใบเก่า
+      const oldCountry = await this.knexService
         .knex('office_international')
         .where('pog_code', organize.POG_CODE)
         .join('countries', 'office_international.country_id', 'countries.id')
+        .select('countries.*')
         .first();
 
-      // หา ประเภท A B C ของ current destination employee
+      let oldDestinationGroup;
+      if (oldCountry) {
+        oldDestinationGroup = await this.knexService
+          .knex('attire_destination_group_countries as adgc')
+          .join('attire_destination_groups as adg', 'adgc.destination_group_id', 'adg.id')
+          .where('adgc.country_id', oldCountry.id)
+          .where('adg.assignment_type', 'PERMANENT')
+          .select('adg.*')
+          .first();
+
+        // ถ้าไม่เจอ group → ให้ถือว่าเป็น PERM_A
+        if (!oldDestinationGroup) {
+          oldDestinationGroup = await this.knexService
+            .knex('attire_destination_groups')
+            .where('group_code', 'PERM_A')
+            .where('assignment_type', 'PERMANENT')
+            .first();
+        }
+      }
+
+      // หา กลุ่มประเทศค่าเครื่องแต่งกายของ current destination employee
       const destination = checkEligibilityDto.employees.find(
         (emp) => emp.employeeCode === employeeCode,
       );
-      let currentDestination;
+      
+      let currentDestinationGroup;
       if (destination.destinationTable === 'countries') {
-        currentDestination = await this.knexService
+        const currentCountry = await this.knexService
           .knex('countries')
           .where('id', destination.destinationId)
           .first();
+
+        if (currentCountry) {
+          currentDestinationGroup = await this.knexService
+            .knex('attire_destination_group_countries as adgc')
+            .join('attire_destination_groups as adg', 'adgc.destination_group_id', 'adg.id')
+            .where('adgc.country_id', currentCountry.id)
+            .where('adg.assignment_type', 'PERMANENT')
+            .select('adg.*')
+            .first();
+
+          // ถ้าไม่เจอ group → ให้ถือว่าเป็น PERM_A
+          if (!currentDestinationGroup) {
+            currentDestinationGroup = await this.knexService
+              .knex('attire_destination_groups')
+              .where('group_code', 'PERM_A')
+              .where('assignment_type', 'PERMANENT')
+              .first();
+          }
+        }
       } else if (destination.destinationTable === 'tatOffices') {
-        currentDestination = await this.knexService
+        const currentOffice = await this.knexService
           .knex('office_international')
           .where('office_international.id', destination.destinationId)
           .join('countries', 'office_international.country_id', 'countries.id')
+          .select('countries.*')
           .first();
+
+        if (currentOffice) {
+          currentDestinationGroup = await this.knexService
+            .knex('attire_destination_group_countries as adgc')
+            .join('attire_destination_groups as adg', 'adgc.destination_group_id', 'adg.id')
+            .where('adgc.country_id', currentOffice.id)
+            .where('adg.assignment_type', 'PERMANENT')
+            .select('adg.*')
+            .first();
+
+          // ถ้าไม่เจอ group → ให้ถือว่าเป็น PERM_A
+          if (!currentDestinationGroup) {
+            currentDestinationGroup = await this.knexService
+              .knex('attire_destination_groups')
+              .where('group_code', 'PERM_A')
+              .where('assignment_type', 'PERMANENT')
+              .first();
+          }
+        }
       }
 
-      if (currentDestination && oldDestination) {
-        // ถ้าเป็นประเภท A B C ของ ใบเก่า และ ใบใหม่ ไม่เหมือนกัน, set isEligible true
-        if (currentDestination.type !== oldDestination.type) {
+      if (currentDestinationGroup && oldDestinationGroup) {
+        // ถ้าเป็นกลุ่มประเทศค่าเครื่องแต่งกายของ ใบเก่า และ ใบใหม่ ไม่เหมือนกัน, set isEligible true
+        if (currentDestinationGroup.group_code !== oldDestinationGroup.group_code) {
           this.updateEligibility(result, employeeCode, true);
         } else {
-          // ถ้าประเภทเหมือนกัน
+          // ถ้ากลุ่มเหมือนกัน
           // ให้เอา EFFDT จาก pwJob มาเช็คกับ checkEligibilityDto.workStartDate ว่าเกิน 2 ปี หรือยัง ถ้าเกินแล้ว, set isEligible true
           // @todo อาจต้องเปลี่ยนไปเช็ค วันรายงานตัวกับ ViewDutyformCommands (รอคอนเฟิม)
           const isOverTwoYears = this.isOverTwoYears(
@@ -2583,14 +2832,35 @@ export class ApprovalService {
     result: ClothingExpenseEligibilityResponseDto[],
     employeeCode: number,
   ): Promise<void> {
-    // @todo ต้องเช็คว่า ครั้งก่อนเบิกประเภทไหน
-    if (true) {
-      // ex ครั้งก่อนเป็นประจำ, set isEligible true
-      this.updateEligibility(result, employeeCode, true);
+    // เช็คว่า ครั้งก่อนเบิกประเภทไหน
+    // ใช้ข้อมูลจาก approval_clothing_expense เพื่อเช็คประเภทการเบิกครั้งก่อน
+    const existingClothingExpense = await this.knexService
+      .knex('approval_clothing_expense')
+      .where('employee_code', employeeCode)
+      .orderBy('created_at', 'desc')
+      .first();
+
+    if (existingClothingExpense) {
+      // ถ้ามีประวัติการเบิก → เช็คประเภทการเบิกครั้งก่อน
+      // ใช้ travel_type จาก approval table เพื่อเช็คประเภทการเบิกครั้งก่อน
+      const previousApproval = await this.knexService
+        .knex('approval')
+        .where('id', existingClothingExpense.approval_id)
+        .first();
+
+      if (previousApproval?.travel_type === 'international') {
+        // ครั้งก่อนเป็นประจำ → มีสิทธิ์เบิก
+        this.updateEligibility(result, employeeCode, true);
+      } else {
+        // ครั้งก่อนเป็นชั่วคราว → เช็ค 2 ปี
+        const isOverTwoYears = this.isOverTwoYears(
+          pwJob.EFFDT,
+          checkEligibilityDto.workStartDate,
+        );
+        this.updateEligibility(result, employeeCode, isOverTwoYears);
+      }
     } else {
-      // ex ครั้งก่อนเป็นชั่วคราว
-      // ให้เอา EFFDT จาก pwJob มาเช็คกับ checkEligibilityDto.workStartDate ว่าเกิน 2 ปี หรือยัง ถ้าเกินแล้ว, set isEligible true
-      // @todo อาจต้องเปลี่ยนไปเช็ค วันรายงานตัวกับ ViewDutyformCommands (รอคอนเฟิม)
+      // ไม่มีประวัติการเบิก → เช็ค 2 ปีจาก EFFDT
       const isOverTwoYears = this.isOverTwoYears(
         pwJob.EFFDT,
         checkEligibilityDto.workStartDate,
@@ -2602,8 +2872,12 @@ export class ApprovalService {
   private isOverTwoYears(effdt: string, workStartDate: string): boolean {
     const effdtDate = new Date(effdt);
     const workStartDateObj = new Date(workStartDate);
-    const diffTime = Math.abs(effdtDate.getTime() - workStartDateObj.getTime());
-    const diffYears = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 365));
+    
+    // คำนวณความแตกต่างระหว่างวันที่ (ไม่ใช้ Math.abs())
+    const diffTime = workStartDateObj.getTime() - effdtDate.getTime();
+    const diffDays = diffTime / (1000 * 60 * 60 * 24);
+    const diffYears = diffDays / 365;
+    
     return diffYears > 2;
   }
 
