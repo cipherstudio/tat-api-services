@@ -389,8 +389,8 @@ export class ApprovalService {
       query = query.where('approval.id', 0); // This will return no results
     }
 
-    // Add privilege level filtering based on user's position
-    if (employeeCode) {
+    // Add privilege level filtering based on user's position (only for isRelatedToMe)
+    if (employeeCode && isRelatedToMe) {
       const userPrivilegeLevel = await this.getUserPrivilegeLevel(employeeCode);
 
       const levelHierarchy: Record<string, number> = {
@@ -3011,6 +3011,21 @@ export class ApprovalService {
           'approval.id',
         );
 
+      // Get pending approvals that need to be approved by this employee
+      // First get the PENDING status label ID
+      const pendingStatusLabel = await this.knexService
+        .knex('approval_status_labels')
+        .where('status_code', 'PENDING')
+        .select('id')
+        .first();
+
+      // Get pending approvals using the same conditions as /api/v1/approvals
+      const pendingApprovalsToApprove = await this.knexService.knex('approval')
+        .where('approval.continuous_employee_code', employeeCode)
+        .where('approval.approval_status_label_id', pendingStatusLabel?.id)
+        .whereNull('approval.deleted_at')
+        .select('approval.id');
+
       // Get status labels separately
       const statusLabels = await this.knexService
         .knex('approval_status_labels')
@@ -3066,6 +3081,7 @@ export class ApprovalService {
         pending: initStatusBreakdown(),
         approved: initStatusBreakdown(),
         rejected: initStatusBreakdown(),
+        toApprove: initStatusBreakdown(),
       };
 
       const summary: SummaryDto = {
@@ -3074,6 +3090,7 @@ export class ApprovalService {
         pending: 0,
         approved: 0,
         rejected: 0,
+        toApprove: 0,
       };
 
       // Process raw statistics
@@ -3100,6 +3117,10 @@ export class ApprovalService {
           case 'rejected':
             statusKey = 'rejected';
             summary.rejected += count;
+            break;
+          case 'toApprove':
+            statusKey = 'toApprove';
+            summary.toApprove += count;
             break;
           default:
             // If unknown status, treat as draft
@@ -3128,6 +3149,44 @@ export class ApprovalService {
         breakdown[statusKey].byTravelType[travelTypeKey] += count;
         summary.total += count;
       });
+
+      // Count pending approvals to approve
+      summary.toApprove = pendingApprovalsToApprove.length;
+
+      // Process toApprove breakdown by travel type
+      const toApproveBreakdownMap = new Map<string, number>();
+      
+      // Get detailed data for toApprove breakdown using the same conditions as /api/v1/approvals
+      const toApproveDetails = await this.knexService.knex('approval')
+        .where('approval.continuous_employee_code', employeeCode)
+        .where('approval.approval_status_label_id', pendingStatusLabel?.id)
+        .whereNull('approval.deleted_at')
+        .select('approval.travel_type');
+
+      toApproveDetails.forEach((item) => {
+        const travelType = item.travel_type || 'unknown';
+        
+        // Map travel types using the same switch case as other statistics
+        let travelTypeKey: keyof TravelTypeBreakdownDto;
+        switch (travelType) {
+          case 'temporary-domestic':
+          case 'temporary-international':
+          case 'temporary-both':
+          case 'domestic':
+          case 'international':
+          case 'training-domestic':
+          case 'training-international':
+            travelTypeKey = travelType as keyof TravelTypeBreakdownDto;
+            break;
+          default:
+            travelTypeKey = 'unknown';
+        }
+        
+        breakdown.toApprove.byTravelType[travelTypeKey] += 1;
+      });
+
+      // Update toApprove breakdown total
+      breakdown.toApprove.total = summary.toApprove;
 
       const response: ApprovalStatisticsResponseDto = {
         success: true,
