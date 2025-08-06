@@ -116,7 +116,18 @@ export class AbHolidayRepository extends KnexBaseRepository<AbHoliday> {
     const countResult = await countQuery.count('* as count').first();
     const total = Number(countResult?.count || 0);
 
-    const dbEntities = await builder.select().orderBy('HOLIDAY_DATE', 'asc');
+    const dbEntities = await builder
+      .select([
+        'HOLIDAY_DATE',
+        this.knex.raw('TO_CHAR(DESCRIPTION) AS DESCRIPTION'),
+        'CREATE_DATE',
+        this.knex.raw('TO_CHAR(PSN_CODE) AS PSN_CODE'),
+        'POG_CODE',
+        'HOLIDAY_FLAG',
+        'POG_TYPE',
+        'ID',
+      ])
+      .orderBy('HOLIDAY_DATE', 'asc');
     const data = await Promise.all(
       dbEntities.map(async (e) => await toCamelCase<AbHoliday>(e)),
     );
