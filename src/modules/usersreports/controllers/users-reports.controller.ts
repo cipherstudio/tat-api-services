@@ -21,8 +21,8 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
 @ApiTags('Users Reports')
 @Controller('users-reports')
-// @UseGuards(JwtAuthGuard)
-// @ApiBearerAuth('JWT-auth')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth('JWT-auth')
 export class UsersReportsController {
   constructor(private readonly usersReportsService: UsersReportsService) {}
 
@@ -77,18 +77,18 @@ export class UsersReportsController {
   @ApiQuery({ name: 'limit', type: Number, required: false, description: 'Number of items per page' })
   @ApiQuery({ name: 'orderBy', type: String, required: false, description: 'Field to order by' })
   @ApiQuery({ name: 'orderDir', type: String, required: false, description: 'Order direction (ASC/DESC)' })
-  @ApiQuery({ name: 'startDate', required: false, description: 'วันที่เริ่มต้น' })
-  @ApiQuery({ name: 'endDate', required: false, description: 'วันที่สิ้นสุด' })
-  @ApiQuery({ name: 'userId', required: false, description: 'รหัสผู้ใช้' })
-  @ApiQuery({ name: 'budgetType', required: false, description: 'ประเภทงบประมาณ' })
-  @ApiQuery({ name: 'travelType', required: false, description: 'ประเภทการเดินทาง' })
+  @ApiQuery({ name: 'startDate', required: false, description: 'วันที่อนุมัติตั้งแต่' })
+  @ApiQuery({ name: 'endDate', required: false, description: 'วันที่อนุมัติถึง' })
+  @ApiQuery({ name: 'userId', required: false, description: 'รหัสผู้ตั้งเรื่องอนุมัติ' })
+  @ApiQuery({ name: 'budgetType', required: false, description: 'ประเภทงบประมาณ (จาก approval_budgets.budget_type)' })
+  @ApiQuery({ name: 'travelType', required: false, description: 'ประเภทรายการ (จาก approval_budgets.item_type)' })
   @ApiQuery({ name: 'minAmount', required: false, description: 'จำนวนเงินขั้นต่ำ' })
   @ApiQuery({ name: 'maxAmount', required: false, description: 'จำนวนเงินสูงสุด' })
   async getExpenditureReport(@Query() query: ExpenditureQueryDto) {
     const queryOptions = {
       page: query.page || 1,
       limit: query.limit || 10,
-      orderBy: query.orderBy || 'created_at',
+      orderBy: query.orderBy || 'approval_budgets.created_at',
       orderDir: query.orderDir || 'DESC',
       ...query,
     };

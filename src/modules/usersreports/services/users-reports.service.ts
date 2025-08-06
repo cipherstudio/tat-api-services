@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { UsersReportsQueryDto } from '../dto/users-reports-query.dto';
+import { WorkQueryDto } from '../dto/work-query.dto';
 import { UsersReportsRepository } from '../repositories/users-reports.repository';
 import { RedisCacheService } from '../../cache/redis-cache.service';
 
@@ -44,7 +45,7 @@ export class UsersReportsService {
   /**
    * รายงานการจัดทำรายงานเดินทางปฏิบัติงาน
    */
-  async getWorkReport(query: UsersReportsQueryDto) {
+  async getWorkReport(query: WorkQueryDto) {
     const cacheKey = `${this.CACHE_PREFIX}:work:${JSON.stringify(query)}`;
     
     // Try to get from cache first

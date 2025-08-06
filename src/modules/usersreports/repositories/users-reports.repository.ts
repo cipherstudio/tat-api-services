@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { CommuteReports } from '../entities/commute-reports.entity';
 import { ClothingReport } from '../entities/clothing-report.entity';
 import { ActivityReport } from '../entities/activity-report.entity';
+import { ExpenditureReport } from '../entities/expenditure-report.entity';
+import { WorkReport } from '../entities/work-report.entity';
 import { KnexBaseRepository } from '../../../common/repositories/knex-base.repository';
 import { KnexService } from '../../../database/knex-service/knex.service';
 import { toCamelCase, toSnakeCase } from '../../../common/utils/case-mapping';
@@ -174,7 +176,7 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
 
     // Transform data and add date ranges
     const transformedData = await Promise.all(data.map(async (item) => {
-      const transformedItem = await toCamelCase(item);
+      const transformedItem = await toCamelCase<CommuteReports>(item);
       return {
         ...(transformedItem as any),
         approvalDateRanges: dateRangeMap.get(item.id) || [],
@@ -258,7 +260,7 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
 
     // Transform data
     const transformedData = await Promise.all(data.map(async (item) => {
-      const transformedItem = await toCamelCase(item);
+      const transformedItem = await toCamelCase<WorkReport>(item);
       return transformedItem;
     }));
 
@@ -276,29 +278,138 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
 
   // Custom method for expenditure reports
   async findExpenditureReports(query: any) {
+    // Extract pagination and sorting parameters
     const { page, limit, orderBy, orderDir, ...conditions } = query;
-    const dbConditions: Record<string, any> = {};
     
-    if (conditions.startDate) {
-      dbConditions.created_at = { $gte: conditions.startDate };
-    }
-    if (conditions.endDate) {
-      dbConditions.created_at = { ...dbConditions.created_at, $lte: conditions.endDate };
-    }
-    if (conditions.userId) {
-      dbConditions.user_id = conditions.userId;
-    }
-    if (conditions.budgetType) {
-      dbConditions.travel_type = conditions.budgetType;
+    // Build query with join to approval and OP_ORGANIZE_R
+    let dbQuery = this.knexService.knex('approval_budgets')
+      .leftJoin('approval', 'approval_budgets.approval_id', 'approval.id')
+      .leftJoin('OP_ORGANIZE_R', 'approval_budgets.department', 'OP_ORGANIZE_R.POG_CODE')
+      .whereNotNull('approval.approval_date')
+      .select(
+        'approval_budgets.id',
+        'approval_budgets.budget_type',
+        'approval_budgets.item_type',
+        'approval_budgets.department',
+        'approval_budgets.approval_id',
+        'approval_budgets.created_at',
+        'approval_budgets.updated_at',
+        'approval.document_title',
+        'approval.name',
+        'approval.approval_date',
+        'OP_ORGANIZE_R.POG_DESC'
+      );
+
+    // Add date range conditions for approval date
+    if (conditions.startDate && conditions.endDate) {
+      // Both dates provided - filter by date range
+      dbQuery = dbQuery.whereBetween('approval.approval_date', [
+        conditions.startDate,
+        conditions.endDate,
+      ]);
+    } else if (conditions.startDate) {
+      // Only start date provided - filter from start date onwards
+      dbQuery = dbQuery.where('approval.approval_date', '>=', conditions.startDate);
+    } else if (conditions.endDate) {
+      // Only end date provided - filter up to end date
+      dbQuery = dbQuery.where('approval.approval_date', '<=', conditions.endDate);
     }
 
-    return this.findWithPagination(
-      page || 1,
-      limit || 10,
-      dbConditions,
-      orderBy || 'created_at',
-      orderDir || 'desc',
-    );
+    // Add budget type filter if provided
+    if (conditions.budgetType) {
+      dbQuery = dbQuery.where('approval_budgets.budget_type', conditions.budgetType);
+    }
+
+    // Add travel type filter if provided
+    if (conditions.travelType) {
+      dbQuery = dbQuery.where('approval_budgets.item_type', conditions.travelType);
+    }
+
+    // Add min amount filter if provided
+    if (conditions.minAmount) {
+      dbQuery = dbQuery.where('approval_budgets.amount', '>=', conditions.minAmount);
+    }
+
+    // Add max amount filter if provided
+    if (conditions.maxAmount) {
+      dbQuery = dbQuery.where('approval_budgets.amount', '<=', conditions.maxAmount);
+    }
+
+    // Add user ID filter if provided
+    if (conditions.userId) {
+      dbQuery = dbQuery.where('approval.created_employee_code', conditions.userId);
+    }
+
+    // Add order by
+    const orderByField = orderBy || 'approval_budgets.created_at';
+    const orderDirection = orderDir || 'desc';
+    dbQuery = dbQuery.orderBy(orderByField, orderDirection);
+
+    // Get total count for pagination (without ORDER BY)
+    const countQuery = this.knexService.knex('approval_budgets')
+      .leftJoin('approval', 'approval_budgets.approval_id', 'approval.id')
+      .leftJoin('OP_ORGANIZE_R', 'approval_budgets.department', 'OP_ORGANIZE_R.POG_CODE')
+      .whereNotNull('approval.approval_date');
+
+    // Apply the same filters to count query
+    if (conditions.startDate && conditions.endDate) {
+      countQuery.whereBetween('approval.approval_date', [
+        conditions.startDate,
+        conditions.endDate,
+      ]);
+    } else if (conditions.startDate) {
+      countQuery.where('approval.approval_date', '>=', conditions.startDate);
+    } else if (conditions.endDate) {
+      countQuery.where('approval.approval_date', '<=', conditions.endDate);
+    }
+    if (conditions.budgetType) {
+      countQuery.where('approval_budgets.budget_type', conditions.budgetType);
+    }
+    if (conditions.travelType) {
+      countQuery.where('approval_budgets.item_type', conditions.travelType);
+    }
+    if (conditions.minAmount) {
+      countQuery.where('approval_budgets.amount', '>=', conditions.minAmount);
+    }
+    if (conditions.maxAmount) {
+      countQuery.where('approval_budgets.amount', '<=', conditions.maxAmount);
+    }
+    if (conditions.userId) {
+      countQuery.where('approval.created_employee_code', conditions.userId);
+    }
+
+    const total = await countQuery.count('* as count').first();
+
+    // Add pagination
+    const pageNum = page || 1;
+    const limitNum = limit || 10;
+    const offset = (pageNum - 1) * limitNum;
+    
+    dbQuery = dbQuery.limit(limitNum).offset(offset);
+
+    // Execute query
+    const data = await dbQuery;
+
+    // Calculate pagination metadata
+    const totalCount = total ? parseInt(total.count as string) : 0;
+    const totalPages = Math.ceil(totalCount / limitNum);
+
+    // Transform data
+    const transformedData = await Promise.all(data.map(async (item) => {
+      const transformedItem = await toCamelCase<ExpenditureReport>(item);
+      return transformedItem;
+    }));
+
+    return {
+      data: transformedData,
+      meta: {
+        total: totalCount,
+        page: pageNum,
+        limit: limitNum,
+        totalPages,
+        lastPage: totalPages,
+      },
+    };
   }
 
   // Custom method for clothing reports
