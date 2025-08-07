@@ -85,9 +85,10 @@ export class UsersReportsController {
   @ApiQuery({ name: 'endDate', required: false, description: 'วันที่อนุมัติถึง' })
   @ApiQuery({ name: 'userId', required: false, description: 'รหัสผู้ตั้งเรื่องอนุมัติ' })
   @ApiQuery({ name: 'budgetType', required: false, description: 'ประเภทงบประมาณ (จาก approval_budgets.budget_type)' })
-  @ApiQuery({ name: 'travelType', required: false, description: 'ประเภทรายการ (จาก approval_budgets.item_type)' })
-  @ApiQuery({ name: 'minAmount', required: false, description: 'จำนวนเงินขั้นต่ำ' })
-  @ApiQuery({ name: 'maxAmount', required: false, description: 'จำนวนเงินสูงสุด' })
+  @ApiQuery({ name: 'itemType', required: false, description: 'ประเภทรายการ (จาก approval_budgets.item_type)' })
+  @ApiQuery({ name: 'department', required: false, description: 'หน่วยงานเจ้าของงบโครงการย่อย' })
+  @ApiQuery({ name: 'documentTitle', required: false, description: 'เรื่อง' })
+  @ApiQuery({ name: 'requesterName', required: false, description: 'ผู้ตั้งเรื่องอนุมัติ' })
   async getExpenditureReport(@Query() query: ExpenditureQueryDto) {
     const queryOptions = {
       page: query.page || 1,

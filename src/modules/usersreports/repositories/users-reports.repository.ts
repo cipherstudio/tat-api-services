@@ -407,19 +407,24 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
       dbQuery = dbQuery.where('approval_budgets.budget_type', conditions.budgetType);
     }
 
-    // Add travel type filter if provided
-    if (conditions.travelType) {
-      dbQuery = dbQuery.where('approval_budgets.item_type', conditions.travelType);
+    // Add item type filter if provided
+    if (conditions.itemType) {
+      dbQuery = dbQuery.where('approval_budgets.item_type', conditions.itemType);
     }
 
-    // Add min amount filter if provided
-    if (conditions.minAmount) {
-      dbQuery = dbQuery.where('approval_budgets.amount', '>=', conditions.minAmount);
+    // Add department filter if provided
+    if (conditions.department) {
+      dbQuery = dbQuery.where('OP_ORGANIZE_R.POG_DESC', 'like', `%${conditions.department}%`);
     }
 
-    // Add max amount filter if provided
-    if (conditions.maxAmount) {
-      dbQuery = dbQuery.where('approval_budgets.amount', '<=', conditions.maxAmount);
+    // Add document title filter if provided
+    if (conditions.documentTitle) {
+      dbQuery = dbQuery.where('approval.document_title', 'like', `%${conditions.documentTitle}%`);
+    }
+
+    // Add requester name filter if provided
+    if (conditions.requesterName) {
+      dbQuery = dbQuery.where('approval.name', 'like', `%${conditions.requesterName}%`);
     }
 
     // Add user ID filter if provided
@@ -453,14 +458,17 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     if (conditions.budgetType) {
       countQuery.where('approval_budgets.budget_type', conditions.budgetType);
     }
-    if (conditions.travelType) {
-      countQuery.where('approval_budgets.item_type', conditions.travelType);
+    if (conditions.itemType) {
+      countQuery.where('approval_budgets.item_type', conditions.itemType);
     }
-    if (conditions.minAmount) {
-      countQuery.where('approval_budgets.amount', '>=', conditions.minAmount);
+    if (conditions.department) {
+      countQuery.where('OP_ORGANIZE_R.POG_DESC', 'like', `%${conditions.department}%`);
     }
-    if (conditions.maxAmount) {
-      countQuery.where('approval_budgets.amount', '<=', conditions.maxAmount);
+    if (conditions.documentTitle) {
+      countQuery.where('approval.document_title', 'like', `%${conditions.documentTitle}%`);
+    }
+    if (conditions.requesterName) {
+      countQuery.where('approval.name', 'like', `%${conditions.requesterName}%`);
     }
     if (conditions.userId) {
       countQuery.where('approval.created_employee_code', conditions.userId);

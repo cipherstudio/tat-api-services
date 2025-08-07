@@ -45,20 +45,23 @@ export class ExpenditureQueryDto {
   @IsString()
   budgetType?: string;
 
-  @ApiPropertyOptional({ description: 'ประเภทการเดินทาง' })
+  @ApiPropertyOptional({ description: 'ประเภทรายการ' })
   @IsOptional()
   @IsString()
-  travelType?: string;
+  itemType?: string;
 
-  @ApiPropertyOptional({ description: 'จำนวนเงินขั้นต่ำ' })
+  @ApiPropertyOptional({ description: 'หน่วยงานเจ้าของงบโครงการย่อย' })
   @IsOptional()
-  @IsNumber()
-  @Transform(({ value }) => parseFloat(value))
-  minAmount?: number;
+  @IsString()
+  department?: string;
 
-  @ApiPropertyOptional({ description: 'จำนวนเงินสูงสุด' })
+  @ApiPropertyOptional({ description: 'เรื่อง' })
   @IsOptional()
-  @IsNumber()
-  @Transform(({ value }) => parseFloat(value))
-  maxAmount?: number;
+  @IsString()
+  documentTitle?: string;
+
+  @ApiPropertyOptional({ description: 'ผู้ตั้งเรื่องอนุมัติ' })
+  @IsOptional()
+  @IsString()
+  requesterName?: string;
 } 
