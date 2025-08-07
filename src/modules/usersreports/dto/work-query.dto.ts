@@ -34,4 +34,19 @@ export class WorkQueryDto {
   @IsOptional()
   @IsString()
   title?: string;
+
+  @ApiPropertyOptional({ description: 'ผู้จัดทำรายงาน' })
+  @IsOptional()
+  @IsString()
+  creatorName?: string;
+
+  @ApiPropertyOptional({ description: 'วันที่สร้างเอกสารตั้งแต่' })
+  @IsOptional()
+  @IsString()
+  startDate?: string;
+
+  @ApiPropertyOptional({ description: 'วันที่สร้างเอกสารถึง' })
+  @IsOptional()
+  @IsString()
+  endDate?: string;
 } 

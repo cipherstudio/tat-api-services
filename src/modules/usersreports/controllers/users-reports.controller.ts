@@ -59,6 +59,9 @@ export class UsersReportsController {
   @ApiQuery({ name: 'orderDir', type: String, required: false, description: 'Order direction (ASC/DESC)' })
   @ApiQuery({ name: 'documentNumber', required: false, description: 'หมายเลขเอกสาร' })
   @ApiQuery({ name: 'title', required: false, description: 'ชื่อเอกสาร' })
+  @ApiQuery({ name: 'creatorName', required: false, description: 'ผู้จัดทำรายงาน' })
+  @ApiQuery({ name: 'startDate', required: false, description: 'วันที่สร้างเอกสารตั้งแต่' })
+  @ApiQuery({ name: 'endDate', required: false, description: 'วันที่สร้างเอกสารถึง' })
   async getWorkReport(@Query() query: WorkQueryDto) {
     const queryOptions = {
       page: query.page || 1,

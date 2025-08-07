@@ -270,6 +270,26 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
       dbQuery = dbQuery.where('report_approve.title', 'like', `%${conditions.title}%`);
     }
 
+    // Add creator name filter
+    if (conditions.creatorName) {
+      dbQuery = dbQuery.where('report_approve.creator_name', 'like', `%${conditions.creatorName}%`);
+    }
+
+    // Add date range conditions for created_at
+    if (conditions.startDate && conditions.endDate) {
+      // Both dates provided - filter by date range
+      dbQuery = dbQuery.whereBetween('report_approve.created_at', [
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD\')', [conditions.startDate]),
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']),
+      ]);
+    } else if (conditions.startDate) {
+      // Only start date provided - filter from start date onwards
+      dbQuery = dbQuery.where('report_approve.created_at', '>=', this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD\')', [conditions.startDate]));
+    } else if (conditions.endDate) {
+      // Only end date provided - filter up to end date
+      dbQuery = dbQuery.where('report_approve.created_at', '<=', this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']));
+    }
+
     // Add order by
     const orderByField = orderBy || 'report_approve.created_at';
     const orderDirection = orderDir || 'desc';
@@ -285,6 +305,19 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     }
     if (conditions.title) {
       countQuery.where('report_approve.title', 'like', `%${conditions.title}%`);
+    }
+    if (conditions.creatorName) {
+      countQuery.where('report_approve.creator_name', 'like', `%${conditions.creatorName}%`);
+    }
+    if (conditions.startDate && conditions.endDate) {
+      countQuery.whereBetween('report_approve.created_at', [
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD\')', [conditions.startDate]),
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']),
+      ]);
+    } else if (conditions.startDate) {
+      countQuery.where('report_approve.created_at', '>=', this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD\')', [conditions.startDate]));
+    } else if (conditions.endDate) {
+      countQuery.where('report_approve.created_at', '<=', this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']));
     }
 
     const total = await countQuery.count('* as count').first();
