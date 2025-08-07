@@ -73,6 +73,11 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
       dbQuery = dbQuery.where('approval.document_title', 'like', `%${conditions.documentTitle}%`);
     }
 
+    // Add requester name filter
+    if (conditions.requesterName) {
+      dbQuery = dbQuery.where('approval.name', 'like', `%${conditions.requesterName}%`);
+    }
+
     // Add date range conditions for approval date
     if (conditions.approvalDateStart && conditions.approvalDateEnd) {
       // Both dates provided - filter by date range
@@ -114,6 +119,9 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     }
     if (conditions.documentTitle) {
       countQuery.where('approval.document_title', 'like', `%${conditions.documentTitle}%`);
+    }
+    if (conditions.requesterName) {
+      countQuery.where('approval.name', 'like', `%${conditions.requesterName}%`);
     }
     if (conditions.approvalDateStart && conditions.approvalDateEnd) {
       countQuery.whereBetween('approval.approval_date', [

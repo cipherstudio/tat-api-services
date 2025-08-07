@@ -43,6 +43,11 @@ export class CommuteQueryDto {
   @IsString()
   documentTitle?: string;
 
+  @ApiPropertyOptional({ description: 'ผู้ขออนุมัติ' })
+  @IsOptional()
+  @IsString()
+  requesterName?: string;
+
   @ApiPropertyOptional({ description: 'วันที่เดินทางตั้งแต่' })
   @IsOptional()
   @IsDateString()

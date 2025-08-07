@@ -36,6 +36,7 @@ export class UsersReportsController {
   @ApiQuery({ name: 'incrementId', required: false, description: 'รหัสหนังสือขออนุมัติเดินทาง' })
   @ApiQuery({ name: 'approvalStatus', required: false, description: 'สถานะการอนุมัติ (DRAFT, PENDING, APPROVED, REJECTED)' })
   @ApiQuery({ name: 'documentTitle', required: false, description: 'เรื่องขออนุมัติเดินทาง' })
+  @ApiQuery({ name: 'requesterName', required: false, description: 'ผู้ขออนุมัติ' })
   @ApiQuery({ name: 'approvalDateStart', required: false, description: 'วันที่เดินทางตั้งแต่' })
   @ApiQuery({ name: 'approvalDateEnd', required: false, description: 'วันที่เดินทางถึง' })
   @ApiQuery({ name: 'travelType', required: false, description: 'ประเภทการเดินทาง' })
