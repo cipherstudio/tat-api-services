@@ -1,5 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
 
+export interface Attachment {
+  id: number;
+  entityType: string;
+  entityId: number;
+  fileId: number;
+  fileName: string;
+  filePath: string;
+  size: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CommuteReports {
   /**
    * The unique identifier for the report
@@ -68,4 +80,9 @@ export interface CommuteReports {
     startDate: string;
     endDate: string;
   }>;
+
+  /**
+   * Attachments for the approval
+   */
+  attachments?: Attachment[];
 } 

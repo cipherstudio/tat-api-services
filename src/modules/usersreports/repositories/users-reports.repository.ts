@@ -7,10 +7,14 @@ import { WorkReport } from '../entities/work-report.entity';
 import { KnexBaseRepository } from '../../../common/repositories/knex-base.repository';
 import { KnexService } from '../../../database/knex-service/knex.service';
 import { toCamelCase, toSnakeCase } from '../../../common/utils/case-mapping';
+import { ApprovalAttachmentService } from '../../approval/services/approval-attachment.service';
 
 @Injectable()
 export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
-  constructor(knexService: KnexService) {
+  constructor(
+    knexService: KnexService,
+    private readonly attachmentService: ApprovalAttachmentService,
+  ) {
     super(knexService, 'approval');
   }
 
@@ -143,6 +147,7 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     // Get date ranges for all approvals
     const approvalIds = data.map(item => item.id);
     let dateRanges: any[] = [];
+    let allAttachments: any[] = [];
     
     if (approvalIds.length > 0) {
       const dateRangePromises = approvalIds.map(async (approvalId) => {
@@ -155,6 +160,38 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
       });
 
       dateRanges = await Promise.all(dateRangePromises);
+
+      // Get all attachments for each approval
+      const allAttachmentPromises = approvalIds.map(async (approvalId) => {
+        const documentAtts = await this.attachmentService.getAttachments(
+          'approval_document',
+          approvalId,
+        );
+        const signatureAtts = await this.attachmentService.getAttachments(
+          'approval_signature',
+          approvalId,
+        );
+        const budgetAtts = await this.attachmentService.getAttachments(
+          'approval_budgets',
+          approvalId,
+        );
+        const clothingAtts = await this.attachmentService.getAttachments(
+          'approval_clothing_expense',
+          approvalId,
+        );
+        const continuousAtts = await this.attachmentService.getAttachments(
+          'approval_continuous_signature',
+          approvalId,
+        );
+        return [
+          ...documentAtts,
+          ...signatureAtts,
+          ...budgetAtts,
+          ...clothingAtts,
+          ...continuousAtts,
+        ];
+      });
+      allAttachments = await Promise.all(allAttachmentPromises);
     }
 
     // Create a map of date ranges by approval ID
@@ -176,12 +213,18 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     const totalCount = total ? parseInt(total.count as string) : 0;
     const totalPages = Math.ceil(totalCount / limitNum);
 
-    // Transform data and add date ranges
-    const transformedData = await Promise.all(data.map(async (item) => {
+    // Transform data and add date ranges and attachments
+    const transformedData = await Promise.all(data.map(async (item, index) => {
       const transformedItem = await toCamelCase<CommuteReports>(item);
+      // รวมไฟล์แนบ approval_attachments ทุกประเภท
+      const allAtts =
+        allAttachments[index] && allAttachments[index].length > 0
+          ? allAttachments[index]
+          : [];
       return {
         ...(transformedItem as any),
         approvalDateRanges: dateRangeMap.get(item.id) || [],
+        attachments: allAtts,
       };
     }));
 
