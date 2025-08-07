@@ -53,6 +53,7 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     // Build query with join to approval_status_labels
     let dbQuery = this.knexService.knex('approval')
       .leftJoin('approval_status_labels', 'approval.approval_status_label_id', 'approval_status_labels.id')
+      .whereNull('approval.deleted_at') // Exclude soft deleted records
       .select(
         'approval.*',
         'approval_status_labels.label as status_label',
@@ -100,7 +101,8 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
 
     // Get total count for pagination (without ORDER BY)
     const countQuery = this.knexService.knex('approval')
-      .leftJoin('approval_status_labels', 'approval.approval_status_label_id', 'approval_status_labels.id');
+      .leftJoin('approval_status_labels', 'approval.approval_status_label_id', 'approval_status_labels.id')
+      .whereNull('approval.deleted_at'); // Exclude soft deleted records
 
     // Apply the same filters to count query
     if (conditions.incrementId) {
@@ -286,6 +288,7 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
       .leftJoin('approval', 'approval_budgets.approval_id', 'approval.id')
       .leftJoin('OP_ORGANIZE_R', 'approval_budgets.department', 'OP_ORGANIZE_R.POG_CODE')
       .whereNotNull('approval.approval_date')
+      .whereNull('approval.deleted_at') // Exclude soft deleted records
       .select(
         'approval_budgets.id',
         'approval_budgets.budget_type',
@@ -349,7 +352,8 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     const countQuery = this.knexService.knex('approval_budgets')
       .leftJoin('approval', 'approval_budgets.approval_id', 'approval.id')
       .leftJoin('OP_ORGANIZE_R', 'approval_budgets.department', 'OP_ORGANIZE_R.POG_CODE')
-      .whereNotNull('approval.approval_date');
+      .whereNotNull('approval.approval_date')
+      .whereNull('approval.deleted_at'); // Exclude soft deleted records
 
     // Apply the same filters to count query
     if (conditions.startDate && conditions.endDate) {
@@ -421,6 +425,7 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     let dbQuery = this.knexService.knex('approval_clothing_expense')
       .leftJoin('approval', 'approval_clothing_expense.approval_id', 'approval.id')
       .leftJoin('EMPLOYEE', 'approval_clothing_expense.employee_code', 'EMPLOYEE.CODE')
+      .whereNull('approval.deleted_at') // Exclude soft deleted records
       .select(
         'approval_clothing_expense.id',
         'approval_clothing_expense.clothing_file_checked',
@@ -472,7 +477,8 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     // Get total count for pagination (without ORDER BY)
     const countQuery = this.knexService.knex('approval_clothing_expense')
       .leftJoin('approval', 'approval_clothing_expense.approval_id', 'approval.id')
-      .leftJoin('EMPLOYEE', 'approval_clothing_expense.employee_code', 'EMPLOYEE.CODE');
+      .leftJoin('EMPLOYEE', 'approval_clothing_expense.employee_code', 'EMPLOYEE.CODE')
+      .whereNull('approval.deleted_at'); // Exclude soft deleted records
 
     // Apply the same filters to count query
     if (conditions.startDate && conditions.endDate) {
