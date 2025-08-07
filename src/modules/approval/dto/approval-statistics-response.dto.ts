@@ -58,6 +58,9 @@ export class SummaryDto {
 
   @ApiProperty({ description: 'Rejected approvals count', example: 0 })
   rejected: number;
+
+  @ApiProperty({ description: 'To approve count', example: 0 })
+  toApprove: number;
 }
 
 /**
@@ -75,6 +78,9 @@ export class BreakdownDto {
 
   @ApiProperty({ description: 'Rejected statistics', type: StatusBreakdownDto })
   rejected: StatusBreakdownDto;
+
+  @ApiProperty({ description: 'To approve statistics', type: StatusBreakdownDto })
+  toApprove: StatusBreakdownDto;
 }
 
 /**
