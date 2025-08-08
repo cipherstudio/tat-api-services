@@ -905,6 +905,7 @@ export class ApprovalService {
         'asm.cancelled',
         'omt.PMT_LEVEL_CODE as viewLevel',
         'et.POSITION as viewPosition',
+        'et.EX_POSITION as viewExPosition',
         this.knexService.knex.raw(
           `row_number() over (partition by "asm"."id" order by "asm"."id" asc) as "rn"`,
         ),
