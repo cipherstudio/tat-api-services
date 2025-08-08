@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Approval } from './entities/approval.entity';
 import { ApprovalStatusLabel } from './entities/approval-status-label.entity';
 import { CreateApprovalDto } from './dto/create-approval.dto';
@@ -36,6 +36,7 @@ import {
   NotificationType,
   EntityType,
 } from '../notification/entities/notification.entity';
+import { AttachmentResponseDto } from './dto/approval-attachment.dto';
 
 @Injectable()
 export class ApprovalService {
@@ -4704,5 +4705,61 @@ export class ApprovalService {
       .first();
 
     return employee?.PMT_NAME_T || employee?.PMT_NAME_E || employeeCode;
+  }
+
+  async getApprovalFiles(id: number, type?: string): Promise<AttachmentResponseDto[]> {
+    const approval = await this.findById(id);
+    if (!approval) {
+      throw new NotFoundException(`Approval with ID ${id} not found`);
+    }
+
+    // ถ้ามีการกรองประเภทไฟล์
+    if (type) {
+      const validTypes = [
+        'approval_document',
+        'approval_signature', 
+        'approval_budgets',
+        'approval_clothing_expense',
+        'approval_continuous_signature'
+      ];
+      
+      if (!validTypes.includes(type)) {
+        throw new BadRequestException(`Invalid attachment type. Valid types are: ${validTypes.join(', ')}`);
+      }
+
+      return await this.attachmentService.getAttachments(type, id);
+    }
+
+    // ถ้าไม่มีการกรอง ให้ดึงไฟล์ทั้งหมด
+    const approvalDocuments = await this.attachmentService.getAttachments(
+      'approval_document',
+      id,
+    );
+    const approvalSignatures = await this.attachmentService.getAttachments(
+      'approval_signature',
+      id,
+    );
+    const budgetAttachments = await this.attachmentService.getAttachments(
+      'approval_budgets',
+      id,
+    );
+    const clothingExpenseAttachments = await this.attachmentService.getAttachments(
+      'approval_clothing_expense',
+      id,
+    );
+    const continuousSignatureAttachments = await this.attachmentService.getAttachments(
+      'approval_continuous_signature',
+      id,
+    );
+
+    const allAttachments = [
+      ...approvalDocuments,
+      ...approvalSignatures,
+      ...budgetAttachments,
+      ...clothingExpenseAttachments,
+      ...continuousSignatureAttachments,
+    ];
+
+    return allAttachments;
   }
 }

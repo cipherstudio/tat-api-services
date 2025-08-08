@@ -42,6 +42,7 @@ import { Employee } from '../dataviews/entities/employee.entity';
 import { ViewPosition4ot } from '../dataviews/entities/view-position-4ot.entity';
 import { OpLevelSalR } from '../dataviews/entities/op-level-sal-r.entity';
 //import { ApprovalWorkLocationDto } from './dto/approval-work-location.dto';
+import { AttachmentResponseDto, GetApprovalFilesQueryDto } from './dto/approval-attachment.dto';
 
 interface RequestWithUser extends Request {
   user: User & { employee?: Employee & ViewPosition4ot & OpLevelSalR };
@@ -409,6 +410,25 @@ export class ApprovalController {
     @Param('id', ParseIntPipe) id: number,
   ): Promise<ApprovalDetailResponseDto> {
     return this.approvalService.findById(id);
+  }
+
+  @Get(':id/files')
+  @ApiOperation({
+    summary: 'Get approval files',
+    description: 'Retrieve all files attached to an approval by ID',
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Approval files retrieved successfully',
+    type: [AttachmentResponseDto]
+  })
+  @ApiResponse({ status: 404, description: 'Approval not found' })
+  @ApiResponse({ status: 400, description: 'Invalid attachment type' })
+  getApprovalFiles(
+    @Param('id', ParseIntPipe) id: number,
+    @Query() query: GetApprovalFilesQueryDto,
+  ) {
+    return this.approvalService.getApprovalFiles(id, query.type);
   }
 
   @Patch(':id')

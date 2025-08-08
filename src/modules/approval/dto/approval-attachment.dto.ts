@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsString, IsOptional } from 'class-validator';
+import { IsNumber, IsString, IsOptional, IsIn } from 'class-validator';
 
 export class CreateAttachmentDto {
   @ApiProperty({
@@ -8,6 +8,18 @@ export class CreateAttachmentDto {
   })
   @IsNumber()
   fileId: number;
+}
+
+export class GetApprovalFilesQueryDto {
+  @ApiProperty({
+    description: 'ประเภทไฟล์แนบที่ต้องการกรอง',
+    required: false,
+    enum: ['approval_document', 'approval_signature', 'approval_budgets', 'approval_clothing_expense', 'approval_continuous_signature'],
+    example: 'approval_document'
+  })
+  @IsOptional()
+  @IsIn(['approval_document', 'approval_signature', 'approval_budgets', 'approval_clothing_expense', 'approval_continuous_signature'])
+  type?: string;
 }
 
 export class AttachmentResponseDto {
