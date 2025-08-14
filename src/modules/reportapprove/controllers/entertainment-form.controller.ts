@@ -8,6 +8,8 @@ import {
   Body,
   Query,
   ParseIntPipe,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -16,6 +18,7 @@ import {
   ApiResponse,
   ApiBody,
   ApiParam,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { EntertainmentFormService } from '../services/entertainment-form.service';
 import { CreateEntertainmentFormDto } from '../dto/create-entertainment-form.dto';
@@ -26,7 +29,10 @@ import {
 } from '../dto/entertainment-form-query.dto';
 import { ReportEntertainmentForm } from '../entities/report-entertainment-form.entity';
 import { EntertainmentFormStatus as StatusEntity } from '../entities/entertainment-form-status.entity';
+import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth('JWT-auth')
 @ApiTags('Entertainment Form')
 @Controller('entertainment-form')
 export class EntertainmentFormController {
@@ -37,12 +43,14 @@ export class EntertainmentFormController {
   @Get()
   @ApiOperation({
     summary: 'Get all entertainment forms with pagination and search',
+    description: 'Supports filtering by: วันที่ทำเรื่อง (created_at), ชื่อผู้ขอ (employee_name), ตำแหน่ง (employee_position), จำนวนเงิน (total_amount), ประเภท (entertainment_type), and more. Users can only see forms they created.',
   })
   @ApiOkResponse({
     description: 'List of entertainment forms with pagination metadata',
   })
-  async findAll(@Query() query: EntertainmentFormQueryDto) {
-    return this.entertainmentFormService.findAll(query);
+  async findAll(@Query() query: EntertainmentFormQueryDto, @Req() req: any) {
+    const employeeCode = req.user.employee.code;
+    return this.entertainmentFormService.findAll(query, employeeCode);
   }
 
   @Get('statuses')
@@ -53,15 +61,19 @@ export class EntertainmentFormController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get entertainment form by id with details' })
+  @ApiOperation({ 
+    summary: 'Get entertainment form by id with details',
+    description: 'Users can only view entertainment forms they created. Returns 404 if form not found or not owned by user.'
+  })
   @ApiParam({
     name: 'id',
     type: 'number',
     description: 'Entertainment form ID',
   })
   @ApiOkResponse({ type: ReportEntertainmentForm })
-  async findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.entertainmentFormService.findOne(id);
+  async findOne(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    const employeeCode = req.user.employee.code;
+    return this.entertainmentFormService.findOne(id, employeeCode);
   }
 
   @Get(':id/items')

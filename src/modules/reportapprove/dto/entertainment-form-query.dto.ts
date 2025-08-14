@@ -28,10 +28,15 @@ export class EntertainmentFormQueryDto {
   @IsString()
   employeeId?: string;
 
-  @ApiProperty({ example: 'John Doe', required: false })
+  @ApiProperty({ example: 'John Doe', required: false, description: 'ชื่อผู้ขอ' })
   @IsOptional()
   @IsString()
   employeeName?: string;
+
+  @ApiProperty({ example: 'Manager', required: false, description: 'ตำแหน่ง' })
+  @IsOptional()
+  @IsString()
+  employeePosition?: string;
 
   @ApiProperty({ example: 'IT Department', required: false })
   @IsOptional()
@@ -42,6 +47,34 @@ export class EntertainmentFormQueryDto {
   @IsOptional()
   @IsString()
   job?: string;
+
+  @ApiProperty({ example: 'พนักงาน ททท.', required: false, description: 'Employee type filter' })
+  @IsOptional()
+  @IsString()
+  employeeType?: string;
+
+  @ApiProperty({ example: 'รายครั้ง', required: false, description: 'ประเภท' })
+  @IsOptional()
+  @IsString()
+  entertainmentType?: string;
+
+  @ApiProperty({ example: 15000, required: false, description: 'จำนวนเงิน' })
+  @IsOptional()
+  @Transform(({ value }) => parseFloat(value))
+  @IsNumber()
+  totalAmount?: number;
+
+  @ApiProperty({ example: 20000, required: false, description: 'จำนวนเงินขั้นต่ำ' })
+  @IsOptional()
+  @Transform(({ value }) => parseFloat(value))
+  @IsNumber()
+  minAmount?: number;
+
+  @ApiProperty({ example: 50000, required: false, description: 'จำนวนเงินสูงสุด' })
+  @IsOptional()
+  @Transform(({ value }) => parseFloat(value))
+  @IsNumber()
+  maxAmount?: number;
 
   @ApiProperty({ enum: EntertainmentFormStatus, required: false })
   @IsOptional()
@@ -62,7 +95,7 @@ export class EntertainmentFormQueryDto {
   @ApiProperty({
     example: '2024-01-01',
     required: false,
-    description: 'Start date in YYYY-MM-DD format',
+    description: 'วันที่ทำเรื่องเริ่มต้น (YYYY-MM-DD)',
   })
   @IsOptional()
   @IsString()
@@ -78,7 +111,7 @@ export class EntertainmentFormQueryDto {
   @ApiProperty({
     example: '2024-12-31',
     required: false,
-    description: 'End date in YYYY-MM-DD format',
+    description: 'วันที่ทำเรื่องสิ้นสุด (YYYY-MM-DD)',
   })
   @IsOptional()
   @IsString()

@@ -5,18 +5,74 @@ import {
   IsOptional,
   IsArray,
   ValidateNested,
+  IsDateString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateEntertainmentItemDto } from './create-entertainment-form.dto';
 
-export class UpdateEntertainmentItemDto extends CreateEntertainmentItemDto {
+export class UpdateEntertainmentItemDto {
   @ApiProperty({ example: 1 })
   @IsOptional()
   @IsNumber()
   id?: number;
+
+  @ApiProperty({ example: 'เลี้ยงรับรองลูกค้าจากบริษัท ABC' })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiProperty({ example: '10 คน' })
+  @IsOptional()
+  @IsString()
+  peopleCount?: string;
+
+  @ApiProperty({ example: 'โรงแรมแกรนด์ พลาซ่า' })
+  @IsOptional()
+  @IsString()
+  venue?: string;
+
+  @ApiProperty({ example: '2024-06-21' })
+  @IsOptional()
+  @IsDateString()
+  eventDate?: Date;
+
+  @ApiProperty({ example: 'ต้อนรับลูกค้าใหม่' })
+  @IsOptional()
+  @IsString()
+  purpose?: string;
+
+  @ApiProperty({ example: 'R001' })
+  @IsOptional()
+  @IsString()
+  receiptNumber?: string;
+
+  @ApiProperty({ example: 'เล่มที่ 1' })
+  @IsOptional()
+  @IsString()
+  receiptBook?: string;
+
+  @ApiProperty({ example: 5000.0 })
+  @IsOptional()
+  @IsNumber()
+  amount?: number;
+
+  @ApiProperty({ example: 'ห้าพันบาทถ้วน' })
+  @IsOptional()
+  @IsString()
+  amountText?: string;
+
+  @ApiProperty({ example: 1 })
+  @IsOptional()
+  @IsNumber()
+  displayOrder?: number;
 }
 
 export class UpdateEntertainmentFormDto {
+  @ApiProperty({ example: 1 })
+  @IsOptional()
+  @IsNumber()
+  id?: number;
+
   @ApiProperty({ example: 'EMP001' })
   @IsOptional()
   @IsString()
@@ -47,6 +103,16 @@ export class UpdateEntertainmentFormDto {
   @IsString()
   job?: string;
 
+  @ApiProperty({ example: 'พนักงาน ททท.', description: 'Employee type (พนักงาน ททท., ผู้ว่าการ)' })
+  @IsOptional()
+  @IsString()
+  employeeType?: string;
+
+  @ApiProperty({ example: 'รายครั้ง', description: 'Type of entertainment (รายครั้ง, ประจำเดือน)' })
+  @IsOptional()
+  @IsString()
+  entertainmentType?: string;
+
   @ApiProperty({ example: 1 })
   @IsOptional()
   @IsNumber()
@@ -71,6 +137,11 @@ export class UpdateEntertainmentFormDto {
   @IsOptional()
   @IsString()
   updatedBy?: string;
+
+  @ApiProperty({ example: 'EMP001' })
+  @IsOptional()
+  @IsString()
+  createdBy?: string;
 
   @ApiProperty({ type: [UpdateEntertainmentItemDto] })
   @IsOptional()

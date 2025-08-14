@@ -32,14 +32,20 @@ export class ReportEntertainmentFormRepository extends KnexBaseRepository<Report
     }
   }
 
-  async findWithPaginationAndSearch(query: EntertainmentFormQueryDto) {
+  async findWithPaginationAndSearch(query: EntertainmentFormQueryDto, employeeCode?: string) {
     const {
       page = 1,
       limit = 10,
       employeeId,
       employeeName,
+      employeePosition,
       department,
       job,
+      employeeType,
+      entertainmentType,
+      totalAmount,
+      minAmount,
+      maxAmount,
       statusId,
       orderBy = 'created_at',
       direction = 'desc',
@@ -68,6 +74,14 @@ export class ReportEntertainmentFormRepository extends KnexBaseRepository<Report
       );
     }
 
+    if (employeePosition) {
+      baseQuery = baseQuery.where(
+        'ref.employee_position',
+        'like',
+        `%${employeePosition}%`,
+      );
+    }
+
     if (department) {
       baseQuery = baseQuery.where('ref.department', 'like', `%${department}%`);
     }
@@ -76,8 +90,33 @@ export class ReportEntertainmentFormRepository extends KnexBaseRepository<Report
       baseQuery = baseQuery.where('ref.job', 'like', `%${job}%`);
     }
 
+    if (employeeType) {
+      baseQuery = baseQuery.where('ref.employee_type', 'like', `%${employeeType}%`);
+    }
+
+    if (entertainmentType) {
+      baseQuery = baseQuery.where('ref.entertainment_type', 'like', `%${entertainmentType}%`);
+    }
+
+    if (totalAmount !== undefined) {
+      baseQuery = baseQuery.where('ref.total_amount', totalAmount);
+    }
+
+    if (minAmount !== undefined) {
+      baseQuery = baseQuery.where('ref.total_amount', '>=', minAmount);
+    }
+
+    if (maxAmount !== undefined) {
+      baseQuery = baseQuery.where('ref.total_amount', '<=', maxAmount);
+    }
+
     if (statusId) {
       baseQuery = baseQuery.where('ref.status_id', statusId);
+    }
+
+    // user can see only their own entertainment forms (unless they are admin/supervisor)
+    if (employeeCode) {
+      baseQuery = baseQuery.where('ref.created_by', employeeCode);
     }
 
     if (startDate) {
@@ -92,7 +131,7 @@ export class ReportEntertainmentFormRepository extends KnexBaseRepository<Report
       baseQuery = baseQuery.where(
         'ref.created_at',
         '<=',
-        this.knex.raw(`TO_DATE('${endDate}', 'YYYY-MM-DD')`),
+        this.knex.raw(`TO_DATE('${endDate} 23:59:59', 'YYYY-MM-DD HH24:MI:SS')`),
       );
     }
 
@@ -113,6 +152,9 @@ export class ReportEntertainmentFormRepository extends KnexBaseRepository<Report
         `%${searchTerm}%`,
       );
       baseQuery = baseQuery.orWhere('ref.job', 'like', `%${searchTerm}%`);
+      baseQuery = baseQuery.orWhere('ref.employee_type', 'like', `%${searchTerm}%`);
+      baseQuery = baseQuery.orWhere('ref.entertainment_type', 'like', `%${searchTerm}%`);
+      baseQuery = baseQuery.orWhere('ref.employee_position', 'like', `%${searchTerm}%`);
       // Note: section column might not exist in Oracle database
       // Uncomment the following line if the section column exists
       baseQuery = baseQuery.orWhere('ref.section', 'like', `%${searchTerm}%`);
@@ -134,6 +176,8 @@ export class ReportEntertainmentFormRepository extends KnexBaseRepository<Report
         'ref.department',
         'ref.section',
         'ref.job',
+        'ref.employee_type',
+        'ref.entertainment_type',
         'ref.status_id',
         'ref.total_amount',
         'ref.approved_by',
@@ -178,6 +222,8 @@ export class ReportEntertainmentFormRepository extends KnexBaseRepository<Report
           department: row.department,
           section: row.section,
           job: row.job,
+          employee_type: row.employee_type,
+          entertainment_type: row.entertainment_type,
           status_id: row.status_id,
           total_amount: row.total_amount,
           approved_by: row.approved_by,
@@ -228,11 +274,18 @@ export class ReportEntertainmentFormRepository extends KnexBaseRepository<Report
     };
   }
 
-  async findByIdWithDetails(id: number) {
-    const form = await this.knex('report_entertainment_form as ref')
+  async findByIdWithDetails(id: number, employeeCode?: string) {
+    let baseQuery = this.knex('report_entertainment_form as ref')
       .leftJoin('entertainment_form_status as efs', 'ref.status_id', 'efs.id')
       .leftJoin('report_entertainment_items as rei', 'ref.id', 'rei.report_id')
-      .where('ref.id', id)
+      .where('ref.id', id);
+
+    // Security check: user can only view their own entertainment forms
+    if (employeeCode) {
+      baseQuery = baseQuery.where('ref.created_by', employeeCode);
+    }
+
+    const form = await baseQuery
       .select(
         'ref.id',
         'ref.employee_id',
@@ -241,6 +294,8 @@ export class ReportEntertainmentFormRepository extends KnexBaseRepository<Report
         'ref.department',
         'ref.section',
         'ref.job',
+        'ref.employee_type',
+        'ref.entertainment_type',
         'ref.status_id',
         'ref.total_amount',
         'ref.approved_by',
@@ -286,6 +341,8 @@ export class ReportEntertainmentFormRepository extends KnexBaseRepository<Report
           department: row.department,
           section: row.section,
           job: row.job,
+          employee_type: row.employee_type,
+          entertainment_type: row.entertainment_type,
           status_id: row.status_id,
           total_amount: row.total_amount,
           approved_by: row.approved_by,

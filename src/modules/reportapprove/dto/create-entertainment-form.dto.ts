@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsArray,
   ValidateNested,
+  IsDateString,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 
@@ -27,7 +28,7 @@ export class CreateEntertainmentItemDto {
 
   @ApiProperty({ example: '2024-06-21' })
   @IsNotEmpty()
-  @IsString()
+  @IsDateString()
   @Transform(({ value }) => {
     if (!value) return value;
     // Ensure date is in YYYY-MM-DD format
@@ -98,6 +99,16 @@ export class CreateEntertainmentFormDto {
   @IsNotEmpty()
   @IsString()
   job: string;
+
+  @ApiProperty({ example: 'พนักงาน ททท.', description: 'Employee type (พนักงาน ททท., ผู้ว่าการ)' })
+  @IsOptional()
+  @IsString()
+  employeeType?: string;
+
+  @ApiProperty({ example: 'รายครั้ง', description: 'Type of entertainment (รายครั้ง, ประจำเดือน)' })
+  @IsOptional()
+  @IsString()
+  entertainmentType?: string;
 
   @ApiProperty({ example: 1 })
   @IsOptional()

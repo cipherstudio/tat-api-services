@@ -21,12 +21,19 @@ export class EntertainmentFormService {
     private readonly entertainmentStatusRepo: EntertainmentFormStatusRepository,
   ) {}
 
-  async findAll(query: EntertainmentFormQueryDto) {
-    return this.entertainmentFormRepo.findWithPaginationAndSearch(query);
+  async findAll(query: EntertainmentFormQueryDto, employeeCode?: string) {
+    return this.entertainmentFormRepo.findWithPaginationAndSearch(query, employeeCode);
   }
 
-  async findOne(id: number) {
-    return this.entertainmentFormRepo.findByIdWithDetails(id);
+  async findOne(id: number, employeeCode?: string) {
+    const form = await this.entertainmentFormRepo.findByIdWithDetails(id, employeeCode);
+    
+    // Security check: user can only view their own entertainment forms
+    if (employeeCode && form.createdBy !== employeeCode) {
+      throw new NotFoundException(`Entertainment form with ID ${id} not found`);
+    }
+    
+    return form;
   }
 
   async create(dto: CreateEntertainmentFormDto) {

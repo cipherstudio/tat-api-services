@@ -22,6 +22,12 @@ export class ReportEntertainmentForm {
   @ApiProperty({ example: 'Project Alpha' })
   job: string;
 
+  @ApiProperty({ example: 'พนักงาน ททท.', description: 'Employee type (พนักงาน ททท., ผู้ว่าการ)' })
+  employeeType: string;
+
+  @ApiProperty({ example: 'รายครั้ง', description: 'Type of entertainment (รายครั้ง, ประจำเดือน)' })
+  entertainmentType: string;
+
   @ApiProperty({ example: 1 })
   statusId: number;
 
