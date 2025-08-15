@@ -58,6 +58,17 @@ export class MeetingExpenseReportQueryDto {
   @IsString()
   meetingType?: string;
 
+  @ApiProperty({ example: 'การประชุมวางแผนงานประจำเดือน', required: false })
+  @IsOptional()
+  @IsString()
+  topic?: string;
+
+  @ApiProperty({ example: 5000.0, required: false })
+  @IsOptional()
+  @IsNumber()
+  @Transform(({ value }) => parseFloat(value))
+  totalAmount?: number;
+
   @ApiProperty({ enum: MeetingExpenseReportStatus, required: false })
   @IsOptional()
   @IsEnum(MeetingExpenseReportStatus)

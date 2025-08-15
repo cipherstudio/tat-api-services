@@ -15,12 +15,12 @@ export class MeetingExpenseReportService {
     private readonly meetingTypeRateRepo: MeetingTypeRateRepository,
   ) {}
 
-  async findAll(query: MeetingExpenseReportQueryDto) {
-    return this.meetingExpenseReportRepo.findWithPaginationAndSearch(query);
+  async findAll(query: MeetingExpenseReportQueryDto, employeeCode?: string) {
+    return this.meetingExpenseReportRepo.findWithPaginationAndSearch(query, employeeCode);
   }
 
-  async findById(id: number) {
-    const report = await this.meetingExpenseReportRepo.findByIdWithDetails(id);
+  async findById(id: number, employeeCode?: string) {
+    const report = await this.meetingExpenseReportRepo.findByIdWithDetails(id, employeeCode);
     if (!report) {
       throw new NotFoundException('Meeting expense report not found');
     }
@@ -47,10 +47,16 @@ export class MeetingExpenseReportService {
       meetingDate: new Date(reportData.meetingDate),
     });
 
-    // Create food rows
+    // Create food rows with proper column mapping
     if (foodRows && foodRows.length > 0) {
       const foodRowsData = foodRows.map((row) => ({
-        ...row,
+        meal_type: row.mealType, // camelCase -> snake_case
+        meal_name: row.mealName,
+        checked: row.checked,
+        rate: row.rate,
+        amount: row.amount,
+        receipt: row.receipt,
+        receipt_date: row.receiptDate ? new Date(row.receiptDate) : null, // Convert string to Date object
         meeting_expense_report_id: report.id,
       }));
       await this.meetingExpenseReportRepo.knex
@@ -58,10 +64,16 @@ export class MeetingExpenseReportService {
         .into('meeting_expense_report_food_rows');
     }
 
-    // Create snack rows
+    // Create snack rows with proper column mapping
     if (snackRows && snackRows.length > 0) {
       const snackRowsData = snackRows.map((row) => ({
-        ...row,
+        snack_type: row.snackType, // camelCase -> snake_case
+        snack_name: row.snackName,
+        checked: row.checked,
+        rate: row.rate,
+        amount: row.amount,
+        receipt: row.receipt,
+        receipt_date: row.receiptDate ? new Date(row.receiptDate) : null, // Convert string to Date object
         meeting_expense_report_id: report.id,
       }));
       await this.meetingExpenseReportRepo.knex
@@ -107,10 +119,16 @@ export class MeetingExpenseReportService {
         .from('meeting_expense_report_food_rows')
         .where('meeting_expense_report_id', id);
 
-      // Insert new food rows
+      // Insert new food rows with proper column mapping
       if (foodRows.length > 0) {
         const foodRowsData = foodRows.map((row) => ({
-          ...row,
+          meal_type: row.mealType, // camelCase -> snake_case
+          meal_name: row.mealName,
+          checked: row.checked,
+          rate: row.rate,
+          amount: row.amount,
+          receipt: row.receipt,
+          receipt_date: row.receiptDate ? new Date(row.receiptDate) : null, // Convert string to Date object
           meeting_expense_report_id: id,
         }));
         await this.meetingExpenseReportRepo.knex
@@ -127,10 +145,16 @@ export class MeetingExpenseReportService {
         .from('meeting_expense_report_snack_rows')
         .where('meeting_expense_report_id', id);
 
-      // Insert new snack rows
+      // Insert new snack rows with proper column mapping
       if (snackRows.length > 0) {
         const snackRowsData = snackRows.map((row) => ({
-          ...row,
+          snack_type: row.snackType, // camelCase -> snake_case
+          snack_name: row.snackName,
+          checked: row.checked,
+          rate: row.rate,
+          amount: row.amount,
+          receipt: row.receipt,
+          receipt_date: row.receiptDate ? new Date(row.receiptDate) : null, // Convert string to Date object
           meeting_expense_report_id: id,
         }));
         await this.meetingExpenseReportRepo.knex

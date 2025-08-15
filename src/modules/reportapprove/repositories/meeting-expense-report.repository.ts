@@ -10,7 +10,7 @@ export class MeetingExpenseReportRepository extends KnexBaseRepository<MeetingEx
     super(knexService, 'meeting_expense_reports');
   }
 
-  async findWithPaginationAndSearch(query: MeetingExpenseReportQueryDto) {
+  async findWithPaginationAndSearch(query: MeetingExpenseReportQueryDto, employeeCode?: string) {
     const {
       page = 1,
       limit = 10,
@@ -20,6 +20,8 @@ export class MeetingExpenseReportRepository extends KnexBaseRepository<MeetingEx
       section,
       job,
       meetingType,
+      topic,
+      totalAmount,
       status,
       orderBy = 'created_at',
       direction = 'desc',
@@ -32,6 +34,7 @@ export class MeetingExpenseReportRepository extends KnexBaseRepository<MeetingEx
 
     // Build base query
     let baseQuery = this.knex('meeting_expense_reports as mer')
+      .whereNull('mer.deleted_at') // เพิ่ม soft delete filter
       .leftJoin(
         'meeting_expense_report_food_rows as mfr',
         'mer.id',
@@ -42,6 +45,11 @@ export class MeetingExpenseReportRepository extends KnexBaseRepository<MeetingEx
         'mer.id',
         'msr.meeting_expense_report_id',
       );
+
+    // Security check: user can only view their own reports
+    if (employeeCode) {
+      baseQuery = baseQuery.where('mer.created_by', employeeCode);
+    }
 
     // Apply filters
     if (employeeId) {
@@ -66,6 +74,16 @@ export class MeetingExpenseReportRepository extends KnexBaseRepository<MeetingEx
         `%${meetingType}%`,
       );
     }
+    if (topic) {
+      baseQuery = baseQuery.where(
+        'mer.topic',
+        'like',
+        `%${topic}%`,
+      );
+    }
+    if (totalAmount) {
+      baseQuery = baseQuery.where('mer.total_amount', totalAmount);
+    }
     if (status) {
       baseQuery = baseQuery.where('mer.status', status);
     }
@@ -79,8 +97,8 @@ export class MeetingExpenseReportRepository extends KnexBaseRepository<MeetingEx
     if (endDate) {
       baseQuery = baseQuery.where(
         'mer.meeting_date',
-        '<=',
-        this.knex.raw(`TO_DATE('${endDate}', 'YYYY-MM-DD')`),
+        '<',
+        this.knex.raw(`TO_DATE('${endDate}', 'YYYY-MM-DD') + INTERVAL '1' DAY`),
       );
     }
     if (searchTerm) {
@@ -228,13 +246,19 @@ export class MeetingExpenseReportRepository extends KnexBaseRepository<MeetingEx
     };
   }
 
-  async findByIdWithDetails(id: number) {
-    const report = await this.knex
+  async findByIdWithDetails(id: number, employeeCode?: string) {
+    let baseQuery = this.knex
       .select('*')
       .from('meeting_expense_reports')
       .where('id', id)
-      .whereNull('deleted_at')
-      .first();
+      .whereNull('deleted_at');
+
+    // Security check: user can only view their own reports
+    if (employeeCode) {
+      baseQuery = baseQuery.where('created_by', employeeCode);
+    }
+
+    const report = await baseQuery.first();
 
     if (!report) {
       return null;

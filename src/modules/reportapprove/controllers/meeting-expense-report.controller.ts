@@ -9,6 +9,8 @@ import {
   Query,
   ParseIntPipe,
   HttpStatus,
+  UseGuards,
+  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -16,13 +18,17 @@ import {
   ApiResponse,
   ApiParam,
   ApiQuery,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { MeetingExpenseReportService } from '../services/meeting-expense-report.service';
 import { CreateMeetingExpenseReportDto } from '../dto/create-meeting-expense-report.dto';
 import { UpdateMeetingExpenseReportDto } from '../dto/update-meeting-expense-report.dto';
 import { MeetingExpenseReportQueryDto } from '../dto/meeting-expense-report-query.dto';
 import { MeetingExpenseReport } from '../entities/meeting-expense-report.entity';
+import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth('JWT-auth')
 @ApiTags('Meeting Expense Reports')
 @Controller('meeting-expense-reports')
 export class MeetingExpenseReportController {
@@ -33,17 +39,22 @@ export class MeetingExpenseReportController {
   @Get()
   @ApiOperation({
     summary: 'Get all meeting expense reports with pagination and search',
+    description: 'Users can only see reports they created.',
   })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Successfully retrieved meeting expense reports',
   })
-  async findAll(@Query() query: MeetingExpenseReportQueryDto) {
-    return this.meetingExpenseReportService.findAll(query);
+  async findAll(@Query() query: MeetingExpenseReportQueryDto, @Req() req: any) {
+    const employeeCode = req.user.employee.code;
+    return this.meetingExpenseReportService.findAll(query, employeeCode);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get meeting expense report by ID' })
+  @ApiOperation({ 
+    summary: 'Get meeting expense report by ID',
+    description: 'Users can only view reports they created. Returns 404 if report not found or not owned by user.'
+  })
   @ApiParam({ name: 'id', description: 'Meeting expense report ID' })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -54,8 +65,9 @@ export class MeetingExpenseReportController {
     status: HttpStatus.NOT_FOUND,
     description: 'Meeting expense report not found',
   })
-  async findById(@Param('id', ParseIntPipe) id: number) {
-    return this.meetingExpenseReportService.findById(id);
+  async findById(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    const employeeCode = req.user.employee.code;
+    return this.meetingExpenseReportService.findById(id, employeeCode);
   }
 
   @Post()

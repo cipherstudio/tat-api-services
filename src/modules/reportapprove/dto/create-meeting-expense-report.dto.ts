@@ -134,7 +134,7 @@ export class CreateMeetingExpenseReportDto {
   @IsString()
   chairman?: string;
 
-  @ApiProperty({ example: '15 คน' })
+  @ApiProperty({ example: '15' })
   @IsNotEmpty()
   @IsString()
   attendees: string;
