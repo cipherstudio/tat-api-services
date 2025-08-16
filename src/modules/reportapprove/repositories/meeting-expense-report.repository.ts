@@ -35,6 +35,7 @@ export class MeetingExpenseReportRepository extends KnexBaseRepository<MeetingEx
     // Build base query
     let baseQuery = this.knex('meeting_expense_reports as mer')
       .whereNull('mer.deleted_at') // เพิ่ม soft delete filter
+      .leftJoin('meet_rate as mr', 'mer.meeting_type', 'mr.id')
       .leftJoin(
         'meeting_expense_report_food_rows as mfr',
         'mer.id',
@@ -69,7 +70,7 @@ export class MeetingExpenseReportRepository extends KnexBaseRepository<MeetingEx
     }
     if (meetingType) {
       baseQuery = baseQuery.where(
-        'mer.meeting_type',
+        'mr.type',
         'like',
         `%${meetingType}%`,
       );
@@ -109,7 +110,8 @@ export class MeetingExpenseReportRepository extends KnexBaseRepository<MeetingEx
           .orWhere('mer.section', 'like', `%${searchTerm}%`)
           .orWhere('mer.job', 'like', `%${searchTerm}%`)
           .orWhere('mer.topic', 'like', `%${searchTerm}%`)
-          .orWhere('mer.place', 'like', `%${searchTerm}%`);
+          .orWhere('mer.place', 'like', `%${searchTerm}%`)
+          .orWhere('mr.type', 'like', `%${searchTerm}%`);
       });
     }
 
@@ -133,6 +135,7 @@ export class MeetingExpenseReportRepository extends KnexBaseRepository<MeetingEx
         'mer.topic',
         'mer.place',
         'mer.meeting_type',
+        'mr.type as meeting_type_name',
         'mer.chairman',
         'mer.attendees',
         'mer.meeting_date',
@@ -185,6 +188,7 @@ export class MeetingExpenseReportRepository extends KnexBaseRepository<MeetingEx
           topic: row.topic,
           place: row.place,
           meetingType: row.meeting_type,
+          meetingTypeName: row.meeting_type_name,
           chairman: row.chairman,
           attendees: row.attendees,
           meetingDate: row.meeting_date,
@@ -248,14 +252,18 @@ export class MeetingExpenseReportRepository extends KnexBaseRepository<MeetingEx
 
   async findByIdWithDetails(id: number, employeeCode?: string) {
     let baseQuery = this.knex
-      .select('*')
+      .select(
+        'meeting_expense_reports.*',
+        'meet_rate.type as meeting_type_name'
+      )
       .from('meeting_expense_reports')
-      .where('id', id)
-      .whereNull('deleted_at');
+      .leftJoin('meet_rate', 'meeting_expense_reports.meeting_type', 'meet_rate.id')
+      .where('meeting_expense_reports.id', id)
+      .whereNull('meeting_expense_reports.deleted_at');
 
     // Security check: user can only view their own reports
     if (employeeCode) {
-      baseQuery = baseQuery.where('created_by', employeeCode);
+      baseQuery = baseQuery.where('meeting_expense_reports.created_by', employeeCode);
     }
 
     const report = await baseQuery.first();
