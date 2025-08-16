@@ -159,11 +159,74 @@ export class ReportEntertainmentFormRepository extends KnexBaseRepository<Report
       // Uncomment the following line if the section column exists
       baseQuery = baseQuery.orWhere('ref.section', 'like', `%${searchTerm}%`);
     }
-    // Get total count
-    const countResult = await baseQuery
-      .clone()
-      .count('ref.id as count')
-      .first();
+    // Get total count - แยก count query ออกจาก LEFT JOIN เพื่อป้องกันการนับซ้ำ
+    const countQuery = this.knex('report_entertainment_form as ref')
+      .where('ref.created_by', employeeCode);
+
+    // Apply same filters to count query
+    if (employeeId) {
+      countQuery.where('ref.employee_id', 'like', `%${employeeId}%`);
+    }
+    if (employeeName) {
+      countQuery.where('ref.employee_name', 'like', `%${employeeName}%`);
+    }
+    if (employeePosition) {
+      countQuery.where('ref.employee_position', 'like', `%${employeePosition}%`);
+    }
+    if (department) {
+      countQuery.where('ref.department', 'like', `%${department}%`);
+    }
+    if (job) {
+      countQuery.where('ref.job', 'like', `%${job}%`);
+    }
+    if (employeeType) {
+      countQuery.where('ref.employee_type', 'like', `%${employeeType}%`);
+    }
+    if (entertainmentType) {
+      countQuery.where('ref.entertainment_type', 'like', `%${entertainmentType}%`);
+    }
+    if (totalAmount !== undefined) {
+      countQuery.where('ref.total_amount', totalAmount);
+    }
+    if (minAmount !== undefined) {
+      countQuery.where('ref.total_amount', '>=', minAmount);
+    }
+    if (maxAmount !== undefined) {
+      countQuery.where('ref.total_amount', '<=', maxAmount);
+    }
+    if (statusId) {
+      countQuery.where('ref.status_id', statusId);
+    }
+    if (startDate) {
+      countQuery.where(
+        'ref.created_at',
+        '>=',
+        this.knex.raw(`TO_DATE('${startDate}', 'YYYY-MM-DD')`),
+      );
+    }
+    if (endDate) {
+      countQuery.where(
+        'ref.created_at',
+        '<=',
+        this.knex.raw(`TO_DATE('${endDate} 23:59:59', 'YYYY-MM-DD HH24:MI:SS')`),
+      );
+    }
+    if (searchTerm) {
+      countQuery.where(function () {
+        this.where('ref.employee_name', 'like', `%${searchTerm}%`)
+          .orWhere('ref.employee_id', 'like', `%${searchTerm}%`)
+          .orWhere('ref.department', 'like', `%${searchTerm}%`)
+          .orWhere('ref.job', 'like', `%${searchTerm}%`)
+          .orWhere('ref.employee_type', 'like', `%${searchTerm}%`)
+          .orWhere('ref.entertainment_type', 'like', `%${searchTerm}%`)
+          .orWhere('ref.employee_position', 'like', `%${searchTerm}%`);
+        // Note: section column might not exist in Oracle database
+        // Uncomment the following line if the section column exists
+        // this.orWhere('ref.section', 'like', `%${searchTerm}%`);
+      });
+    }
+
+    const countResult = await countQuery.count('ref.id as count').first();
     const total = Number(countResult?.count || 0);
 
     // Get paginated data
