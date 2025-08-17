@@ -82,6 +82,11 @@ export interface Approval {
   documentNo?: string;
 
   /**
+   * The document number (เลขอ้างอิงงาน)
+   */
+  documentNumber?: string;
+
+  /**
    * The document telephone
    */
   documentTel?: string;
@@ -162,6 +167,11 @@ export interface Approval {
   staff?: string;
 
   /**
+   * Staff employee code
+   */
+  staffEmployeeCode?: string;
+
+  /**
    * Comments
    */
   comments?: string;
@@ -185,6 +195,11 @@ export interface Approval {
    * Final staff
    */
   finalStaff?: string;
+
+  /**
+   * Final staff employee code
+   */
+  finalStaffEmployeeCode?: string;
 
   /**
    * Signer date
@@ -222,6 +237,31 @@ export interface Approval {
   useSystemSignature?: boolean;
 
   /**
+   * Approval print number
+   */
+  approvalPrintNumber?: string;
+
+  /**
+   * Expense print number
+   */
+  expensePrintNumber?: string;
+
+  /**
+   * Approval status label ID
+   */
+  approvalStatusLabelId?: number;
+
+  /**
+   * Created employee code
+   */
+  createdEmployeeCode?: string;
+
+  /**
+   * Created employee name
+   */
+  createdEmployeeName?: string;
+
+  /**
    * When the approval was created
    */
   createdAt: Date;
@@ -235,6 +275,49 @@ export interface Approval {
    * When the approval was deleted
    */
   deletedAt?: Date;
+
+  /**
+   * The latest approval status
+   */
+  latestApprovalStatus?: string;
+
+  /**
+   * When the latest approval status was created
+   */
+  latestStatusCreatedAt?: Date;
+
+  /**
+   * Array of approval date ranges
+   */
+  approvalDateRanges?: Array<{
+    startDate: string;
+    endDate: string;
+  }>;
+
+  /**
+   * Array of clothing expenses
+   */
+  clothingExpenses?: Array<{
+    clothingFileChecked: boolean;
+    clothingAmount: number;
+    clothingReason: string;
+    attachmentId: number;
+    reportingDate: string;
+    nextClaimDate: string;
+    workEndDate: string;
+  }>;
+
+  /**
+   * Array of budgets
+   */
+  approvalBudgets?: Array<{
+    budgetType: string;
+    itemType: string;
+    reservationCode: string;
+    department: string;
+    budgetCode: string;
+    attachmentId: string;
+  }>;
 }
 
 // Snake case to camel case mapping for database results
@@ -255,6 +338,7 @@ export const approvalColumnMap = {
   remarks: 'remarks',
   num_travelers: 'numTravelers',
   document_no: 'documentNo',
+  document_number: 'documentNumber',
   document_tel: 'documentTel',
   document_to: 'documentTo',
   document_title: 'documentTitle',
@@ -271,11 +355,13 @@ export const approvalColumnMap = {
   departments: 'departments',
   degrees: 'degrees',
   staff: 'staff',
+  staff_employee_code: 'staffEmployeeCode',
   comments: 'comments',
   approval_date: 'approvalDate',
   final_departments: 'finalDepartments',
   final_degrees: 'finalDegrees',
   final_staff: 'finalStaff',
+  final_staff_employee_code: 'finalStaffEmployeeCode',
   signer_date: 'signerDate',
   document_ending: 'documentEnding',
   document_ending_wording: 'documentEndingWording',
@@ -283,6 +369,11 @@ export const approvalColumnMap = {
   use_file_signature: 'useFileSignature',
   signature_attachment_id: 'signatureAttachmentId',
   use_system_signature: 'useSystemSignature',
+  approval_print_number: 'approvalPrintNumber',
+  expense_print_number: 'expensePrintNumber',
+  approval_status_label_id: 'approvalStatusLabelId',
+  created_employee_code: 'createdEmployeeCode',
+  created_employee_name: 'createdEmployeeName',
   created_at: 'createdAt',
   updated_at: 'updatedAt',
   deleted_at: 'deletedAt',
@@ -306,6 +397,7 @@ export const approvalReverseColumnMap = {
   remarks: 'remarks',
   numTravelers: 'num_travelers',
   documentNo: 'document_no',
+  documentNumber: 'document_number',
   documentTel: 'document_tel',
   documentTo: 'document_to',
   documentTitle: 'document_title',
@@ -322,11 +414,13 @@ export const approvalReverseColumnMap = {
   departments: 'departments',
   degrees: 'degrees',
   staff: 'staff',
+  staffEmployeeCode: 'staff_employee_code',
   comments: 'comments',
   approvalDate: 'approval_date',
   finalDepartments: 'final_departments',
   finalDegrees: 'final_degrees',
   finalStaff: 'final_staff',
+  finalStaffEmployeeCode: 'final_staff_employee_code',
   signerDate: 'signer_date',
   documentEnding: 'document_ending',
   documentEndingWording: 'document_ending_wording',
@@ -334,6 +428,11 @@ export const approvalReverseColumnMap = {
   useFileSignature: 'use_file_signature',
   signatureAttachmentId: 'signature_attachment_id',
   useSystemSignature: 'use_system_signature',
+  approvalPrintNumber: 'approval_print_number',
+  expensePrintNumber: 'expense_print_number',
+  approvalStatusLabelId: 'approval_status_label_id',
+  createdEmployeeCode: 'created_employee_code',
+  createdEmployeeName: 'created_employee_name',
   createdAt: 'created_at',
   updatedAt: 'updated_at',
   deletedAt: 'deleted_at',

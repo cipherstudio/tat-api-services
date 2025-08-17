@@ -3,7 +3,8 @@ import { AuditLogStatus, AuditLogCategory } from '../entities/audit-log.entity';
 import { AuditLogRepository } from '../repositories/audit-log.repository';
 
 interface CreateLogParams {
-  userId?: number;
+  employeeCode?: string;
+  employeeName?: string;
   action: string;
   details?: any;
   ipAddress?: string;
@@ -17,7 +18,8 @@ export class AuditLogService {
   constructor(private readonly auditLogRepository: AuditLogRepository) {}
 
   async createLog({
-    userId,
+    employeeCode,
+    employeeName,
     action,
     details,
     ipAddress,
@@ -26,7 +28,8 @@ export class AuditLogService {
     category = AuditLogCategory.GENERAL,
   }: CreateLogParams) {
     const log = {
-      userId,
+      employeeCode,
+      employeeName,
       action,
       details: details ? JSON.stringify(details) : null,
       ipAddress,
@@ -38,15 +41,19 @@ export class AuditLogService {
     return this.auditLogRepository.create(log);
   }
 
-  async getUserLogs(userId: number, page = 1, limit = 10) {
-    return this.auditLogRepository.getUserLogs(userId, page, limit);
+  async getEmployeeLogs(employeeCode: string, page = 1, limit = 10) {
+    return this.auditLogRepository.getEmployeeLogs(employeeCode, page, limit);
   }
 
-  async countRecentFailedLogins(userId: number, minutes = 30): Promise<number> {
-    return this.auditLogRepository.countRecentFailedLogins(userId, minutes);
+  async countRecentFailedLogins(employeeCode: string, minutes = 30): Promise<number> {
+    return this.auditLogRepository.countRecentFailedLogins(employeeCode, minutes);
   }
 
-  async getSecurityEvents(userId: number, page = 1, limit = 10) {
-    return this.auditLogRepository.getSecurityEvents(userId, page, limit);
+  async getSecurityEvents(employeeCode: string, page = 1, limit = 10) {
+    return this.auditLogRepository.getSecurityEvents(employeeCode, page, limit);
+  }
+
+  async getEmployeeActivityLogs(employeeCode: string, page = 1, limit = 10) {
+    return this.auditLogRepository.getEmployeeActivityLogs(employeeCode, page, limit);
   }
 }

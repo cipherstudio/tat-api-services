@@ -23,10 +23,14 @@ import { ApiQuery, ApiTags } from '@nestjs/swagger';
 @ApiTags('Master Data')
 @Controller('master-data/office-internationals')
 export class OfficeInternationalController {
-  constructor(private readonly officeInternationalService: OfficeInternationalService) {}
+  constructor(
+    private readonly officeInternationalService: OfficeInternationalService,
+  ) {}
 
   @Post()
-  create(@Body() createOfficeInternationalDto: CreateOfficeInternationalDto): Promise<OfficeInternational> {
+  create(
+    @Body() createOfficeInternationalDto: CreateOfficeInternationalDto,
+  ): Promise<OfficeInternational> {
     return this.officeInternationalService.create(createOfficeInternationalDto);
   }
 
@@ -68,6 +72,12 @@ export class OfficeInternationalController {
     description: 'Region',
   })
   @ApiQuery({
+    name: 'pogCode',
+    type: String,
+    required: false,
+    description: 'POG Code',
+  })
+  @ApiQuery({
     name: 'searchTerm',
     type: String,
     required: false,
@@ -101,22 +111,29 @@ export class OfficeInternationalController {
     @Query('page', new ValidationPipe({ transform: true })) page?: number,
     @Query('limit', new ValidationPipe({ transform: true })) limit?: number,
     @Query('orderBy') orderBy?: OfficeInternationalQueryDto['orderBy'],
-    @Query('orderDir') orderDir?: 'ASC' | 'DESC',
+    @Query('orderDir') orderDir?: 'asc' | 'desc',
     @Query('name') name?: string,
     @Query('region') region?: string,
+    @Query('pogCode') pogCode?: string,
     @Query('searchTerm') searchTerm?: string,
-    @Query('createdAfter', new ValidationPipe({ transform: true })) createdAfter?: Date,
-    @Query('createdBefore', new ValidationPipe({ transform: true })) createdBefore?: Date,
-    @Query('updatedAfter', new ValidationPipe({ transform: true })) updatedAfter?: Date,
-    @Query('updatedBefore', new ValidationPipe({ transform: true })) updatedBefore?: Date,
+    @Query('createdAfter', new ValidationPipe({ transform: true }))
+    createdAfter?: Date,
+    @Query('createdBefore', new ValidationPipe({ transform: true }))
+    createdBefore?: Date,
+    @Query('updatedAfter', new ValidationPipe({ transform: true }))
+    updatedAfter?: Date,
+    @Query('updatedBefore', new ValidationPipe({ transform: true }))
+    updatedBefore?: Date,
   ): Promise<PaginatedResult<OfficeInternational>> {
     const queryOptions: OfficeInternationalQueryDto = {
+      offset: (page - 1) * limit,
       page,
       limit,
       orderBy,
       orderDir,
       name,
       region,
+      pogCode,
       searchTerm,
       createdAfter,
       createdBefore,
@@ -128,7 +145,9 @@ export class OfficeInternationalController {
   }
 
   @Get(':id')
-  findById(@Param('id', ParseIntPipe) id: number): Promise<OfficeInternational> {
+  findById(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<OfficeInternational> {
     return this.officeInternationalService.findById(id);
   }
 
@@ -137,7 +156,10 @@ export class OfficeInternationalController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateOfficeInternationalDto: UpdateOfficeInternationalDto,
   ): Promise<OfficeInternational> {
-    return this.officeInternationalService.update(id, updateOfficeInternationalDto);
+    return this.officeInternationalService.update(
+      id,
+      updateOfficeInternationalDto,
+    );
   }
 
   @Delete(':id')

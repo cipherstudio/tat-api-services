@@ -16,8 +16,8 @@ import { ProvincesService } from '../services/provinces.service';
 import { CreateProvincesDto } from '../dto/create-provinces.dto';
 import { UpdateProvincesDto } from '../dto/update-provinces.dto';
 import { ProvincesQueryDto } from '../dto/provinces-query.dto';
-import { PaginatedResult } from '@common/interfaces/pagination.interface';
-import { Provinces } from '../entities/provinces.entity';
+// import { PaginatedResult } from '@common/interfaces/pagination.interface';
+// import { Provinces } from '../entities/provinces.entity';
 import { ApiQuery, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Master Data')
@@ -107,17 +107,23 @@ export class ProvincesController {
     @Query('page', new ValidationPipe({ transform: true })) page?: number,
     @Query('limit', new ValidationPipe({ transform: true })) limit?: number,
     @Query('orderBy') orderBy?: ProvincesQueryDto['orderBy'],
-    @Query('orderDir') orderDir?: 'ASC' | 'DESC',
+    @Query('orderDir') orderDir?: 'asc' | 'desc',
     @Query('nameEn') nameEn?: string,
     @Query('nameTh') nameTh?: string,
-    @Query('isPerimeter', new ValidationPipe({ transform: true })) isPerimeter?: boolean,
+    @Query('isPerimeter', new ValidationPipe({ transform: true }))
+    isPerimeter?: boolean,
     @Query('searchTerm') searchTerm?: string,
-    @Query('createdAfter', new ValidationPipe({ transform: true })) createdAfter?: Date,
-    @Query('createdBefore', new ValidationPipe({ transform: true })) createdBefore?: Date,
-    @Query('updatedAfter', new ValidationPipe({ transform: true })) updatedAfter?: Date,
-    @Query('updatedBefore', new ValidationPipe({ transform: true })) updatedBefore?: Date,
+    @Query('createdAfter', new ValidationPipe({ transform: true }))
+    createdAfter?: Date,
+    @Query('createdBefore', new ValidationPipe({ transform: true }))
+    createdBefore?: Date,
+    @Query('updatedAfter', new ValidationPipe({ transform: true }))
+    updatedAfter?: Date,
+    @Query('updatedBefore', new ValidationPipe({ transform: true }))
+    updatedBefore?: Date,
   ) {
     const queryOptions: ProvincesQueryDto = {
+      offset: (page - 1) * limit,
       page,
       limit,
       orderBy,
@@ -153,4 +159,4 @@ export class ProvincesController {
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.provincesService.remove(id);
   }
-} 
+}

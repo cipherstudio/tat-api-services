@@ -26,7 +26,9 @@ export class ExpensesOtherController {
   constructor(private readonly expensesOtherService: ExpensesOtherService) {}
 
   @Post()
-  create(@Body() createExpensesOtherDto: CreateExpensesOtherDto): Promise<ExpensesOther> {
+  create(
+    @Body() createExpensesOtherDto: CreateExpensesOtherDto,
+  ): Promise<ExpensesOther> {
     return this.expensesOtherService.create(createExpensesOtherDto);
   }
 
@@ -95,15 +97,20 @@ export class ExpensesOtherController {
     @Query('page', new ValidationPipe({ transform: true })) page?: number,
     @Query('limit', new ValidationPipe({ transform: true })) limit?: number,
     @Query('orderBy') orderBy?: ExpensesOtherQueryDto['orderBy'],
-    @Query('orderDir') orderDir?: 'ASC' | 'DESC',
+    @Query('orderDir') orderDir?: 'asc' | 'desc',
     @Query('name') name?: string,
     @Query('searchTerm') searchTerm?: string,
-    @Query('createdAfter', new ValidationPipe({ transform: true })) createdAfter?: Date,
-    @Query('createdBefore', new ValidationPipe({ transform: true })) createdBefore?: Date,
-    @Query('updatedAfter', new ValidationPipe({ transform: true })) updatedAfter?: Date,
-    @Query('updatedBefore', new ValidationPipe({ transform: true })) updatedBefore?: Date,
+    @Query('createdAfter', new ValidationPipe({ transform: true }))
+    createdAfter?: Date,
+    @Query('createdBefore', new ValidationPipe({ transform: true }))
+    createdBefore?: Date,
+    @Query('updatedAfter', new ValidationPipe({ transform: true }))
+    updatedAfter?: Date,
+    @Query('updatedBefore', new ValidationPipe({ transform: true }))
+    updatedBefore?: Date,
   ): Promise<PaginatedResult<ExpensesOther>> {
     const queryOptions: ExpensesOtherQueryDto = {
+      offset: (page - 1) * limit,
       page,
       limit,
       orderBy,
@@ -137,4 +144,4 @@ export class ExpensesOtherController {
   remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     return this.expensesOtherService.remove(id);
   }
-} 
+}

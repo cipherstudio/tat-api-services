@@ -6,6 +6,11 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { RedisCacheService } from '../cache/redis-cache.service';
 import * as bcrypt from 'bcrypt';
 import { omitFields } from '../../common/utils/omit-fields';
+import { Employee } from '@modules/dataviews/entities/employee.entity';
+import { ViewPosition4ot } from '@modules/dataviews/entities/view-position-4ot.entity';
+import { OpLevelSalR } from '@modules/dataviews/entities/op-level-sal-r.entity';
+import { OpMasterT } from '@modules/dataviews/entities/op-master-t.entity';
+import { EmployeeRepository } from '@modules/dataviews/repositories/employee.repository';
 
 const SENSITIVE_FIELDS = [
   'password',
@@ -19,6 +24,7 @@ export class UsersService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly cacheService: RedisCacheService,
+    private readonly employeeRepository: EmployeeRepository,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
@@ -36,18 +42,32 @@ export class UsersService {
     return this.userRepository.create(user);
   }
 
-  async findById(id: number): Promise<User> {
+  async findById(
+    employeeCode: string,
+  ): Promise<
+    User &
+      (Employee &
+        ViewPosition4ot &
+        OpLevelSalR &
+        OpMasterT & { isAdmin?: number })
+  > {
     // Try to get from cache first
-    const cacheKey = `user:${id}`;
-    const cached = await this.cacheService.get<User>(cacheKey);
+    const cacheKey = `user:${employeeCode}`;
+    const cached = await this.cacheService.get<
+      User &
+        (Employee &
+          ViewPosition4ot &
+          OpLevelSalR &
+          OpMasterT & { isAdmin?: number })
+    >(cacheKey);
     if (cached) {
       return cached;
     }
 
     // Fetch from database
-    const user = await this.userRepository.findById(id);
+    const user = await this.userRepository.findByIdWithEmployee(employeeCode);
     if (!user) {
-      throw new NotFoundException(`User with ID ${id} not found`);
+      throw new NotFoundException(`User with ID ${employeeCode} not found`);
     }
 
     // Cache the result
@@ -55,12 +75,21 @@ export class UsersService {
     return user;
   }
 
-  async findByIdPublic(id: number): Promise<Partial<User>> {
-    const user = await this.findById(id);
+  async findByIdPublic(employeeCode: string): Promise<Partial<User>> {
+    const user = await this.findById(employeeCode);
     return omitFields(user, SENSITIVE_FIELDS);
   }
 
-  async findByEmail(email: string): Promise<User | undefined> {
+  async findByEmail(
+    email: string,
+  ): Promise<
+    | (User &
+        (Employee &
+          ViewPosition4ot &
+          OpLevelSalR &
+          OpMasterT & { isAdmin?: number }))
+    | undefined
+  > {
     return this.userRepository.findByEmail(email);
   }
 
@@ -91,12 +120,12 @@ export class UsersService {
   }
 
   async update(
-    id: number,
+    employeeCode: string,
     updateUserDto: UpdateUserDto,
   ): Promise<Partial<User>> {
-    const user = await this.findById(id);
+    const user = await this.findById(employeeCode);
     if (!user) {
-      throw new NotFoundException(`User with ID ${id} not found`);
+      throw new NotFoundException(`User with ID ${employeeCode} not found`);
     }
 
     // Hash password if it's being updated and not already hashed
@@ -104,40 +133,40 @@ export class UsersService {
       updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
     }
 
-    const updatedUser = { ...user, ...updateUserDto };
-    await this.userRepository.update(id, updatedUser);
+    // const updatedUser = { ...user, ...updateUserDto };
+    // await this.userRepository.update(id, updatedUser);
 
     // Invalidate cache
-    await this.cacheService.del(`user:${id}`);
+    await this.cacheService.del(`user:${employeeCode}`);
 
-    return this.findByIdPublic(id);
+    return this.findByIdPublic(employeeCode);
   }
 
-  async incrementLoginAttempts(id: number): Promise<void> {
-    const user = await this.findById(id);
+  async incrementLoginAttempts(employeeCode: string): Promise<void> {
+    const user = await this.findById(employeeCode);
     if (!user) {
       return;
     }
 
-    const loginAttempts = user.loginAttempts + 1;
-    await this.userRepository.update(id, { loginAttempts });
+    // const loginAttempts = user.loginAttempts + 1;
+    // await this.userRepository.update(id, { loginAttempts });
 
     // Invalidate cache
-    await this.cacheService.del(`user:${id}`);
+    await this.cacheService.del(`user:${employeeCode}`);
   }
 
-  async resetLoginAttempts(id: number): Promise<void> {
-    await this.userRepository.update(id, { loginAttempts: 0 });
+  async resetLoginAttempts(employeeCode: string): Promise<void> {
+    // await this.userRepository.update(id, { loginAttempts: 0 });
 
     // Invalidate cache
-    await this.cacheService.del(`user:${id}`);
+    await this.cacheService.del(`user:${employeeCode}`);
   }
 
-  async lockAccount(id: number, lockUntil: Date): Promise<void> {
-    await this.userRepository.update(id, { lockUntil });
+  async lockAccount(employeeCode: string): Promise<void> {
+    // await this.userRepository.update(id, { lockUntil });
 
     // Invalidate cache
-    await this.cacheService.del(`user:${id}`);
+    await this.cacheService.del(`user:${employeeCode}`);
   }
 
   async remove(id: number): Promise<void> {
@@ -168,7 +197,8 @@ export class UsersService {
     return omitFields(user, SENSITIVE_FIELDS);
   }
 
-  async getMe(userId: number) {
-    return this.userRepository.findByIdWithEmployee(userId);
+  async getMe(employeeCode: string) {
+    console.log('employeeCode', employeeCode);
+    return this.employeeRepository.findByCodeWithPosition4ot(employeeCode);
   }
 }

@@ -27,14 +27,26 @@ export class PerDiemRatesController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new per diem rate' })
-  @ApiResponse({ status: 201, description: 'The per diem rate has been successfully created.', type: PerDiemRates })
-  create(@Body() createPerDiemRatesDto: CreatePerDiemRatesDto): Promise<PerDiemRates> {
+  @ApiResponse({
+    status: 201,
+    description: 'The per diem rate has been successfully created.',
+    type: PerDiemRates,
+  })
+  create(
+    @Body() createPerDiemRatesDto: CreatePerDiemRatesDto,
+  ): Promise<PerDiemRates> {
     return this.perDiemRatesService.create(createPerDiemRatesDto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all per diem rates with pagination and filters' })
-  @ApiResponse({ status: 200, description: 'Return all per diem rates.', type: [PerDiemRates] })
+  @ApiOperation({
+    summary: 'Get all per diem rates with pagination and filters',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Return all per diem rates.',
+    type: [PerDiemRates],
+  })
   @ApiQuery({
     name: 'page',
     type: Number,
@@ -127,7 +139,11 @@ export class PerDiemRatesController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a per diem rate by id' })
-  @ApiResponse({ status: 200, description: 'Return the per diem rate.', type: PerDiemRates })
+  @ApiResponse({
+    status: 200,
+    description: 'Return the per diem rate.',
+    type: PerDiemRates,
+  })
   @ApiResponse({ status: 404, description: 'Per diem rate not found.' })
   findById(@Param('id', ParseIntPipe) id: number): Promise<PerDiemRates> {
     return this.perDiemRatesService.findById(id);
@@ -135,7 +151,11 @@ export class PerDiemRatesController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a per diem rate' })
-  @ApiResponse({ status: 200, description: 'The per diem rate has been successfully updated.', type: PerDiemRates })
+  @ApiResponse({
+    status: 200,
+    description: 'The per diem rate has been successfully updated.',
+    type: PerDiemRates,
+  })
   @ApiResponse({ status: 404, description: 'Per diem rate not found.' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -147,9 +167,25 @@ export class PerDiemRatesController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a per diem rate' })
-  @ApiResponse({ status: 204, description: 'The per diem rate has been successfully deleted.' })
+  @ApiResponse({
+    status: 204,
+    description: 'The per diem rate has been successfully deleted.',
+  })
   @ApiResponse({ status: 404, description: 'Per diem rate not found.' })
   remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     return this.perDiemRatesService.remove(id);
   }
-} 
+
+  @Get('level-code/:levelCode')
+  @ApiOperation({ summary: 'Get per diem rates by level code' })
+  @ApiResponse({
+    status: 200,
+    description: 'Return the per diem rates by level code.',
+    type: [PerDiemRates],
+  })
+  findByLevelCode(
+    @Param('levelCode') levelCode?: string,
+  ): Promise<PerDiemRates[]> {
+    return this.perDiemRatesService.findByLevelCode(levelCode);
+  }
+}

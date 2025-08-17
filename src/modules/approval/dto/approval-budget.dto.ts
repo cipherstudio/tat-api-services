@@ -1,5 +1,7 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsArray, ValidateNested } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { CreateAttachmentDto } from './approval-attachment.dto';
 
 export class ApprovalBudgetDto {
   @ApiProperty({
@@ -46,4 +48,27 @@ export class ApprovalBudgetDto {
   @IsString()
   @IsOptional()
   budget_code?: string;
+
+  @ApiProperty({
+    description: 'รหัสไฟล์',
+    example: '1',
+    required: false
+  })
+  @IsOptional()
+  attachment_id?: number;
+
+  @ApiProperty({
+    description: 'ไฟล์แนบเพิ่มเติม',
+    type: [CreateAttachmentDto],
+    required: false,
+    example: [
+      { fileId: 442 },
+      { fileId: 443 }
+    ],
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateAttachmentDto)
+  attachments?: CreateAttachmentDto[];
 } 

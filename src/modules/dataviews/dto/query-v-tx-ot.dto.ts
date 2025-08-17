@@ -1,8 +1,8 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsOptional, IsNumber } from 'class-validator';
+import { IsOptional } from 'class-validator';
+import { CommonQueryDto } from '../../../common/dto/common-query.dtp';
 
-export class QueryVTxOtDto {
+export class QueryVTxOtDto extends CommonQueryDto {
   @ApiPropertyOptional({ description: 'BUD_YEAR' })
   @IsOptional()
   budYear?: Date;
@@ -23,23 +23,15 @@ export class QueryVTxOtDto {
   @IsOptional()
   activitySubDesc?: string;
 
-  @ApiPropertyOptional({
-    description: 'จำนวนรายการต่อหน้า (pagination)',
-    type: Number,
-    default: 10,
-  })
+  @ApiPropertyOptional({ description: 'ACTIVITY_SUB_CODE' })
   @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  limit: number = 10;
+  activitySubCode?: string;
 
-  @ApiPropertyOptional({
-    description: 'ข้ามกี่รายการ (pagination offset)',
-    type: Number,
-    default: 0,
-  })
+  @ApiPropertyOptional({ description: 'OUTPUT_PLAN_CODE' })
   @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  offset: number = 0;
+  outputPlanCode?: string;
+
+  @ApiPropertyOptional({ description: 'OUTPUT_PLAN_DESC' })
+  @IsOptional()
+  outputPlanDesc?: string;
 }

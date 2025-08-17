@@ -2,7 +2,7 @@ import {
   BasePaginationOptions,
   BaseFilterOptions,
   BaseIncludeOptions,
-  BaseQueryOptions,
+  // BaseQueryOptions,
 } from '../../../common/interfaces/query-options.interface';
 
 /**
@@ -54,14 +54,15 @@ export interface ExpensesOtherIncludeOptions extends BaseIncludeOptions {}
  * })
  */
 export interface ExpensesOtherQueryOptions {
+  offset?: number;
   page?: number;
   limit?: number;
-  orderBy?: 'id' | 'name' | 'createdAt' | 'updatedAt';
-  orderDir?: 'ASC' | 'DESC';
+  orderBy?: string;
+  orderDir?: 'asc' | 'desc';
   name?: string;
   searchTerm?: string;
   createdAfter?: Date;
   createdBefore?: Date;
   updatedAfter?: Date;
   updatedBefore?: Date;
-} 
+}

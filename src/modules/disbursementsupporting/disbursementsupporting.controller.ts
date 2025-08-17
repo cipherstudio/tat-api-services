@@ -40,6 +40,7 @@ export class DisbursementsupportingController {
   createDocumentType(@Body() dto: CreateDisbursementSupportingDocumentTypeDto) {
     return this.service.createDocumentType(dto);
   }
+
   @Get('document-type')
   @ApiOperation({
     summary: 'ดึงรายการประเภทเอกสาร',

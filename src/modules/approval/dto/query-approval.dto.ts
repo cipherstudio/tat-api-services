@@ -1,5 +1,13 @@
 import { Transform, Type } from 'class-transformer';
-import { IsOptional, IsEnum, IsString, IsBoolean, IsDate, IsNumber, IsArray } from 'class-validator';
+import {
+  IsOptional,
+  IsEnum,
+  IsString,
+  IsBoolean,
+  IsDate,
+  IsNumber,
+  IsArray,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class QueryApprovalDto {
@@ -15,17 +23,27 @@ export class QueryApprovalDto {
   @Type(() => Number)
   limit?: number;
 
-  @ApiPropertyOptional({ description: 'Field to order by', default: 'createdAt' })
+  @ApiPropertyOptional({
+    description: 'Field to order by',
+    default: 'createdAt',
+  })
   @IsOptional()
   @IsString()
   orderBy?: string;
 
-  @ApiPropertyOptional({ description: 'Order direction', enum: ['ASC', 'DESC'], default: 'DESC' })
+  @ApiPropertyOptional({
+    description: 'Order direction',
+    enum: ['ASC', 'DESC'],
+    default: 'DESC',
+  })
   @IsOptional()
   @IsEnum(['ASC', 'DESC'])
   orderDir?: 'ASC' | 'DESC';
 
-  @ApiPropertyOptional({ description: 'Include inactive approvals', default: false })
+  @ApiPropertyOptional({
+    description: 'Include inactive approvals',
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   @Transform(({ value }) => value === 'true')
@@ -40,6 +58,11 @@ export class QueryApprovalDto {
   @IsOptional()
   @IsString()
   searchTerm?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by latest approval status' })
+  @IsOptional()
+  @IsString()
+  latestApprovalStatus?: string;
 
   @ApiPropertyOptional({ description: 'Filter by creation date (after)' })
   @IsOptional()
@@ -57,6 +80,8 @@ export class QueryApprovalDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @Transform(({ value }) => (typeof value === 'string' ? value.split(',') : value))
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.split(',') : value,
+  )
   includes?: string[];
 }

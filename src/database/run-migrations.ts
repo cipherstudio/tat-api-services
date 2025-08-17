@@ -3,7 +3,7 @@ import { join } from 'path';
 import * as fs from 'fs';
 
 /**
- * Run Knex migrations programmatically
+ * Run Knex migrations programmatically with transaction support
  */
 export async function runMigrations(): Promise<void> {
   const environment = process.env.NODE_ENV || 'development';
@@ -20,9 +20,14 @@ export async function runMigrations(): Promise<void> {
   const knexConfig = knexModule.default;
   const knexInstance = knex(knexConfig[environment]);
 
+  // Start transaction
+  const trx = await knexInstance.transaction();
+
   try {
     console.log(`Running migrations for environment: ${environment}`);
-    const [batchNo, log] = await knexInstance.migrate.latest();
+    console.log('Starting migration transaction...');
+
+    const [batchNo, log] = await trx.migrate.latest();
 
     if (log.length === 0) {
       console.log('No migrations to run, already up to date');
@@ -30,8 +35,18 @@ export async function runMigrations(): Promise<void> {
       console.log(`Batch ${batchNo} run: ${log.length} migrations`);
       console.log(`Completed migrations: ${log.join(', ')}`);
     }
+
+    // Commit transaction
+    await trx.commit();
+    console.log('Migration transaction committed successfully');
   } catch (error) {
     console.error('Error running migrations:', error);
+    console.log('Rolling back migration transaction...');
+
+    // Rollback transaction
+    await trx.rollback();
+    console.log('Migration transaction rolled back');
+
     throw error;
   } finally {
     await knexInstance.destroy();

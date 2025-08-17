@@ -1,30 +1,9 @@
 import { Transform, Type } from 'class-transformer';
-import { IsOptional, IsEnum, IsString, IsNumber, IsDate, IsArray } from 'class-validator';
+import { IsOptional, IsString, IsDate, IsArray } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { CommonQueryDto } from '../../../common/dto/common-query.dtp';
 
-export class QueryExpensesOtherDto {
-  @ApiPropertyOptional({ description: 'Page number', default: 1 })
-  @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  page?: number;
-
-  @ApiPropertyOptional({ description: 'Number of items per page', default: 10 })
-  @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  limit?: number;
-
-  @ApiPropertyOptional({ description: 'Field to order by', default: 'createdAt' })
-  @IsOptional()
-  @IsString()
-  orderBy?: string;
-
-  @ApiPropertyOptional({ description: 'Order direction', enum: ['ASC', 'DESC'], default: 'DESC' })
-  @IsOptional()
-  @IsEnum(['ASC', 'DESC'])
-  orderDir?: 'ASC' | 'DESC';
-
+export class QueryExpensesOtherDto extends CommonQueryDto {
   @ApiPropertyOptional({ description: 'Filter by name (partial match)' })
   @IsOptional()
   @IsString()
@@ -63,6 +42,8 @@ export class QueryExpensesOtherDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @Transform(({ value }) => (typeof value === 'string' ? value.split(',') : value))
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.split(',') : value,
+  )
   includes?: string[];
-} 
+}

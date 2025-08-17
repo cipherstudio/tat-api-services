@@ -50,6 +50,20 @@ export class ApprovalTripEntryDto {
   destinationType?: 'domestic' | 'international';
 
   @ApiProperty({
+    description: 'รหัสปลายทาง',
+    example: 1,
+    required: false
+  })
+  destinationId?: number;
+
+  @ApiProperty({
+    description: 'ชื่อตารางปลายทาง',
+    example: 'countries',
+    required: false
+  })
+  destinationTable?: string;
+
+  @ApiProperty({
     description: 'Date ranges for the trip',
     type: [ApprovalDateRangeDto],
     required: false,

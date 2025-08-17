@@ -21,7 +21,6 @@ exports.up = function (knex) {
     // Index สำหรับการค้นหา
     table.index('position_title');
     table.index('level_code');
-    table.index('order');
   });
 };
 

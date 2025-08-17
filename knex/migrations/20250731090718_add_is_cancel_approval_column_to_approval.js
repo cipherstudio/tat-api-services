@@ -3,8 +3,8 @@
  * @returns { Promise<void> }
  */
 exports.up = function (knex) {
-  return knex.schema.table('provinces', function (table) {
-    table.boolean('is_perimeter').defaultTo(false);
+  return knex.schema.alterTable('approval', function (table) {
+    table.boolean('is_cancel_approval').defaultTo(false);
   });
 };
 
@@ -13,7 +13,7 @@ exports.up = function (knex) {
  * @returns { Promise<void> }
  */
 exports.down = function (knex) {
-  return knex.schema.table('provinces', function (table) {
-    table.dropColumn('is_perimeter');
+  return knex.schema.alterTable('approval', function (table) {
+    table.dropColumn('is_cancel_approval');
   });
 };

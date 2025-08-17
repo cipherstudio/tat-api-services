@@ -77,8 +77,7 @@ export class AccommodationRatesRepository extends KnexBaseRepository<Accommodati
         builder
           .whereRaw('LOWER("position_name") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
           .orWhereRaw('LOWER("level_code_start") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
-          .orWhereRaw('LOWER("level_code_end") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
-          .orWhereRaw('LOWER("position_group_name") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
+          .orWhereRaw('LOWER("level_code_end") LIKE ?', [`%${searchTerm.toLowerCase()}%`]);
       });
     }
 
@@ -124,9 +123,7 @@ export class AccommodationRatesRepository extends KnexBaseRepository<Accommodati
     });
   }
 
-  async findByPositionGroupName(positionGroupName: string): Promise<AccommodationRates[]> {
-    return this.find({ position_group_name: positionGroupName });
-  }
+
 
   async findByRateMode(rateMode: string): Promise<AccommodationRates[]> {
     return this.find({ rate_mode: rateMode });

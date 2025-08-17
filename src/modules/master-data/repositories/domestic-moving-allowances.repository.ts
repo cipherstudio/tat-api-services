@@ -10,13 +10,18 @@ export class DomesticMovingAllowancesRepository extends KnexBaseRepository<Domes
     super(knexService, 'domestic_moving_allowances');
   }
 
-  async create(entity: Partial<DomesticMovingAllowances>): Promise<DomesticMovingAllowances> {
+  async create(
+    entity: Partial<DomesticMovingAllowances>,
+  ): Promise<DomesticMovingAllowances> {
     const dbEntity = await toSnakeCase(entity);
     const created = await super.create(dbEntity);
     return await toCamelCase<DomesticMovingAllowances>(created);
   }
 
-  async update(id: number, entity: Partial<DomesticMovingAllowances>): Promise<DomesticMovingAllowances> {
+  async update(
+    id: number,
+    entity: Partial<DomesticMovingAllowances>,
+  ): Promise<DomesticMovingAllowances> {
     const dbEntity = await toSnakeCase(entity);
     const updated = await super.update(id, dbEntity);
     return await toCamelCase<DomesticMovingAllowances>(updated);
@@ -24,17 +29,29 @@ export class DomesticMovingAllowancesRepository extends KnexBaseRepository<Domes
 
   async findById(id: number): Promise<DomesticMovingAllowances | undefined> {
     const dbEntity = await super.findById(id);
-    return dbEntity ? await toCamelCase<DomesticMovingAllowances>(dbEntity) : undefined;
+    return dbEntity
+      ? await toCamelCase<DomesticMovingAllowances>(dbEntity)
+      : undefined;
   }
 
-  async findOne(conditions: Record<string, any>): Promise<DomesticMovingAllowances | undefined> {
+  async findOne(
+    conditions: Record<string, any>,
+  ): Promise<DomesticMovingAllowances | undefined> {
     const dbEntity = await super.findOne(conditions);
-    return dbEntity ? await toCamelCase<DomesticMovingAllowances>(dbEntity) : undefined;
+    return dbEntity
+      ? await toCamelCase<DomesticMovingAllowances>(dbEntity)
+      : undefined;
   }
 
-  async find(conditions: Record<string, any> = {}): Promise<DomesticMovingAllowances[]> {
+  async find(
+    conditions: Record<string, any> = {},
+  ): Promise<DomesticMovingAllowances[]> {
     const dbEntities = await super.find(conditions);
-    return Promise.all(dbEntities.map(async (e) => await toCamelCase<DomesticMovingAllowances>(e)));
+    return Promise.all(
+      dbEntities.map(
+        async (e) => await toCamelCase<DomesticMovingAllowances>(e),
+      ),
+    );
   }
 
   async findWithPagination(
@@ -64,7 +81,9 @@ export class DomesticMovingAllowancesRepository extends KnexBaseRepository<Domes
       .offset(offset);
 
     return {
-      data: await Promise.all(data.map(async (e) => await toCamelCase<DomesticMovingAllowances>(e))),
+      data: await Promise.all(
+        data.map(async (e) => await toCamelCase<DomesticMovingAllowances>(e)),
+      ),
       meta: {
         total,
         page,
@@ -96,12 +115,31 @@ export class DomesticMovingAllowancesRepository extends KnexBaseRepository<Domes
 
     // Apply search term if provided
     if (searchTerm) {
-      query.where((builder) => {
-        builder
-          .whereRaw('LOWER("distance_start_km") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
-          .orWhereRaw('LOWER("distance_end_km") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
-          .orWhereRaw('LOWER("rate_baht") LIKE ?', [`%${searchTerm.toLowerCase()}%`]);
-      });
+      // ตรวจสอบว่า searchTerm เป็นตัวเลขหรือไม่
+      const searchDistance = parseFloat(searchTerm);
+
+      if (!isNaN(searchDistance)) {
+        // ถ้าเป็นตัวเลข ให้ค้นหาระยะทางที่อยู่ในช่วง
+        query.where((builder) => {
+          builder
+            .where('distance_start_km', '<=', searchDistance)
+            .where('distance_end_km', '>=', searchDistance);
+        });
+      } else {
+        // ถ้าไม่ใช่ตัวเลข ให้ค้นหาแบบ text ใน distance และ rate fields
+        query.where((builder) => {
+          builder
+            .whereRaw('LOWER(CAST("distance_start_km" AS TEXT)) LIKE ?', [
+              `%${searchTerm.toLowerCase()}%`,
+            ])
+            .orWhereRaw('LOWER(CAST("distance_end_km" AS TEXT)) LIKE ?', [
+              `%${searchTerm.toLowerCase()}%`,
+            ])
+            .orWhereRaw('LOWER(CAST("rate_baht" AS TEXT)) LIKE ?', [
+              `%${searchTerm.toLowerCase()}%`,
+            ]);
+        });
+      }
     }
 
     const offset = (page - 1) * limit;
@@ -121,7 +159,9 @@ export class DomesticMovingAllowancesRepository extends KnexBaseRepository<Domes
       .offset(offset);
 
     return {
-      data: await Promise.all(data.map(async (e) => await toCamelCase<DomesticMovingAllowances>(e))),
+      data: await Promise.all(
+        data.map(async (e) => await toCamelCase<DomesticMovingAllowances>(e)),
+      ),
       meta: {
         total,
         page,
@@ -131,16 +171,33 @@ export class DomesticMovingAllowancesRepository extends KnexBaseRepository<Domes
     };
   }
 
-  async findByDistanceRange(distance: number): Promise<DomesticMovingAllowances | undefined> {
-    return this.findOne({
-      distance_start_km: { $lte: distance },
-      distance_end_km: { $gte: distance }
-    });
+  async findByDistanceRange(
+    distance: number,
+  ): Promise<DomesticMovingAllowances | undefined> {
+    const dbEntity = await this.knexService
+      .knex(this.tableName)
+      .where('distance_start_km', '<=', distance)
+      .where('distance_end_km', '>=', distance)
+      .first();
+
+    return dbEntity
+      ? await toCamelCase<DomesticMovingAllowances>(dbEntity)
+      : undefined;
   }
 
-  async findByRateRange(minRate: number, maxRate: number): Promise<DomesticMovingAllowances[]> {
-    return this.find({
-      rate_baht: { $gte: minRate, $lte: maxRate }
-    });
+  async findByRateRange(
+    minRate: number,
+    maxRate: number,
+  ): Promise<DomesticMovingAllowances[]> {
+    const dbEntities = await this.knexService
+      .knex(this.tableName)
+      .where('rate_baht', '>=', minRate)
+      .where('rate_baht', '<=', maxRate);
+
+    return Promise.all(
+      dbEntities.map(
+        async (e) => await toCamelCase<DomesticMovingAllowances>(e),
+      ),
+    );
   }
-} 
+}

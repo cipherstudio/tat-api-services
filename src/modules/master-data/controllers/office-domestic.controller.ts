@@ -26,7 +26,9 @@ export class OfficeDomesticController {
   constructor(private readonly officeDomesticService: OfficeDomesticService) {}
 
   @Post()
-  create(@Body() createOfficeDomesticDto: CreateOfficeDomesticDto): Promise<OfficeDomestic> {
+  create(
+    @Body() createOfficeDomesticDto: CreateOfficeDomesticDto,
+  ): Promise<OfficeDomestic> {
     return this.officeDomesticService.create(createOfficeDomesticDto);
   }
 
@@ -107,17 +109,23 @@ export class OfficeDomesticController {
     @Query('page', new ValidationPipe({ transform: true })) page?: number,
     @Query('limit', new ValidationPipe({ transform: true })) limit?: number,
     @Query('orderBy') orderBy?: OfficeDomesticQueryDto['orderBy'],
-    @Query('orderDir') orderDir?: 'ASC' | 'DESC',
+    @Query('orderDir') orderDir?: 'asc' | 'desc',
     @Query('name') name?: string,
     @Query('region') region?: string,
-    @Query('isHeadOffice', new ValidationPipe({ transform: true })) isHeadOffice?: boolean,
+    @Query('isHeadOffice', new ValidationPipe({ transform: true }))
+    isHeadOffice?: boolean,
     @Query('searchTerm') searchTerm?: string,
-    @Query('createdAfter', new ValidationPipe({ transform: true })) createdAfter?: Date,
-    @Query('createdBefore', new ValidationPipe({ transform: true })) createdBefore?: Date,
-    @Query('updatedAfter', new ValidationPipe({ transform: true })) updatedAfter?: Date,
-    @Query('updatedBefore', new ValidationPipe({ transform: true })) updatedBefore?: Date,
+    @Query('createdAfter', new ValidationPipe({ transform: true }))
+    createdAfter?: Date,
+    @Query('createdBefore', new ValidationPipe({ transform: true }))
+    createdBefore?: Date,
+    @Query('updatedAfter', new ValidationPipe({ transform: true }))
+    updatedAfter?: Date,
+    @Query('updatedBefore', new ValidationPipe({ transform: true }))
+    updatedBefore?: Date,
   ): Promise<PaginatedResult<OfficeDomestic>> {
     const queryOptions: OfficeDomesticQueryDto = {
+      offset: (page - 1) * limit,
       page,
       limit,
       orderBy,
@@ -153,4 +161,4 @@ export class OfficeDomesticController {
   remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     return this.officeDomesticService.remove(id);
   }
-} 
+}

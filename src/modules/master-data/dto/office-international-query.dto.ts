@@ -1,25 +1,8 @@
-import { IsOptional, IsString, IsNumber, IsDate, IsEnum } from 'class-validator';
+import { IsOptional, IsString, IsNumber, IsDate } from 'class-validator';
 import { Type } from 'class-transformer';
+import { CommonQueryDto } from '../../../common/dto/common-query.dtp';
 
-export class OfficeInternationalQueryDto {
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  page?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  limit?: number;
-
-  @IsOptional()
-  @IsEnum(['name', 'region', 'id', 'createdAt', 'updatedAt'])
-  orderBy?: 'name' | 'region' | 'id' | 'createdAt' | 'updatedAt';
-
-  @IsOptional()
-  @IsEnum(['ASC', 'DESC'])
-  orderDir?: 'ASC' | 'DESC';
-
+export class OfficeInternationalQueryDto extends CommonQueryDto {
   @IsOptional()
   @IsString()
   name?: string;
@@ -27,6 +10,20 @@ export class OfficeInternationalQueryDto {
   @IsOptional()
   @IsString()
   region?: string;
+
+  @IsOptional()
+  @IsString()
+  pogCode?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  countryId?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  currencyId?: number;
 
   @IsOptional()
   @IsString()
@@ -51,4 +48,4 @@ export class OfficeInternationalQueryDto {
   @Type(() => Date)
   @IsDate()
   updatedBefore?: Date;
-} 
+}

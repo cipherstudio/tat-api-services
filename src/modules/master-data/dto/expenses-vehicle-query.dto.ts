@@ -1,25 +1,8 @@
-import { IsOptional, IsString, IsNumber, IsDate, IsEnum } from 'class-validator';
+import { IsOptional, IsString, IsDate } from 'class-validator';
 import { Type } from 'class-transformer';
+import { CommonQueryDto } from '../../../common/dto/common-query.dtp';
 
-export class ExpensesVehicleQueryDto {
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  page?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  limit?: number;
-
-  @IsOptional()
-  @IsEnum(['code', 'title', 'rate', 'id', 'createdAt', 'updatedAt'])
-  orderBy?: 'code' | 'title' | 'rate' | 'id' | 'createdAt' | 'updatedAt';
-
-  @IsOptional()
-  @IsEnum(['ASC', 'DESC'])
-  orderDir?: 'ASC' | 'DESC';
-
+export class ExpensesVehicleQueryDto extends CommonQueryDto {
   @IsOptional()
   @IsString()
   code?: string;
@@ -51,4 +34,4 @@ export class ExpensesVehicleQueryDto {
   @Type(() => Date)
   @IsDate()
   updatedBefore?: Date;
-} 
+}

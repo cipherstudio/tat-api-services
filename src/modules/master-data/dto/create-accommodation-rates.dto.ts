@@ -10,13 +10,15 @@ export class CreateAccommodationRatesDto {
   @IsString()
   positionName: string;
 
-  @ApiProperty({ description: 'Level code start' })
+  @ApiProperty({ description: 'Level code start', required: false })
   @IsString()
-  levelCodeStart: string;
+  @IsOptional()
+  levelCodeStart?: string;
 
-  @ApiProperty({ description: 'Level code end' })
+  @ApiProperty({ description: 'Level code end', required: false })
   @IsString()
-  levelCodeEnd: string;
+  @IsOptional()
+  levelCodeEnd?: string;
 
   @ApiProperty({ description: 'Position group name' })
   @IsString()
@@ -25,6 +27,11 @@ export class CreateAccommodationRatesDto {
   @ApiProperty({ description: 'Rate mode (CHOICE/ACTUAL_ONLY/UNLIMITED)' })
   @IsEnum(['CHOICE', 'ACTUAL_ONLY', 'UNLIMITED'])
   rateMode: 'CHOICE' | 'ACTUAL_ONLY' | 'UNLIMITED';
+
+  @ApiProperty({ description: 'Country type (A/B)', required: false })
+  @IsEnum(['A', 'B'])
+  @IsOptional()
+  countryType?: 'A' | 'B';
 
   @ApiProperty({ description: 'Flat rate amount', required: false })
   @IsNumber()

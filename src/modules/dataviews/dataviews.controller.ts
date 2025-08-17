@@ -21,6 +21,7 @@ import { QueryViewPosition4otDto } from './dto/query-view-position-4ot.dto';
 import { QueryVBudgetCodeDto } from './dto/query-v-budget-code.dto';
 import { QueryVTxOtDto } from './dto/query-v-tx-ot.dto';
 import { QueryPsPwJobDto } from './dto/query-ps-pw-job.dto';
+import { QueryOpLevelSalRDto } from './dto/query-op-level-sal-r.dto';
 import {
   ApiOperation,
   ApiQuery,
@@ -41,6 +42,7 @@ import { ViewPosition4otPaginate } from './entities/view-position-4ot.entity';
 import { VBudgetCodePaginate } from './entities/v-budget-code.entity';
 import { VTxOtPaginate } from './entities/v-tx-ot.entity';
 import { PsPwJobPaginate } from './entities/ps-pw-job.entity';
+import { OpLevelSalRPaginate } from './repositories/op-level-sal-r.repository';
 
 @ApiTags('dataviews')
 @Controller('dataviews')
@@ -97,6 +99,33 @@ export class DataviewsController {
   }
 
   @Version('1')
+  @Get('employees/:code/with-position4ot')
+  @ApiOperation({
+    summary: 'ดึงข้อมูลพนักงานรายคนพร้อมข้อมูลตำแหน่งและระดับเงินเดือน',
+    description:
+      'ดึงข้อมูลพนักงานพร้อมข้อมูลจาก VIEW_POSITION_4OT และ OP_LEVEL_SAL_R',
+  })
+  @ApiParam({ name: 'code', description: 'รหัสพนักงาน', required: true })
+  findEmployeeByCodeWithPosition4ot(@Param('code') code: string) {
+    return this.dataviewsService.findEmployeeByCodeWithPosition4ot(code);
+  }
+
+  @Version('1')
+  @Get('employees/:pmtCode/is-admin')
+  @ApiOperation({
+    summary: 'ตรวจสอบว่าพนักงานเป็นแอดมินหรือไม่',
+    description: 'ตรวจสอบจากตาราง employee_admin ว่าพนักงานเป็นแอดมินหรือไม่',
+  })
+  @ApiParam({
+    name: 'pmtCode',
+    description: 'PMT_CODE ของพนักงาน',
+    required: true,
+  })
+  checkEmployeeIsAdmin(@Param('pmtCode') pmtCode: string) {
+    return this.dataviewsService.checkEmployeeIsAdmin(pmtCode);
+  }
+
+  @Version('1')
   @Get('ab-deputies')
   @ApiOperation({
     summary: 'ค้นหาข้อมูล AB_DEPUTY ด้วยเงื่อนไข',
@@ -147,12 +176,12 @@ export class DataviewsController {
   @ApiOperation({
     summary: 'ค้นหาข้อมูล AB_HOLIDAY ด้วยเงื่อนไข',
     description:
-      'สามารถกรองข้อมูล AB_HOLIDAY ตาม holidayDate, pogCode, limit, offset ได้',
+      'สามารถกรองข้อมูล AB_HOLIDAY ตาม dateRanges (หลาย range), holidayDate (วันเดียว), pogCode, limit, offset ได้',
   })
   @ApiQuery({
     name: 'holidayDate',
     required: false,
-    description: 'HOLIDAY_DATE',
+    description: 'HOLIDAY_DATE (single date for backward compatibility)',
     type: String,
     format: 'date-time',
   })
@@ -512,5 +541,38 @@ export class DataviewsController {
     @Query() query: QueryPsPwJobDto,
   ): Promise<PsPwJobPaginate> {
     return this.dataviewsService.findPsPwJobWithQuery(query);
+  }
+
+  @Version('1')
+  @Get('op-level-sal-r')
+  @ApiOperation({
+    summary: 'ค้นหาข้อมูล OP_LEVEL_SAL_R_TEMP ด้วยเงื่อนไข',
+    description:
+      'สามารถกรองข้อมูล OP_LEVEL_SAL_R_TEMP ตาม plvCode, limit, offset ได้',
+  })
+  @ApiQuery({
+    name: 'plvCode',
+    required: false,
+    description: 'PLV_CODE',
+    type: Number,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'จำนวนรายการต่อหน้า',
+    type: Number,
+    example: 10,
+  })
+  @ApiQuery({
+    name: 'offset',
+    required: false,
+    description: 'ข้ามกี่รายการ',
+    type: Number,
+    example: 0,
+  })
+  findOpLevelSalRWithQuery(
+    @Query() query: QueryOpLevelSalRDto,
+  ): Promise<OpLevelSalRPaginate> {
+    return this.dataviewsService.findOpLevelSalRWithQuery(query);
   }
 }

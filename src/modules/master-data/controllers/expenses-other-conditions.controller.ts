@@ -16,23 +16,31 @@ import { ExpensesOtherConditionsService } from '../services/expenses-other-condi
 import { CreateExpensesOtherConditionsDto } from '../dto/create-expenses-other-conditions.dto';
 import { UpdateExpensesOtherConditionsDto } from '../dto/update-expenses-other-conditions.dto';
 import { ExpensesOtherConditionsQueryDto } from '../dto/expenses-other-conditions-query.dto';
-import { PaginatedResult } from '@common/interfaces/pagination.interface';
 import { ExpensesOtherConditions } from '../entities/expenses-other-conditions.entity';
 import { ApiQuery, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('Master Data')
 @Controller('master-data/expenses-other-conditions')
 export class ExpensesOtherConditionsController {
-  constructor(private readonly expensesOtherConditionsService: ExpensesOtherConditionsService) {}
+  constructor(
+    private readonly expensesOtherConditionsService: ExpensesOtherConditionsService,
+  ) {}
 
   @Post()
-  create(@Body() createExpensesOtherConditionsDto: CreateExpensesOtherConditionsDto): Promise<ExpensesOtherConditions> {
-    return this.expensesOtherConditionsService.create(createExpensesOtherConditionsDto);
+  create(
+    @Body() createExpensesOtherConditionsDto: CreateExpensesOtherConditionsDto,
+  ): Promise<ExpensesOtherConditions> {
+    return this.expensesOtherConditionsService.create(
+      createExpensesOtherConditionsDto,
+    );
   }
 
   @Get()
   @ApiOperation({ summary: 'Get all expenses other conditions' })
-  @ApiResponse({ status: 200, description: 'Return all expenses other conditions' })
+  @ApiResponse({
+    status: 200,
+    description: 'Return all expenses other conditions',
+  })
   @ApiQuery({
     name: 'page',
     required: false,
@@ -48,7 +56,17 @@ export class ExpensesOtherConditionsController {
   @ApiQuery({
     name: 'orderBy',
     required: false,
-    enum: ['id', 'expensesOtherId', 'positionName', 'positionCode', 'levelCode', 'scope', 'maxAmount', 'createdAt', 'updatedAt'],
+    enum: [
+      'id',
+      'expensesOtherId',
+      'positionName',
+      'positionCode',
+      'levelCode',
+      'scope',
+      'maxAmount',
+      'createdAt',
+      'updatedAt',
+    ],
     description: 'Field to order by',
   })
   @ApiQuery({
@@ -115,18 +133,23 @@ export class ExpensesOtherConditionsController {
     @Query('page', new ValidationPipe({ transform: true })) page?: number,
     @Query('limit', new ValidationPipe({ transform: true })) limit?: number,
     @Query('orderBy') orderBy?: ExpensesOtherConditionsQueryDto['orderBy'],
-    @Query('orderDir') orderDir?: 'ASC' | 'DESC',
+    @Query('orderDir') orderDir?: 'asc' | 'desc',
     @Query('positionName') positionName?: string,
     @Query('positionCode') positionCode?: string,
     @Query('levelCode') levelCode?: string,
     @Query('scope') scope?: 'domestic' | 'international',
     @Query('searchTerm') searchTerm?: string,
-    @Query('createdAfter', new ValidationPipe({ transform: true })) createdAfter?: Date,
-    @Query('createdBefore', new ValidationPipe({ transform: true })) createdBefore?: Date,
-    @Query('updatedAfter', new ValidationPipe({ transform: true })) updatedAfter?: Date,
-    @Query('updatedBefore', new ValidationPipe({ transform: true })) updatedBefore?: Date,
+    @Query('createdAfter', new ValidationPipe({ transform: true }))
+    createdAfter?: Date,
+    @Query('createdBefore', new ValidationPipe({ transform: true }))
+    createdBefore?: Date,
+    @Query('updatedAfter', new ValidationPipe({ transform: true }))
+    updatedAfter?: Date,
+    @Query('updatedBefore', new ValidationPipe({ transform: true }))
+    updatedBefore?: Date,
   ) {
     const queryOptions: ExpensesOtherConditionsQueryDto = {
+      offset: (page - 1) * limit,
       page,
       limit,
       orderBy,
@@ -146,7 +169,9 @@ export class ExpensesOtherConditionsController {
   }
 
   @Get(':id')
-  findById(@Param('id', ParseIntPipe) id: number): Promise<ExpensesOtherConditions> {
+  findById(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<ExpensesOtherConditions> {
     return this.expensesOtherConditionsService.findById(id);
   }
 
@@ -155,7 +180,10 @@ export class ExpensesOtherConditionsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateExpensesOtherConditionsDto: UpdateExpensesOtherConditionsDto,
   ): Promise<ExpensesOtherConditions> {
-    return this.expensesOtherConditionsService.update(id, updateExpensesOtherConditionsDto);
+    return this.expensesOtherConditionsService.update(
+      id,
+      updateExpensesOtherConditionsDto,
+    );
   }
 
   @Delete(':id')
@@ -163,4 +191,4 @@ export class ExpensesOtherConditionsController {
   remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     return this.expensesOtherConditionsService.remove(id);
   }
-} 
+}

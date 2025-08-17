@@ -16,7 +16,10 @@ export class ExpensesOtherRepository extends KnexBaseRepository<ExpensesOther> {
     return await toCamelCase<ExpensesOther>(created);
   }
 
-  async update(id: number, entity: Partial<ExpensesOther>): Promise<ExpensesOther> {
+  async update(
+    id: number,
+    entity: Partial<ExpensesOther>,
+  ): Promise<ExpensesOther> {
     const dbEntity = await toSnakeCase(entity);
     const updated = await super.update(id, dbEntity);
     return await toCamelCase<ExpensesOther>(updated);
@@ -27,14 +30,18 @@ export class ExpensesOtherRepository extends KnexBaseRepository<ExpensesOther> {
     return dbEntity ? await toCamelCase<ExpensesOther>(dbEntity) : undefined;
   }
 
-  async findOne(conditions: Record<string, any>): Promise<ExpensesOther | undefined> {
+  async findOne(
+    conditions: Record<string, any>,
+  ): Promise<ExpensesOther | undefined> {
     const dbEntity = await super.findOne(conditions);
     return dbEntity ? await toCamelCase<ExpensesOther>(dbEntity) : undefined;
   }
 
   async find(conditions: Record<string, any> = {}): Promise<ExpensesOther[]> {
     const dbEntities = await super.find(conditions);
-    return Promise.all(dbEntities.map(async (e) => await toCamelCase<ExpensesOther>(e)));
+    return Promise.all(
+      dbEntities.map(async (e) => await toCamelCase<ExpensesOther>(e)),
+    );
   }
 
   async findWithPagination(
@@ -44,14 +51,23 @@ export class ExpensesOtherRepository extends KnexBaseRepository<ExpensesOther> {
     orderBy: string = 'id',
     direction: 'asc' | 'desc' = 'asc',
   ) {
-    const result = await super.findWithPagination(page, limit, conditions, orderBy, direction);
+    const result = await super.findWithPagination(
+      page,
+      limit,
+      conditions,
+      orderBy,
+      direction,
+    );
     return {
       ...result,
-      data: await Promise.all(result.data.map(async (e) => await toCamelCase<ExpensesOther>(e))),
+      data: await Promise.all(
+        result.data.map(async (e) => await toCamelCase<ExpensesOther>(e)),
+      ),
     };
   }
 
   async findWithPaginationAndSearch(
+    offset: number = 0,
     page: number = 1,
     limit: number = 10,
     conditions: Record<string, any> = {},
@@ -69,11 +85,13 @@ export class ExpensesOtherRepository extends KnexBaseRepository<ExpensesOther> {
     // Apply search term if provided
     if (searchTerm) {
       query.where((builder) => {
-        builder.whereRaw('LOWER("name") LIKE ?', [`%${searchTerm.toLowerCase()}%`]);
+        builder.whereRaw('LOWER("name") LIKE ?', [
+          `%${searchTerm.toLowerCase()}%`,
+        ]);
       });
     }
 
-    const offset = (page - 1) * limit;
+    // const offset = (page - 1) * limit;
 
     // Get total count with search conditions
     const countResult = await query.clone().count('* as count').first();
@@ -86,7 +104,9 @@ export class ExpensesOtherRepository extends KnexBaseRepository<ExpensesOther> {
       .offset(offset);
 
     return {
-      data: await Promise.all(data.map(async (e) => await toCamelCase<ExpensesOther>(e))),
+      data: await Promise.all(
+        data.map(async (e) => await toCamelCase<ExpensesOther>(e)),
+      ),
       meta: {
         total,
         page,
@@ -95,4 +115,4 @@ export class ExpensesOtherRepository extends KnexBaseRepository<ExpensesOther> {
       },
     };
   }
-} 
+}

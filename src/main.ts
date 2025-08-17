@@ -4,37 +4,14 @@ import { AppModule } from './app.module';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { ConfigService } from '@nestjs/config';
 import { setupSwagger } from './config/swagger.config';
-import knex from 'knex';
-import { join } from 'path';
-import * as fs from 'fs';
+import { runMigrationsAndSeedsWithTransaction } from './database/migration-utils';
 import { HttpExceptionFilter } from './middleware/http-exception.filter';
 
 async function bootstrap() {
-  // Run Knex migrations before starting the app
-  const environment = process.env.NODE_ENV || 'development';
-
-  // Find knexfile.js from the current working directory
-  const knexfilePath = join(process.cwd(), 'knexfile.js');
-
-  if (!fs.existsSync(knexfilePath)) {
-    console.error(`Knexfile not found at ${knexfilePath}`);
-    process.exit(1);
-  }
-
-  // Import knexfile as ES module
-  const knexModule = await import(knexfilePath);
-  const knexConfig = knexModule.default;
-  const knexInstance = knex(knexConfig[environment]);
-
+  // TODO: Uncomment this when we want to run migrations and seeds
   try {
-    console.log('Running Knex migrations...');
-    await knexInstance.migrate.latest();
-    console.log('Migrations completed successfully');
-
-    // Run Knex seeds after migrations
-    console.log('Running Knex seeds...');
-    await knexInstance.seed.run();
-    console.log('Seeds completed successfully');
+    console.log('Running database migrations and seeds...');
+    await runMigrationsAndSeedsWithTransaction();
   } catch (error) {
     console.error('Error running migrations or seeds:', error);
     // Don't exit - we can still start the app even if migrations or seeds fail
@@ -51,6 +28,17 @@ async function bootstrap() {
 
   // Get config service
   const configService = app.get(ConfigService);
+
+  // Custom middleware to handle /service prefix
+  app.use((req, res, next) => {
+    const originalUrl = req.url;
+    if (req.url.startsWith('/service/')) {
+      // Remove /service prefix completely
+      req.url = req.url.replace('/service/', '/');
+      console.log(`[Middleware] URL transformed: ${originalUrl} → ${req.url}`);
+    }
+    next();
+  });
 
   // Set global prefix and versioning
   app.setGlobalPrefix('api');
@@ -85,20 +73,20 @@ async function bootstrap() {
   shutdownSignals.forEach((signal) => {
     process.on(signal, async () => {
       logger.log(`Received ${signal} signal, shutting down gracefully`);
-
-      // Close Knex connection pools
-      await knexInstance.destroy();
-
       await app.close();
       process.exit(0);
     });
   });
 
   const port = configService.get('PORT', 3000);
+  const wsPort = configService.get('WS_PORT', 8080);
+
   await app.listen(port);
-  logger.log(`Application is running on: ${await app.getUrl()}`);
+  logger.log(`🚀 Application is running on: ${await app.getUrl()}`);
   logger.log(
-    `API documentation is available at: ${await app.getUrl()}/documentation`,
+    `📚 API documentation is available at: ${await app.getUrl()}/documentation`,
   );
+  logger.log(`🔗 WebSocket Server will start on port: ${wsPort}`);
+  logger.log(`📡 Frontend WebSocket URL: ws://localhost:${wsPort}`);
 }
 bootstrap();

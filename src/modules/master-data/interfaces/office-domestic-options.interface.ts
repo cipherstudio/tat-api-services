@@ -6,9 +6,9 @@ export interface OfficeDomesticQueryOptions {
   isHeadOffice?: boolean;
   searchTerm?: string;
   orderBy?: string;
-  orderDir?: 'ASC' | 'DESC';
+  orderDir?: 'asc' | 'desc';
   createdAfter?: Date;
   createdBefore?: Date;
   updatedAfter?: Date;
   updatedBefore?: Date;
-} 
+}

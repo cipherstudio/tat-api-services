@@ -78,10 +78,9 @@ export class TransportationInboundDto {
 export class TransportationExpenseDto {
   @ApiProperty({
     description: 'ประเภทการเดินทาง',
-    example: 'roundtrip',
-    enum: ['oneway', 'roundtrip']
+    example: 'roundtrip'
   })
-  @IsEnum(['oneway', 'roundtrip'])
+  @IsString()
   travelType: string;
 
   @ApiProperty({

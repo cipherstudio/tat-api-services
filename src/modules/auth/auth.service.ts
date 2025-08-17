@@ -7,17 +7,24 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
+import { SessionService } from './services/session.service';
 import { RegisterDto } from './dto/register.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { User } from '../users/entities/user.entity';
 import * as bcrypt from 'bcrypt';
+import { OpLevelSalR } from '@modules/dataviews/entities/op-level-sal-r.entity';
+import { ViewPosition4ot } from '@modules/dataviews/entities/view-position-4ot.entity';
+import { Employee } from '@modules/dataviews/entities/employee.entity';
+import { OpMasterT } from '@modules/dataviews/entities/op-master-t.entity';
 
 interface JwtPayload {
-  sub: number;
+  sub: string;
   email: string;
   role: string;
   type?: string;
+  employeeCode?: string;
+  isAdmin?: boolean;
 }
 
 interface TokenResponse {
@@ -29,20 +36,28 @@ interface TokenResponse {
 export class AuthService {
   constructor(
     private readonly usersService: UsersService,
+    private readonly sessionService: SessionService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
 
-  async refreshTokens(userId: number): Promise<TokenResponse> {
-    const user = await this.usersService.findById(userId);
+  async refreshTokens(
+    user: User &
+      (Employee &
+        ViewPosition4ot &
+        OpLevelSalR &
+        OpMasterT & { isAdmin?: number }),
+  ): Promise<TokenResponse> {
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
 
     const payload: JwtPayload = {
-      sub: user.id,
+      sub: user.pmtCode,
       email: user.email,
       role: user.role,
+      employeeCode: user.pmtCode,
+      isAdmin: user.isAdmin === 1,
     };
 
     return {
@@ -64,7 +79,7 @@ export class AuthService {
     const resetTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
     const hashedResetToken = await bcrypt.hash(resetToken, 10);
 
-    await this.usersService.update(user.id, {
+    await this.usersService.update(user.pmtCode, {
       passwordResetToken: hashedResetToken,
       passwordResetExpires: resetTokenExpiry,
     });
@@ -73,44 +88,78 @@ export class AuthService {
     return user;
   }
 
-  async logout(userId: number): Promise<void> {
-    const user = await this.usersService.findById(userId);
+  async logout(employeeCode: string): Promise<void> {
+    const user = await this.usersService.findById(employeeCode);
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
 
-    await this.usersService.update(userId, {
+    await this.usersService.update(user.pmtCode, {
       refreshToken: null,
     });
   }
 
-  async validateUser(email: string, pass: string): Promise<any> {
+  async validateUser(
+    email: string,
+    pass: string,
+  ): Promise<
+    (User & (Employee & ViewPosition4ot & OpLevelSalR & OpMasterT)) | null
+  > {
     const user = await this.usersService.findByEmail(email);
     if (user && (await bcrypt.compare(pass, user.password))) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password: unused, ...result } = user;
-      return result;
+      return result as User &
+        (Employee & ViewPosition4ot & OpLevelSalR & OpMasterT);
     }
     return null;
   }
 
-  async login(user: Partial<User>) {
+  async login(
+    user: User &
+      (Employee &
+        ViewPosition4ot &
+        OpLevelSalR &
+        OpMasterT & { isAdmin?: number }),
+    deviceInfo?: string,
+    ipAddress?: string,
+  ) {
     const payload: JwtPayload = {
-      sub: user.id,
+      sub: user.pmtCode,
       email: user.email,
       role: user.role,
+      employeeCode: user.pmtCode,
     };
 
+    const existingUser = await this.usersService.findByEmail(user.email);
+    if (!existingUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Create session with employee_code and employee_name
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = this.jwtService.sign(payload, {
+      expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN'),
+    });
+    await this.sessionService.createSession(
+      user.pmtCode, // employee_code
+      user.pmtNameT, // employee_name
+      refreshToken,
+      deviceInfo,
+      ipAddress,
+    );
+
     return {
-      access_token: this.jwtService.sign(payload),
-      refresh_token: this.jwtService.sign(payload, {
-        expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN'),
-      }),
+      access_token: accessToken,
+      refresh_token: refreshToken,
       user: {
         id: user.id,
-        email: user.email,
-        fullName: user.fullName,
+        email: user.pmtEmailAddr,
+        fullName: user.pmtNameT,
         role: user.role,
+        position: user.posPositionname,
+        employeeCode: existingUser.pmtCode,
+        isAdmin: existingUser.isAdmin === 1,
       },
     };
   }
@@ -132,8 +181,11 @@ export class AuthService {
     return result;
   }
 
-  async changePassword(userId: number, changePasswordDto: ChangePasswordDto) {
-    const user = await this.usersService.findById(userId);
+  async changePassword(
+    employeeCode: string,
+    changePasswordDto: ChangePasswordDto,
+  ) {
+    const user = await this.usersService.findById(employeeCode);
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -147,7 +199,7 @@ export class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(changePasswordDto.newPassword, 10);
-    await this.usersService.update(userId, { password: hashedPassword });
+    await this.usersService.update(employeeCode, { password: hashedPassword });
   }
 
   async forgotPassword(email: string) {
@@ -164,7 +216,7 @@ export class AuthService {
     const hashedResetToken = await bcrypt.hash(resetToken, 10);
 
     // Save the reset token and expiry
-    await this.usersService.update(user.id, {
+    await this.usersService.update(user.pmtCode, {
       passwordResetToken: hashedResetToken,
       passwordResetExpires: resetTokenExpiry,
     });
@@ -197,7 +249,7 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(resetPasswordDto.newPassword, 10);
 
     // Update the user's password and clear reset token fields
-    await this.usersService.update(user.id, {
+    await this.usersService.update(user.pmtCode, {
       password: hashedPassword,
       passwordResetToken: null,
       passwordResetExpires: null,

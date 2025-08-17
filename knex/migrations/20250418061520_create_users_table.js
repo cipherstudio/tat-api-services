@@ -15,6 +15,7 @@ exports.up = function (knex) {
     table.timestamp('lock_until').nullable();
     table.string('password_reset_token').nullable();
     table.timestamp('password_reset_expires').nullable();
+    table.string('employee_code').nullable();
     table.timestamp('created_at').defaultTo(knex.fn.now());
     table.timestamp('updated_at').defaultTo(knex.fn.now());
   });

@@ -56,6 +56,11 @@ export class AccommodationRatesQueryDto {
   rateMode?: 'CHOICE' | 'ACTUAL_ONLY' | 'UNLIMITED';
 
   @ApiProperty({ required: false })
+  @IsEnum(['A', 'B'])
+  @IsOptional()
+  countryType?: 'A' | 'B';
+
+  @ApiProperty({ required: false })
   @IsString()
   @IsOptional()
   searchTerm?: string;

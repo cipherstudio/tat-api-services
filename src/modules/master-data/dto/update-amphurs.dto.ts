@@ -12,8 +12,11 @@ export class UpdateAmphursDto {
   @IsOptional()
   nameEn?: string;
 
-  @ApiProperty({ description: 'The province ID this amphur belongs to', required: false })
+  @ApiProperty({
+    description: 'The province ID this amphur belongs to',
+    required: false,
+  })
   @IsNumber()
   @IsOptional()
   provinceId?: number;
-} 
+}

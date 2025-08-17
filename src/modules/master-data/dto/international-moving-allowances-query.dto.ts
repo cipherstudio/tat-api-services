@@ -1,30 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsString, IsDate } from 'class-validator';
+import { IsOptional, IsString, IsDate, IsNumber } from 'class-validator';
 import { Type } from 'class-transformer';
+import { CommonQueryDto } from '../../../common/dto/common-query.dtp';
 
-export class InternationalMovingAllowancesQueryDto {
-  @ApiProperty({ required: false })
-  @IsNumber()
-  @IsOptional()
-  @Type(() => Number)
-  page?: number;
-
-  @ApiProperty({ required: false })
-  @IsNumber()
-  @IsOptional()
-  @Type(() => Number)
-  limit?: number;
-
-  @ApiProperty({ required: false })
-  @IsString()
-  @IsOptional()
-  orderBy?: string;
-
-  @ApiProperty({ required: false })
-  @IsString()
-  @IsOptional()
-  orderDir?: 'ASC' | 'DESC';
-
+export class InternationalMovingAllowancesQueryDto extends CommonQueryDto {
   @ApiProperty({ required: false })
   @IsString()
   @IsOptional()
@@ -46,6 +25,11 @@ export class InternationalMovingAllowancesQueryDto {
   @IsOptional()
   @Type(() => Number)
   deputyDirectorSalary?: number;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  searchTerm?: string;
 
   @ApiProperty({ required: false })
   @IsDate()
@@ -70,4 +54,4 @@ export class InternationalMovingAllowancesQueryDto {
   @IsOptional()
   @Type(() => Date)
   updatedBefore?: Date;
-} 
+}

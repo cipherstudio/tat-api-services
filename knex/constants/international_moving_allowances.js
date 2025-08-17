@@ -8,7 +8,7 @@ const international_moving_allowances = [
   },
   {
     "id": 2,
-    "office": "สำนักงานฟูกูโอกะ",
+    "office": "สำนักงานฟุกุโอกะ",
     "currency": "100 เยน",
     "director_salary": 5131,
     "deputy_director_salary": 4829
@@ -64,7 +64,7 @@ const international_moving_allowances = [
   },
   {
     "id": 10,
-    "office": "สำนักงานกว่างโจว",
+    "office": "สำนักงานกวางโจ",
     "currency": "ดอลลาร์สหรัฐฯ",
     "director_salary": 5110,
     "deputy_director_salary": 4810
@@ -201,6 +201,13 @@ const international_moving_allowances = [
     "currency": "ดอลลาร์แคนาดา",
     "director_salary": 5555,
     "deputy_director_salary": 5225
+  },
+  {
+    "id": 30,
+    "office": "สำนักงานชิคาโก",
+    "currency": "ดอลลาร์สหรัฐฯ",
+    "director_salary": 5365,
+    "deputy_director_salary": 5050
   }
 ]
 

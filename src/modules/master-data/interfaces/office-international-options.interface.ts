@@ -2,7 +2,7 @@ import {
   BasePaginationOptions,
   BaseFilterOptions,
   BaseIncludeOptions,
-  BaseQueryOptions,
+  // BaseQueryOptions,
 } from '../../../common/interfaces/query-options.interface.js';
 
 /**
@@ -33,6 +33,26 @@ export interface OfficeInternationalFilterOptions extends BaseFilterOptions {
    * })
    */
   region?: string;
+
+  /**
+   * Filter by country ID
+   * @TypeProperty({
+   *   type: 'number',
+   *   isOptional: true,
+   *   description: 'Filter by country ID'
+   * })
+   */
+  countryId?: number;
+
+  /**
+   * Filter by currency ID
+   * @TypeProperty({
+   *   type: 'number',
+   *   isOptional: true,
+   *   description: 'Filter by currency ID'
+   * })
+   */
+  currencyId?: number;
 
   /**
    * Filter by creation date after
@@ -83,7 +103,8 @@ export interface OfficeInternationalFilterOptions extends BaseFilterOptions {
  *   extends: ['BasePaginationOptions']
  * })
  */
-export interface OfficeInternationalPaginationOptions extends BasePaginationOptions {}
+export interface OfficeInternationalPaginationOptions
+  extends BasePaginationOptions {}
 
 /**
  * Office international-specific include options
@@ -106,10 +127,13 @@ export interface OfficeInternationalIncludeOptions extends BaseIncludeOptions {}
 export interface OfficeInternationalQueryOptions {
   page?: number;
   limit?: number;
-  orderBy?: 'id' | 'name' | 'region' | 'createdAt' | 'updatedAt';
-  orderDir?: 'ASC' | 'DESC';
+  orderBy?: string;
+  orderDir?: 'asc' | 'desc';
   name?: string;
   region?: string;
+  pogCode?: string;
+  countryId?: number;
+  currencyId?: number;
   searchTerm?: string;
   createdAfter?: Date;
   createdBefore?: Date;

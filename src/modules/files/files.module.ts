@@ -11,6 +11,6 @@ import { Module } from '@nestjs/common';
       ],
       controllers: [FilesController],
       providers: [FilesService, FilesRepository, RedisCacheService],
-      exports: [FilesService],
+      exports: [FilesService, FilesRepository],
     })
     export class FilesModule {}

@@ -1,30 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, IsEnum, IsNumber, IsDate } from 'class-validator';
+import { IsOptional, IsString, IsEnum, IsDate } from 'class-validator';
 import { Type } from 'class-transformer';
+import { CommonQueryDto } from '../../../common/dto/common-query.dtp';
 
-export class PerDiemRatesQueryDto {
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  page?: number;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  limit?: number;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  orderBy?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  orderDir?: 'ASC' | 'DESC';
-
+export class PerDiemRatesQueryDto extends CommonQueryDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
@@ -78,4 +57,4 @@ export class PerDiemRatesQueryDto {
   @IsDate()
   @Type(() => Date)
   updatedBefore?: Date;
-} 
+}

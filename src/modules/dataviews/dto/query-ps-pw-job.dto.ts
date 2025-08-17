@@ -1,8 +1,8 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsOptional, IsNumber } from 'class-validator';
+import { IsOptional } from 'class-validator';
+import { CommonQueryDto } from '../../../common/dto/common-query.dtp';
 
-export class QueryPsPwJobDto {
+export class QueryPsPwJobDto extends CommonQueryDto {
   @ApiPropertyOptional({ description: 'รหัสพนักงาน' })
   @IsOptional()
   emplid?: string;
@@ -14,26 +14,4 @@ export class QueryPsPwJobDto {
   @ApiPropertyOptional({ description: 'รหัสตำแหน่ง' })
   @IsOptional()
   positionNbr?: string;
-
-  @ApiPropertyOptional({
-    description: 'จำนวนรายการต่อหน้า',
-    example: 10,
-    type: Number,
-    default: 10,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  limit: number = 10;
-
-  @ApiPropertyOptional({
-    description: 'ข้ามกี่รายการ',
-    example: 0,
-    type: Number,
-    default: 0,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  offset: number = 0;
 }

@@ -20,6 +20,13 @@ import { ExpensesOtherConditionsService } from './services/expenses-other-condit
 import { DomesticMovingAllowancesService } from './services/domestic-moving-allowances.service';
 import { InternationalMovingAllowancesService } from './services/international-moving-allowances.service';
 import { AttireAllowanceRatesService } from './services/attire-allowance-rates.service';
+import { AttireDestinationGroupsService } from './services/attire-destination-groups.service';
+import { CurrencyService } from './services/currency.service';
+import { HolidayWorkRatesService } from './services/holiday-work-rates.service';
+import { EntertainmentAllowanceService } from './services/entertainment-allowance.service';
+import { ApprovalClothingExpenseService } from './services/approval-clothing-expense.service';
+import { PrivilegeService } from './services/privilege.service.js';
+import { MasterdataLabelsService } from './services/masterdata-labels.service';
 
 // Import controllers
 import { CountriesController } from './controllers/countries.controller.js';
@@ -39,6 +46,13 @@ import { ExpensesOtherConditionsController } from './controllers/expenses-other-
 import { DomesticMovingAllowancesController } from './controllers/domestic-moving-allowances.controller';
 import { InternationalMovingAllowancesController } from './controllers/international-moving-allowances.controller';
 import { AttireAllowanceRatesController } from './controllers/attire-allowance-rates.controller';
+import { AttireDestinationGroupsController } from './controllers/attire-destination-groups.controller';
+import { CurrencyController } from './controllers/currency.controller';
+import { HolidayWorkRatesController } from './controllers/holiday-work-rates.controller';
+import { EntertainmentAllowanceController } from './controllers/entertainment-allowance.controller';
+import { ApprovalClothingExpenseController } from './controllers/approval-clothing-expense.controller';
+import { PrivilegeController } from './controllers/privilege.controller.js';
+import { MasterdataLabelsController } from './controllers/masterdata-labels.controller';
 
 // Import repositories
 import { CountriesRepository } from './repositories/countries.repository.js';
@@ -58,11 +72,33 @@ import { ExpensesOtherConditionsRepository } from './repositories/expenses-other
 import { DomesticMovingAllowancesRepository } from './repositories/domestic-moving-allowances.repository';
 import { InternationalMovingAllowancesRepository } from './repositories/international-moving-allowances.repository';
 import { AttireAllowanceRatesRepository } from './repositories/attire-allowance-rates.repository';
+import { AttireDestinationGroupsRepository } from './repositories/attire-destination-groups.repository';
+import { CurrencyRepository } from './repositories/currency.repository';
+import { HolidayWorkRatesRepository } from './repositories/holiday-work-rates.repository';
+import { EntertainmentAllowanceRepository } from './repositories/entertainment-allowance.repository';
+import { ApprovalClothingExpenseRepository } from './repositories/approval-clothing-expense.repository';
+import { PrivilegeRepository } from './repositories/privilege.repository.js';
+import { MasterdataLabelsRepository } from './repositories/masterdata-labels.repository';
+
+// Import entities
+import { HolidayWorkRate } from './entities/holiday-work-rates.entity';
+import { HolidayWorkHour } from './entities/holiday-work-hours.entity';
+import { MasterdataLabel } from './entities/masterdata-labels.entity';
+import { MealAllowanceController } from './controllers/meal-allowance.controller.js';
+import { MealAllowanceService } from './services/meal-allowance.service.js';
+import { MealAllowanceRepository } from './repositories/meal-allowance.repository.js';
+import { EmployeeAdminController } from './controllers/employee-admin.controller';
+import { EmployeeAdminService } from './services/employee-admin.service';
+import { EmployeeAdminRepository } from './repositories/employee-admin.repository';
+import { MenuItemsAccessController } from './controllers/menu-items-access.controller';
+import { MenuItemsAccessService } from './services/menu-items-access.service';
+import { MenuItemsAccessRepository } from './repositories/menu-items-access.repository';
+import { MeetRateController } from './controllers/meet-rate.controller';
+import { MeetRateService } from './services/meet-rate.service';
+import { MeetRateRepository } from './repositories/meet-rate.repository';
 
 @Module({
-  imports: [
-    RedisCacheModule,
-  ],
+  imports: [RedisCacheModule],
   controllers: [
     CountriesController,
     PlacesController,
@@ -81,6 +117,17 @@ import { AttireAllowanceRatesRepository } from './repositories/attire-allowance-
     DomesticMovingAllowancesController,
     InternationalMovingAllowancesController,
     AttireAllowanceRatesController,
+    AttireDestinationGroupsController,
+    CurrencyController,
+    HolidayWorkRatesController,
+    EntertainmentAllowanceController,
+    ApprovalClothingExpenseController,
+    PrivilegeController,
+    MasterdataLabelsController,
+    MealAllowanceController,
+    EmployeeAdminController,
+    MenuItemsAccessController,
+    MeetRateController,
   ],
   providers: [
     // Services
@@ -101,6 +148,19 @@ import { AttireAllowanceRatesRepository } from './repositories/attire-allowance-
     DomesticMovingAllowancesService,
     InternationalMovingAllowancesService,
     AttireAllowanceRatesService,
+    AttireDestinationGroupsService,
+    CurrencyService,
+    HolidayWorkRatesService,
+    EntertainmentAllowanceService,
+    ApprovalClothingExpenseService,
+    PrivilegeService,
+    MasterdataLabelsService,
+    MealAllowanceService,
+    MeetRateService,
+    MenuItemsAccessService,
+    EmployeeAdminService,
+    MenuItemsAccessService,
+    MeetRateService,
     // Repositories
     CountriesRepository,
     PlacesRepository,
@@ -119,8 +179,23 @@ import { AttireAllowanceRatesRepository } from './repositories/attire-allowance-
     DomesticMovingAllowancesRepository,
     InternationalMovingAllowancesRepository,
     AttireAllowanceRatesRepository,
+    AttireDestinationGroupsRepository,
+    CurrencyRepository,
+    HolidayWorkRatesRepository,
+    EntertainmentAllowanceRepository,
+    ApprovalClothingExpenseRepository,
+    PrivilegeRepository,
+    MasterdataLabelsRepository,
+    MealAllowanceRepository,
+    EmployeeAdminRepository,
+    MenuItemsAccessRepository,
+    MeetRateRepository,
     // Shared services
     RedisCacheService,
+    HolidayWorkRate,
+    HolidayWorkHour,
+    HolidayWorkRatesRepository,
+    MasterdataLabel,
   ],
   exports: [
     CountriesService,
@@ -140,6 +215,13 @@ import { AttireAllowanceRatesRepository } from './repositories/attire-allowance-
     DomesticMovingAllowancesService,
     InternationalMovingAllowancesService,
     AttireAllowanceRatesService,
+    AttireDestinationGroupsService,
+    CurrencyService,
+    HolidayWorkRatesService,
+    ApprovalClothingExpenseService,
+    PrivilegeService,
+    MasterdataLabelsService,
+    MealAllowanceService,
   ],
 })
-export class MasterDataModule {} 
+export class MasterDataModule {}

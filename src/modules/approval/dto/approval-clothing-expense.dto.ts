@@ -1,5 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional, IsString, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { CreateAttachmentDto } from './approval-attachment.dto';
 
 export class ApprovalClothingExpenseDto {
   @ApiProperty({
@@ -57,6 +59,33 @@ export class ApprovalClothingExpenseDto {
   workEndDate?: string;
 
   @ApiProperty({
+    description: 'Approval Increment ID',
+    required: false,
+    example: 'EX680600003'
+  })
+  @IsOptional()
+  @IsString()
+  incrementId?: string;
+
+  @ApiProperty({
+    description: 'Destination country',
+    required: false,
+    example: 'Japan'
+  })
+  @IsOptional()
+  @IsString()
+  destinationCountry?: string;
+
+  @ApiProperty({
+    description: 'Attachment ID',
+    required: false,
+    example: 1
+  })
+  @IsOptional()
+  @IsNumber()
+  attachmentId?: number;
+
+  @ApiProperty({
     description: 'ID of the staff member',
     required: false,
     example: 1
@@ -64,6 +93,21 @@ export class ApprovalClothingExpenseDto {
   @IsOptional()
   @IsNumber()
   staffMemberId?: number;
+
+  @ApiProperty({
+    description: 'ไฟล์แนบเพิ่มเติม',
+    type: [CreateAttachmentDto],
+    required: false,
+    example: [
+      { fileId: 444 },
+      { fileId: 445 }
+    ],
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateAttachmentDto)
+  attachments?: CreateAttachmentDto[];
 
   @ApiProperty({
     description: 'ID of the approval',

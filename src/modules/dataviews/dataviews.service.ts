@@ -44,6 +44,11 @@ import { QueryVTxOtDto } from './dto/query-v-tx-ot.dto';
 import { PsPwJobPaginate } from './entities/ps-pw-job.entity';
 import { PsPwJobRepository } from './repositories/ps-pw-job.repository';
 import { QueryPsPwJobDto } from './dto/query-ps-pw-job.dto';
+import {
+  OpLevelSalRRepository,
+  OpLevelSalRPaginate,
+} from './repositories/op-level-sal-r.repository';
+import { QueryOpLevelSalRDto } from './dto/query-op-level-sal-r.dto';
 
 @Injectable()
 export class DataviewsService {
@@ -68,6 +73,7 @@ export class DataviewsService {
     private readonly vBudgetCodeRepository: VBudgetCodeRepository,
     private readonly vTxOtRepository: VTxOtRepository,
     private readonly psPwJobRepository: PsPwJobRepository,
+    private readonly opLevelSalRRepository: OpLevelSalRRepository,
   ) {}
 
   async findAllEmployees(): Promise<Employee[]> {
@@ -76,6 +82,16 @@ export class DataviewsService {
 
   async findEmployeeByCode(code: string): Promise<Employee | undefined> {
     return this.employeeRepository.findByCode(code);
+  }
+
+  async findEmployeeByCodeWithPosition4ot(
+    code: string,
+  ): Promise<any | undefined> {
+    return this.employeeRepository.findByCodeWithPosition4ot(code);
+  }
+
+  async checkEmployeeIsAdmin(pmtCode: string): Promise<boolean> {
+    return this.employeeRepository.checkIsAdmin(pmtCode);
   }
 
   async findEmployeesWithQuery(
@@ -158,5 +174,11 @@ export class DataviewsService {
 
   async findPsPwJobWithQuery(query: QueryPsPwJobDto): Promise<PsPwJobPaginate> {
     return this.psPwJobRepository.findWithQuery(query);
+  }
+
+  async findOpLevelSalRWithQuery(
+    query: QueryOpLevelSalRDto,
+  ): Promise<OpLevelSalRPaginate> {
+    return this.opLevelSalRRepository.findWithQuery(query);
   }
 }

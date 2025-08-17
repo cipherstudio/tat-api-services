@@ -93,9 +93,29 @@ export class FilesService {
   }
 
   async remove(id: number): Promise<void> {
+    // Get file info before deleting from database
+    const file = await this.filesRepository.findById(id);
+    if (!file) {
+      throw new NotFoundException(`Files with ID ${id} not found`);
+    }
+
+    // Delete from database first
     const result = await this.filesRepository.delete(id);
     if (!result) {
       throw new NotFoundException(`Files with ID ${id} not found`);
+    }
+
+    // Try to delete the physical file from disk
+    if (file.path) {
+      try {
+        const absPath = path.join(process.cwd(), file.path);
+        if (fs.existsSync(absPath)) {
+          fs.unlinkSync(absPath);
+        }
+      } catch (error) {
+        console.warn(`Warning: Failed to delete physical file ${file.path}:`, error.message);
+        // Don't throw error here as the database record is already deleted
+      }
     }
 
     // Remove from cache

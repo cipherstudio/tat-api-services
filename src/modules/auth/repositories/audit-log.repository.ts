@@ -22,15 +22,15 @@ export class AuditLogRepository extends KnexBaseRepository<AuditLog> {
     return await toCamelCase<AuditLog>(updated);
   }
 
-  async getUserLogs(
-    userId: number,
+  async getEmployeeLogs(
+    employeeCode: string,
     page: number = 1,
     limit: number = 10,
   ): Promise<{ data: AuditLog[]; meta: any }> {
     const result = await this.findWithPagination(
       page,
       limit,
-      { user_id: userId },
+      { employee_code: employeeCode },
       'created_at',
       'desc',
     );
@@ -43,28 +43,24 @@ export class AuditLogRepository extends KnexBaseRepository<AuditLog> {
   }
 
   async countRecentFailedLogins(
-    userId: number,
-    minutes: number = 30,
+    employeeCode: string,
+    minutes = 30,
   ): Promise<number> {
-    const timeThreshold = new Date();
-    timeThreshold.setMinutes(timeThreshold.getMinutes() - minutes);
-
+    const timeAgo = new Date(Date.now() - minutes * 60 * 1000);
     const result = await this.knexService
-      .knex('audit_logs')
-      .where({
-        user_id: userId,
-        action: 'LOGIN_FAILED',
-        status: 'failure',
-      })
-      .where('created_at', '>=', timeThreshold)
+      .knex(this.tableName)
+      .where('employee_code', employeeCode)
+      .where('status', 'failure')
+      .where('category', 'auth')
+      .where('created_at', '>=', timeAgo)
       .count('* as count')
       .first();
 
-    return Number(result?.count || 0);
+    return result ? parseInt(result.count as string) : 0;
   }
 
   async getSecurityEvents(
-    userId: number,
+    employeeCode: string,
     page: number = 1,
     limit: number = 10,
   ): Promise<{ data: AuditLog[]; meta: any }> {
@@ -72,9 +68,29 @@ export class AuditLogRepository extends KnexBaseRepository<AuditLog> {
       page,
       limit,
       {
-        user_id: userId,
+        employee_code: employeeCode,
         category: 'security',
       },
+      'created_at',
+      'desc',
+    );
+    return {
+      ...result,
+      data: await Promise.all(
+        result.data.map(async (l) => await toCamelCase<AuditLog>(l)),
+      ),
+    };
+  }
+
+  async getEmployeeActivityLogs(
+    employeeCode: string,
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<{ data: AuditLog[]; meta: any }> {
+    const result = await this.findWithPagination(
+      page,
+      limit,
+      { employee_code: employeeCode },
       'created_at',
       'desc',
     );
