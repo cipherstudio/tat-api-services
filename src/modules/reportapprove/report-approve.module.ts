@@ -11,6 +11,7 @@ import { ReportAccommodationRepository } from './repositories/report-accommodati
 import { ReportOtherExpenseRepository } from './repositories/report-other-expense.repository';
 import { ReportTransportationRepository } from './repositories/report-transportation.repository';
 import { ReportAllowanceRepository } from './repositories/report-allowance.repository';
+import { ReportOtherExpenseListRepository } from './repositories/report-other-expense-list.repository';
 
 // Entertainment Form Components
 import { EntertainmentFormController } from './controllers/entertainment-form.controller';
@@ -44,6 +45,7 @@ import { MeetingTypeRateRepository } from './repositories/meeting-type-rate.repo
     ReportOtherExpenseRepository,
     ReportTransportationRepository,
     ReportAllowanceRepository,
+    ReportOtherExpenseListRepository,
 
     // Entertainment Form Providers
     EntertainmentFormService,

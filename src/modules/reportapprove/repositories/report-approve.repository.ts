@@ -231,7 +231,40 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
     // 3. แปลงข้อมูลเป็น camelCase
     const data = await Promise.all(rows.map((row) => toCamelCase<any>(row)));
 
-    // 4. Group ข้อมูลให้ report_traveller_form เป็น array (และ embed traveller, dailyTravelDetails)
+    const otherExpenseListMap = new Map();
+    for (const id of idRows) {
+      const otherExpenseList = await this.knex('report_other_expense_list')
+        .where({ report_id: id })
+        .select('*')
+        .orderBy('list_id', 'asc');
+
+      // ดึง receipts สำหรับแต่ละ otherExpenseList
+      const otherExpenseListWithReceipts = await Promise.all(
+        otherExpenseList.map(async (expense) => {
+          const receipts = await this.knex('report_other_expense_list_receipts')
+            .where({ list_id: expense.list_id })
+            .select('*')
+            .orderBy('receipt_id', 'asc');
+          
+          return {
+            listId: expense.list_id,
+            expenseId: expense.expense_id,
+            name: expense.name,
+            requestAmount: expense.request_amount,
+            actualAmount: expense.actual_amount,
+            receipts: receipts.map(receipt => ({
+              receiptId: receipt.receipt_id,
+              receiptDetailId: receipt.receipt_detail_id,
+              detail: receipt.detail,
+              amount: receipt.amount
+            }))
+          };
+        })
+      );
+      
+      otherExpenseListMap.set(id, otherExpenseListWithReceipts);
+    }
+
     const grouped = {};
     for (const row of data) {
       const id = row.id;
@@ -255,6 +288,7 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
           creatorNameEn: row.creatorNameEn,
           creatorPosition: row.creatorPosition,
           reportTravellerForm: [],
+          otherExpenseList: otherExpenseListMap.get(id) || [],
         };
       }
       // ถ้ามี form_id แสดงว่ามีข้อมูลฟอร์ม
@@ -604,7 +638,35 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
       throw new NotFoundException('Record not found');
 
     const data = await Promise.all(rows.map((row) => toCamelCase<any>(row)));
-    // Group ข้อมูลให้ report_traveller_form เป็น array (และ embed traveller, dailyTravelDetails)
+    
+    const otherExpenseList = await this.knex('report_other_expense_list')
+      .where({ report_id: id })
+      .select('*')
+      .orderBy('list_id', 'asc');
+
+    const otherExpenseListWithReceipts = await Promise.all(
+      otherExpenseList.map(async (expense) => {
+        const receipts = await this.knex('report_other_expense_list_receipts')
+          .where({ list_id: expense.list_id })
+          .select('*')
+          .orderBy('receipt_id', 'asc');
+        
+        return {
+          listId: expense.list_id,
+          expenseId: expense.expense_id,
+          name: expense.name,
+          requestAmount: expense.request_amount,
+          actualAmount: expense.actual_amount,
+          receipts: receipts.map(receipt => ({
+            receiptId: receipt.receipt_id,
+            receiptDetailId: receipt.receipt_detail_id,
+            detail: receipt.detail,
+            amount: receipt.amount
+          }))
+        };
+      })
+    );
+
     const row = data[0];
     const result = {
       id: row.id,
@@ -624,6 +686,7 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
       creatorNameEn: row.creatorNameEn,
       creatorPosition: row.creatorPosition,
       reportTravellerForm: [],
+      otherExpenseList: otherExpenseListWithReceipts,
     };
     // Group formId -> form object
     const formMap = new Map();
