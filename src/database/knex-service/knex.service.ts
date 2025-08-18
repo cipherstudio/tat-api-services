@@ -159,8 +159,8 @@ export class KnexService implements OnModuleInit, OnModuleDestroy {
     return this.findById(table, id);
   }
 
-  async delete(table: string, id: number) {
-    return this._knexInstance(table).where({ id }).delete();
+  async delete(table: string, id: number, primaryKey: string = 'id') {
+    return this._knexInstance(table).where({ [primaryKey]: id }).delete();
   }
 
   // Transaction helper
