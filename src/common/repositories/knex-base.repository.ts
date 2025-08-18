@@ -105,7 +105,21 @@ export class KnexBaseRepository<T> {
   }
 
   async delete(id: number): Promise<number> {
-    return this.knexService.delete(this.tableName, id);
+    const primaryKey = this.getPrimaryKeyColumn();
+    return this.knexService.delete(this.tableName, id, primaryKey);
+  }
+
+  private getPrimaryKeyColumn(): string {
+    const primaryKeyMap: Record<string, string> = {
+      'report_holiday_wage_detail': 'holiday_id',
+      'report_accommodation': 'accommodation_id',
+      'report_other_expense': 'expense_id',
+      'report_transportation': 'transport_id',
+      'report_allowance': 'allowance_id',
+      'report_daily_travel_detail': 'detail_id',
+    };
+    
+    return primaryKeyMap[this.tableName] || 'id';
   }
 
   async transaction<R>(

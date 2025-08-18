@@ -47,7 +47,7 @@ export class ReportTravellerFormRepository extends KnexBaseRepository<ReportTrav
     const [created] = await this.knex('report_traveller_form')
       .insert(data)
       .returning('*');
-    return toCamelCase<ReportTravellerForm>(created);
+    return created;
   }
 
   async updateOne(

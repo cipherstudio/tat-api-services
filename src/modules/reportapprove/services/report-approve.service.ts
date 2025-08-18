@@ -476,6 +476,15 @@ export class ReportApproveService {
               });
             }
           }
+          
+          (result as any).reportTravellerForm = [
+            {
+              travelerCode: traveller_code,
+              formId: createdForm.form_id,
+              travelerId: createdForm.traveler_id,
+              reportId: createdForm.report_id,
+            }
+          ];
         }
       }
     }
