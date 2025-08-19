@@ -110,6 +110,11 @@ export class CreateEntertainmentFormDto {
   @IsString()
   entertainmentType?: string;
 
+  @ApiProperty({ example: 'มกราคม', description: 'เดือนที่ทำรายงาน' })
+  @IsOptional()
+  @IsString()
+  month?: string;
+
   @ApiProperty({ example: 1 })
   @IsOptional()
   @IsNumber()

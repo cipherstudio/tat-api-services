@@ -28,6 +28,9 @@ export class ReportEntertainmentForm {
   @ApiProperty({ example: 'รายครั้ง', description: 'Type of entertainment (รายครั้ง, ประจำเดือน)' })
   entertainmentType: string;
 
+  @ApiProperty({ example: 'มกราคม', description: 'เดือนที่ทำรายงาน' })
+  month: string;
+
   @ApiProperty({ example: 1 })
   statusId: number;
 
