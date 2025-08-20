@@ -4767,4 +4767,56 @@ export class ApprovalService {
 
     return allAttachments;
   }
+
+  async updateStaffMembersCancelledStatus(
+    id: number,
+    updateDto: any,
+    employeeCode: string,
+  ): Promise<any> {
+    // ตรวจสอบว่า approval มีอยู่จริงหรือไม่
+    const approval = await this.findById(id);
+    if (!approval) {
+      throw new NotFoundException(`Approval with ID ${id} not found`);
+    }
+
+    // เริ่ม transaction
+    const trx = await this.knexService.knex.transaction();
+
+    try {
+      // อัปเดตสถานะ cancelled ของแต่ละ staff member
+      for (const staffMember of updateDto.staffMembers) {
+        await trx('approval_staff_members')
+          .where({
+            approval_id: id,
+            employee_code: staffMember.employeeCode,
+          })
+          .update({
+            cancelled: staffMember.cancelled,
+            updated_at: new Date(),
+          });
+      }
+
+      // Commit transaction
+      await trx.commit();
+
+      // อัปเดต cache
+      await this.cacheService.del(
+        this.cacheService.generateKey(this.CACHE_PREFIX, id),
+      );
+      await this.cacheService.del(
+        this.cacheService.generateListKey(this.CACHE_PREFIX),
+      );
+
+      // ส่งข้อมูลกลับ
+      return {
+        message: 'Staff members cancelled status updated successfully',
+        approvalId: id,
+        updatedStaffMembers: updateDto.staffMembers,
+      };
+    } catch (error) {
+      // Rollback transaction หากเกิดข้อผิดพลาด
+      await trx.rollback();
+      throw error;
+    }
+  }
 }

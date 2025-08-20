@@ -11,7 +11,7 @@ import { SessionService } from './services/session.service';
 import { RegisterDto } from './dto/register.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { User } from '../users/entities/user.entity';
+import { User, UserRole } from '../users/entities/user.entity';
 import * as bcrypt from 'bcrypt';
 import { OpLevelSalR } from '@modules/dataviews/entities/op-level-sal-r.entity';
 import { ViewPosition4ot } from '@modules/dataviews/entities/view-position-4ot.entity';
@@ -160,6 +160,50 @@ export class AuthService {
         position: user.posPositionname,
         employeeCode: existingUser.pmtCode,
         isAdmin: existingUser.isAdmin === 1,
+      },
+    };
+  }
+
+  async ssoLogin(
+    user: User &
+      (Employee &
+        ViewPosition4ot &
+        OpLevelSalR &
+        OpMasterT & { isAdmin?: number }),
+    deviceInfo?: string,
+    ipAddress?: string,
+  ) {
+    const payload: JwtPayload = {
+      sub: user.pmtCode,
+      email: user.email,
+      role: user.role,
+      employeeCode: user.pmtCode,
+    };
+
+    // Create session with employee_code and employee_name
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = this.jwtService.sign(payload, {
+      expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN'),
+    });
+    await this.sessionService.createSession(
+      user.pmtCode, // employee_code
+      user.pmtNameT, // employee_name
+      refreshToken,
+      deviceInfo,
+      ipAddress,
+    );
+
+    return {
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      user: {
+        id: Number(user.pmtCode),
+        email: user.pmtEmailAddr,
+        fullName: user.pmtNameT,
+        role: user.isAdmin === 1 ? UserRole.ADMIN : UserRole.USER,
+        position: user.posPositionname,
+        employeeCode: user.pmtCode,
+        isAdmin: user.isAdmin === 1,
       },
     };
   }
