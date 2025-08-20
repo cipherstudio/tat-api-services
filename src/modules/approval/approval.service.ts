@@ -2067,6 +2067,11 @@ export class ApprovalService {
             comments: updateDto.comments,
           })
           .returning('id');
+
+        await this.createApprovalNextApproverNotification(
+          id,
+          updateDto.staffEmployeeCode,
+        );
       }
 
       // Process JSON fields
