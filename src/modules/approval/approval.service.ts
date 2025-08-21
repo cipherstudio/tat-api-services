@@ -4627,13 +4627,16 @@ export class ApprovalService {
     approvalId: number,
     status: 'APPROVED' | 'REJECTED',
     employeeCode: string,
-    approverName: string,
+    approverEmployeeCode: string,
   ): Promise<void> {
     const approval = await this.approvalRepository.findById(approvalId);
     if (!approval) return;
 
     const approvalTitle =
       approval.documentTitle || approval.name || `Approval #${approvalId}`;
+
+    // แปลง employee code เป็นชื่อ
+    const approverName = await this.getEmployeeName(approverEmployeeCode);
 
     await this.notificationService.createApprovalStatusChangedNotification(
       approvalId,
