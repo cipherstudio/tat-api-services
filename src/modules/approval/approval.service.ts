@@ -3503,7 +3503,7 @@ export class ApprovalService {
         await this.createApprovalCompletedNotification(
           existingContinuous.approval_id,
           'REJECTED',
-          employeeCode,
+          approval.employee_code,
           approval.final_staff_employee_code,
         );
       }
