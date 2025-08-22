@@ -194,13 +194,16 @@ export class CertificateReportService {
     const { expenses, ...certificateData } = dto;
 
     // Create certificate
-    const [certificate] = await this.certificateRepository.knex('report_certificate')
+    const [certificateId] = await this.certificateRepository.knex('report_certificate')
       .insert({
         ...certificateData,
         created_by: createdBy,
         updated_by: createdBy,
       })
-      .returning('*');
+      .returning('id');
+
+    // Get created certificate
+    const certificate = await this.certificateRepository.findOne({ id: certificateId.id });
 
     // Create expenses if provided
     if (expenses && expenses.length > 0) {
@@ -232,14 +235,16 @@ export class CertificateReportService {
     const { expenses, ...certificateData } = dto;
 
     // Update certificate
-    const [updatedCertificate] = await this.certificateRepository.knex('report_certificate')
+    await this.certificateRepository.knex('report_certificate')
       .where('id', id)
       .update({
         ...certificateData,
         updated_by: updatedBy,
         updated_at: new Date(),
-      })
-      .returning('*');
+      });
+
+    // Get updated certificate
+    const updatedCertificate = await this.certificateRepository.findOne({ id });
 
     // Update expenses if provided
     if (expenses !== undefined) {
