@@ -1916,6 +1916,7 @@ export class ApprovalService {
                         clothing_reason: expense.clothingReason,
                         reporting_date: null, // ไม่ต้องส่ง มาจาก cron + manual save
                         next_claim_date: nextClaimDate,
+                        work_start_date: workStartDate,
                         work_end_date: workEndDate, // ไม่ต้องส่ง เอามาจาก step 1
                         increment_id: approval.incrementId,
                         destination_country: destinationCountry ?? null,
@@ -1937,6 +1938,7 @@ export class ApprovalService {
                         clothing_reason: expense.clothingReason,
                         reporting_date: null, // ไม่ต้องส่ง มาจาก cron + manual save
                         next_claim_date: nextClaimDate,
+                        work_start_date: workStartDate,
                         work_end_date: workEndDate, // ไม่ต้องส่ง เอามาจาก step 1
                         increment_id: approval.incrementId,
                         destination_country: destinationCountry ?? null,

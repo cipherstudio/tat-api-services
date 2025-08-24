@@ -25,6 +25,7 @@ import { CurrencyService } from './services/currency.service';
 import { HolidayWorkRatesService } from './services/holiday-work-rates.service';
 import { EntertainmentAllowanceService } from './services/entertainment-allowance.service';
 import { ApprovalClothingExpenseService } from './services/approval-clothing-expense.service';
+import { ClothingExpenseCancellationRequestService } from './services/clothing-expense-cancellation-request.service';
 import { PrivilegeService } from './services/privilege.service.js';
 import { MasterdataLabelsService } from './services/masterdata-labels.service';
 
@@ -51,6 +52,7 @@ import { CurrencyController } from './controllers/currency.controller';
 import { HolidayWorkRatesController } from './controllers/holiday-work-rates.controller';
 import { EntertainmentAllowanceController } from './controllers/entertainment-allowance.controller';
 import { ApprovalClothingExpenseController } from './controllers/approval-clothing-expense.controller';
+import { ClothingExpenseCancellationRequestController } from './controllers/clothing-expense-cancellation-request.controller';
 import { PrivilegeController } from './controllers/privilege.controller.js';
 import { MasterdataLabelsController } from './controllers/masterdata-labels.controller';
 
@@ -77,6 +79,7 @@ import { CurrencyRepository } from './repositories/currency.repository';
 import { HolidayWorkRatesRepository } from './repositories/holiday-work-rates.repository';
 import { EntertainmentAllowanceRepository } from './repositories/entertainment-allowance.repository';
 import { ApprovalClothingExpenseRepository } from './repositories/approval-clothing-expense.repository';
+import { ClothingExpenseCancellationRequestRepository } from './repositories/clothing-expense-cancellation-request.repository';
 import { PrivilegeRepository } from './repositories/privilege.repository.js';
 import { MasterdataLabelsRepository } from './repositories/masterdata-labels.repository';
 
@@ -122,6 +125,7 @@ import { MeetRateRepository } from './repositories/meet-rate.repository';
     HolidayWorkRatesController,
     EntertainmentAllowanceController,
     ApprovalClothingExpenseController,
+    ClothingExpenseCancellationRequestController,
     PrivilegeController,
     MasterdataLabelsController,
     MealAllowanceController,
@@ -153,6 +157,7 @@ import { MeetRateRepository } from './repositories/meet-rate.repository';
     HolidayWorkRatesService,
     EntertainmentAllowanceService,
     ApprovalClothingExpenseService,
+    ClothingExpenseCancellationRequestService,
     PrivilegeService,
     MasterdataLabelsService,
     MealAllowanceService,
@@ -184,6 +189,7 @@ import { MeetRateRepository } from './repositories/meet-rate.repository';
     HolidayWorkRatesRepository,
     EntertainmentAllowanceRepository,
     ApprovalClothingExpenseRepository,
+    ClothingExpenseCancellationRequestRepository,
     PrivilegeRepository,
     MasterdataLabelsRepository,
     MealAllowanceRepository,

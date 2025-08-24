@@ -27,6 +27,11 @@ export class CreateApprovalClothingExpenseDto {
   @IsString()
   next_claim_date?: string;
 
+  @ApiProperty({ description: 'Work start date', required: false })
+  @IsOptional()
+  @IsString()
+  work_start_date?: string;
+
   @ApiProperty({ description: 'Work end date', required: false })
   @IsOptional()
   @IsString()
