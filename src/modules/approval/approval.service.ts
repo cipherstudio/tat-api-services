@@ -3504,7 +3504,7 @@ export class ApprovalService {
           existingContinuous.approval_id,
           'REJECTED',
           approval.employee_code,
-          approval.final_staff_employee_code,
+          employeeCode,
         );
       }
 
