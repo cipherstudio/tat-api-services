@@ -32,11 +32,13 @@ export class ApprovalClothingExpenseQueryDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
+  @Type(() => Boolean)
   @IsBoolean()
   clothing_file_checked?: boolean;
 
   @ApiProperty({ required: false })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   clothing_amount?: number;
 
@@ -58,6 +60,11 @@ export class ApprovalClothingExpenseQueryDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
+  work_start_date?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
   work_end_date?: string;
 
   // @ApiProperty({ required: false })
@@ -67,16 +74,19 @@ export class ApprovalClothingExpenseQueryDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   staff_member_id?: number;
 
   @ApiProperty({ required: false })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   approval_id?: number;
 
   @ApiProperty({ required: false })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   employee_code?: number;
 
@@ -89,4 +99,13 @@ export class ApprovalClothingExpenseQueryDto {
   @IsOptional()
   @IsString()
   destination_country?: string;
+
+  @ApiProperty({ 
+    required: false, 
+    description: 'Filter by overdue status. true = overdue (past work_start_date), false = not overdue (before work_start_date), undefined = all records'
+  })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  is_overdue?: boolean;
 }

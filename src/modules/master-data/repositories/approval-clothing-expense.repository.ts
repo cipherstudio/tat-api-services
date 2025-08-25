@@ -28,29 +28,53 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
     const offset = (page - 1) * limit;
 
     // Query for total count
-    const baseQuery = this.knex('approval_clothing_expense as ace').leftJoin(
-      this.knex
-        .distinct([
-          'PMT_CODE',
-          'PMT_NAME_T',
-          'PMT_NAME_E',
-          'PMT_POS_WK',
-          'PMT_CUR_FAC',
-          'PMT_EMAIL_ADDR',
-        ])
-        .from('OP_MASTER_T')
-        .as('omt'),
-      'ace.employee_code',
-      'omt.PMT_CODE',
-    );
+    let baseQuery = this.knex('approval_clothing_expense as ace')
+      .leftJoin(
+        this.knex
+          .distinct([
+            'PMT_CODE',
+            'PMT_NAME_T',
+            'PMT_NAME_E',
+            'PMT_POS_WK',
+            'PMT_CUR_FAC',
+            'PMT_EMAIL_ADDR',
+          ])
+          .from('OP_MASTER_T')
+          .as('omt'),
+        'ace.employee_code',
+        'omt.PMT_CODE',
+      )
+      .leftJoin(
+        'approval as a',
+        'ace.approval_id',
+        'a.id',
+      );
 
-    if (Object.keys(dbFilter).length > 0) {
-      Object.entries(dbFilter).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
-          baseQuery.where(`ace.${key}`, value);
-        }
-      });
-    }
+      if (Object.keys(dbFilter).length > 0) {
+       Object.entries(dbFilter).forEach(([key, value]) => {
+         if (value !== undefined && value !== null && value !== '' && !Number.isNaN(value)) {
+            if (key === 'is_overdue') {
+              const today = new Date().toISOString().split('T')[0]; 
+              if (value === true) {
+                baseQuery.where('ace.work_start_date', '<', today);
+              } else if (value === false) {
+                baseQuery.where(function() {
+                  this.where('ace.work_start_date', '>=', today)
+                       .orWhereNull('ace.work_start_date');
+                });
+                
+                 baseQuery.whereNotIn('ace.approval_id', function() {
+                   this.select('approval_id')
+                     .from('clothing_expense_cancellation_requests')
+                     .where('status', 'pending');
+                 });
+            }
+            } else {
+             baseQuery.where(`ace.${key}`, value);
+            }
+         }
+       });
+     }
 
     const countResult = await baseQuery
       .clone()
@@ -69,6 +93,9 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
         'omt.PMT_POS_WK as employee_position',
         'omt.PMT_CUR_FAC as employee_faculty',
         'omt.PMT_EMAIL_ADDR as employee_email',
+        'a.travel_type as approval_travel_type',
+        'a.created_employee_code as requestor_code',
+        'a.created_employee_name as requestor_name',
       ])
       .orderBy(`ace.${orderBy}`, direction)
       .limit(limit)
@@ -88,6 +115,15 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
   async findOne(
     conditions: Record<string, any>,
   ): Promise<ApprovalClothingExpense | null> {
+    const transformedConditions: Record<string, any> = {};
+    Object.entries(conditions).forEach(([key, value]) => {
+      if (key === 'id') {
+        transformedConditions['ace.id'] = value;
+      } else {
+        transformedConditions[`ace.${key}`] = value;
+      }
+    });
+
     const result = await this.knex('approval_clothing_expense as ace')
       .leftJoin(
         this.knex
@@ -104,6 +140,11 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
         'ace.employee_code',
         'omt.PMT_CODE',
       )
+      .leftJoin(
+        'approval as a',
+        'ace.approval_id',
+        'a.id',
+      )
       .select([
         'ace.*',
         'omt.PMT_CODE as employee_pmt_code',
@@ -112,8 +153,11 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
         'omt.PMT_POS_WK as employee_position',
         'omt.PMT_CUR_FAC as employee_faculty',
         'omt.PMT_EMAIL_ADDR as employee_email',
+        'a.travel_type as approval_travel_type',
+        'a.created_employee_code as requestor_code',
+        'a.created_employee_name as requestor_name',
       ])
-      .where(conditions)
+      .where(transformedConditions)
       .first();
 
     return result || null;
