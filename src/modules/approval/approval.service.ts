@@ -1536,7 +1536,7 @@ export class ApprovalService {
           .where('approval_id', id)
           .delete();
         await trx('approval_continuous').where('approval_id', id).delete();
-        //await trx('approval_clothing_expense').where('approval_id', id).delete();
+        await trx('approval_clothing_expense').where('approval_id', id).delete();
 
         for (const staffMember of updateDto.staffMembers) {
           const [insertedStaffMember] = await trx('approval_staff_members')
@@ -2430,6 +2430,18 @@ export class ApprovalService {
       employeeCode,
       isEligible: false,
     }));
+
+    if (checkEligibilityDto.approval_id) {
+      const existingApproval = await this.knexService
+        .knex('approval_clothing_expense')
+        .where('approval_id', checkEligibilityDto.approval_id)
+        .first();
+      
+      if (existingApproval) {
+        result.forEach((r) => (r.isEligible = true));
+        return result;
+      }
+    }
 
     if (
       !['international', 'temporary-international', 'training-international', 'temporary-both'].includes(

@@ -54,6 +54,7 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
        Object.entries(dbFilter).forEach(([key, value]) => {
          if (value !== undefined && value !== null && value !== '' && !Number.isNaN(value)) {
             if (key === 'is_overdue') {
+              baseQuery.where('a.approval_status_label_id', 3);
               const today = new Date().toISOString().split('T')[0]; 
               if (value === true) {
                 baseQuery.where('ace.work_start_date', '<', today);
@@ -101,6 +102,15 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
       .limit(limit)
       .offset(offset);
 
+    for (const item of data) {
+      const clothingAmounts = await this.knex('approval_clothing_expense')
+        .select('clothing_amount')
+        .where('approval_id', item.approval_id);
+      
+      const totalAmount = clothingAmounts.reduce((sum, record) => sum + (record.clothing_amount || 0), 0);
+      item.approval_total_clothing_amount = totalAmount;
+    }
+
     return {
       data,
       meta: {
@@ -114,7 +124,7 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
 
   async findOne(
     conditions: Record<string, any>,
-  ): Promise<ApprovalClothingExpense | null> {
+  ): Promise<any | null> {
     const transformedConditions: Record<string, any> = {};
     Object.entries(conditions).forEach(([key, value]) => {
       if (key === 'id') {
@@ -159,6 +169,15 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
       ])
       .where(transformedConditions)
       .first();
+
+    if (result) {
+      const clothingAmounts = await this.knex('approval_clothing_expense')
+        .select('clothing_amount')
+        .where('approval_id', result.approval_id);
+      
+      const totalAmount = clothingAmounts.reduce((sum, record) => sum + (record.clothing_amount || 0), 0);
+      result.approval_total_clothing_amount = totalAmount;
+    }
 
     return result || null;
   }
