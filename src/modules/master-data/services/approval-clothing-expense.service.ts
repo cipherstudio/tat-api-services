@@ -12,7 +12,7 @@ export class ApprovalClothingExpenseService {
   ) {}
 
   async findAll(query: ApprovalClothingExpenseQueryDto) {
-    const { page, limit, order_by, direction, ...conditions } = query;
+    const { page, limit, order_by, direction, search, ...conditions } = query;
     
     return this.approvalClothingExpenseRepository.findWithPaginationAndSearch(
       page,
@@ -20,6 +20,7 @@ export class ApprovalClothingExpenseService {
       conditions,
       order_by,
       direction,
+      search,
     );
   }
 

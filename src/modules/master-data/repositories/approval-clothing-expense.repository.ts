@@ -16,6 +16,7 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
     conditions: Record<string, any> = {},
     orderBy: string = 'created_at',
     direction: 'asc' | 'desc' = 'desc',
+    searchTerm?: string,
   ) {
     const filter = { ...conditions };
     delete filter.page;
@@ -27,65 +28,41 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
     const dbFilter = await toSnakeCase(filter);
     const offset = (page - 1) * limit;
 
+    const buildBaseQuery = () => {
+      const query = this.knex('approval_clothing_expense as ace')
+        .leftJoin(
+          this.knex
+            .distinct([
+              'PMT_CODE',
+              'PMT_NAME_T',
+              'PMT_NAME_E',
+              'PMT_POS_WK',
+              'PMT_CUR_FAC',
+              'PMT_EMAIL_ADDR',
+            ])
+            .from('OP_MASTER_T')
+            .as('omt'),
+          'ace.employee_code',
+          'omt.PMT_CODE',
+        )
+        .leftJoin('approval as a', 'ace.approval_id', 'a.id');
+
+      // Apply filters
+      this.applyFilters(query, dbFilter);
+      // Apply search term
+      this.applySearchTerm(query, searchTerm);
+      
+      return query;
+    };
+
     // Query for total count
-    let baseQuery = this.knex('approval_clothing_expense as ace')
-      .leftJoin(
-        this.knex
-          .distinct([
-            'PMT_CODE',
-            'PMT_NAME_T',
-            'PMT_NAME_E',
-            'PMT_POS_WK',
-            'PMT_CUR_FAC',
-            'PMT_EMAIL_ADDR',
-          ])
-          .from('OP_MASTER_T')
-          .as('omt'),
-        'ace.employee_code',
-        'omt.PMT_CODE',
-      )
-      .leftJoin(
-        'approval as a',
-        'ace.approval_id',
-        'a.id',
-      );
-
-      if (Object.keys(dbFilter).length > 0) {
-       Object.entries(dbFilter).forEach(([key, value]) => {
-         if (value !== undefined && value !== null && value !== '' && !Number.isNaN(value)) {
-            if (key === 'is_overdue') {
-              baseQuery.where('a.approval_status_label_id', 3);
-              const today = new Date().toISOString().split('T')[0]; 
-              if (value === true) {
-                baseQuery.where('ace.work_start_date', '<', today);
-              } else if (value === false) {
-                baseQuery.where(function() {
-                  this.where('ace.work_start_date', '>=', today)
-                       .orWhereNull('ace.work_start_date');
-                });
-                
-                 baseQuery.whereNotIn('ace.approval_id', function() {
-                   this.select('approval_id')
-                     .from('clothing_expense_cancellation_requests')
-                     .where('status', 'pending');
-                 });
-            }
-            } else {
-             baseQuery.where(`ace.${key}`, value);
-            }
-         }
-       });
-     }
-
-    const countResult = await baseQuery
-      .clone()
+    const countResult = await buildBaseQuery()
       .count('ace.id as count')
       .first();
     const total = Number(countResult?.count || 0);
 
     // Query for data with pagination
-    const data = await baseQuery
-      .clone()
+    const data = await buildBaseQuery()
       .select([
         'ace.*',
         'omt.PMT_CODE as employee_pmt_code',
@@ -122,9 +99,62 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
     };
   }
 
-  async findOne(
-    conditions: Record<string, any>,
-  ): Promise<any | null> {
+  private applyFilters(query: any, dbFilter: Record<string, any>) {
+    if (Object.keys(dbFilter).length > 0) {
+      Object.entries(dbFilter).forEach(([key, value]) => {
+        if (this.isValidFilterValue(value)) {
+          if (key === 'is_overdue') {
+            this.applyOverdueFilter(query, value);
+          } else {
+            query.where(`ace.${key}`, value);
+          }
+        }
+      });
+    }
+  }
+
+  private isValidFilterValue(value: any): boolean {
+    return value !== undefined && 
+           value !== null && 
+           value !== '' && 
+           !Number.isNaN(value);
+  }
+
+  private applyOverdueFilter(query: any, isOverdue: boolean) {
+    query.where('a.approval_status_label_id', 3);
+    const today = new Date().toISOString().split('T')[0];
+
+    if (isOverdue === true) {
+      query.where('ace.work_start_date', '<', today);
+    } else if (isOverdue === false) {
+      query.where(function() {
+        this.where('ace.work_start_date', '>=', today)
+             .orWhereNull('ace.work_start_date');
+      });
+
+      query.whereNotIn('ace.approval_id', function() {
+        this.select('approval_id')
+          .from('clothing_expense_cancellation_requests')
+          .where('status', 'pending');
+      });
+    }
+  }
+
+  private applySearchTerm(query: any, searchTerm?: string) {
+    if (searchTerm && searchTerm.trim() !== '') {
+      const searchTerm_clean = searchTerm.trim();
+      
+      query.where(function() {
+        this.where('omt.PMT_NAME_T', 'like', `%${searchTerm_clean}%`)
+            .orWhere('omt.PMT_NAME_E', 'like', `%${searchTerm_clean}%`)
+            .orWhere('ace.employee_code', 'like', `%${searchTerm_clean}%`)
+            .orWhere('omt.PMT_CODE', 'like', `%${searchTerm_clean}%`)
+            .orWhere('ace.increment_id', 'like', `%${searchTerm_clean}%`);
+      });
+    }
+  }
+
+  async findOne(conditions: Record<string, any>): Promise<any | null> {
     const transformedConditions: Record<string, any> = {};
     Object.entries(conditions).forEach(([key, value]) => {
       if (key === 'id') {
@@ -150,11 +180,7 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
         'ace.employee_code',
         'omt.PMT_CODE',
       )
-      .leftJoin(
-        'approval as a',
-        'ace.approval_id',
-        'a.id',
-      )
+      .leftJoin('approval as a', 'ace.approval_id', 'a.id')
       .select([
         'ace.*',
         'omt.PMT_CODE as employee_pmt_code',
