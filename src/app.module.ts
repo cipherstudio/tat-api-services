@@ -18,6 +18,7 @@ import { ReportApproveModule } from './modules/reportapprove/report-approve.modu
 import { NotificationModule } from './modules/notification/notification.module';
 import { UsersReportsModule } from './modules/usersreports/users-reports.module';
 import { LdapModule } from './modules/ldap/ldap.module';
+import { CronModule } from './modules/cron/cron.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { LdapModule } from './modules/ldap/ldap.module';
     NotificationModule,
     UsersReportsModule,
     LdapModule,
+    CronModule,
   ],
   controllers: [AppController],
   providers: [AppService],
