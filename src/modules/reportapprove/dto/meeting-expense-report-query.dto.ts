@@ -106,4 +106,14 @@ export class MeetingExpenseReportQueryDto {
   @IsOptional()
   @IsString()
   searchTerm?: string;
+
+  @ApiProperty({ example: '๖๕', description: 'เลขที่หัวเอกสาร PDF', required: false })
+  @IsOptional()
+  @IsString()
+  pdfHeaderNumber?: string;
+
+  @ApiProperty({ example: '๒๕๖๘', description: 'ปีที่หัวเอกสาร PDF', required: false })
+  @IsOptional()
+  @IsString()
+  pdfHeaderYear?: string;
 }

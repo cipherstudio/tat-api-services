@@ -88,6 +88,12 @@ export class MeetingExpenseReportRepository extends KnexBaseRepository<MeetingEx
     if (status) {
       baseQuery = baseQuery.where('mer.status', status);
     }
+    if (query.pdfHeaderNumber) {
+      baseQuery = baseQuery.where('mer.pdf_header_number', 'like', `%${query.pdfHeaderNumber}%`);
+    }
+    if (query.pdfHeaderYear) {
+      baseQuery = baseQuery.where('mer.pdf_header_year', 'like', `%${query.pdfHeaderYear}%`);
+    }
     if (startDate) {
       baseQuery = baseQuery.where(
         'mer.meeting_date',
@@ -111,7 +117,9 @@ export class MeetingExpenseReportRepository extends KnexBaseRepository<MeetingEx
           .orWhere('mer.job', 'like', `%${searchTerm}%`)
           .orWhere('mer.topic', 'like', `%${searchTerm}%`)
           .orWhere('mer.place', 'like', `%${searchTerm}%`)
-          .orWhere('mr.type', 'like', `%${searchTerm}%`);
+          .orWhere('mr.type', 'like', `%${searchTerm}%`)
+          .orWhere('mer.pdf_header_number', 'like', `%${searchTerm}%`)
+          .orWhere('mer.pdf_header_year', 'like', `%${searchTerm}%`);
       });
     }
 
@@ -146,6 +154,8 @@ export class MeetingExpenseReportRepository extends KnexBaseRepository<MeetingEx
         'mer.created_at',
         'mer.updated_at',
         'mer.deleted_at',
+        'mer.pdf_header_number',
+        'mer.pdf_header_year',
         // Food rows
         'mfr.id as food_id',
         'mfr.meal_type as food_meal_type',
@@ -199,6 +209,8 @@ export class MeetingExpenseReportRepository extends KnexBaseRepository<MeetingEx
           createdAt: row.created_at,
           updatedAt: row.updated_at,
           deletedAt: row.deleted_at,
+          pdfHeaderNumber: row.pdf_header_number,
+          pdfHeaderYear: row.pdf_header_year,
         };
 
         mainReport.foodRows = [];
