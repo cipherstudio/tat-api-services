@@ -14,44 +14,44 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
-import { MeetRateService } from '../services/meet-rate.service';
-import { CreateMeetRateDto } from '../dto/create-meet-rate.dto';
-import { UpdateMeetRateDto } from '../dto/update-meet-rate.dto';
-import { MeetRateQueryDto } from '../dto/meet-rate-query.dto';
+import { ReportSettingsService } from '../services/report-settings.service';
+import { CreateReportSettingsDto } from '../dto/create-report-settings.dto';
+import { UpdateReportSettingsDto } from '../dto/update-report-settings.dto';
+import { ReportSettingsQueryDto } from '../dto/report-settings-query.dto';
 import { PaginatedResult } from '../../../common/interfaces/pagination.interface';
-import { MeetRate } from '../entities/meet-rate.entity';
+import { ReportSettings } from '../entities/report-settings.entity';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 
 @ApiTags('Master Data')
-@Controller('master-data/meet-rate')
+@Controller('master-data/report-settings')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth('JWT-auth')
-export class MeetRateController {
+export class ReportSettingsController {
   constructor(
-    private readonly meetRateService: MeetRateService,
+    private readonly reportSettingsService: ReportSettingsService,
   ) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create a new meet rate' })
+  @ApiOperation({ summary: 'Create a new report setting' })
   @ApiResponse({
     status: 201,
-    description: 'The meet rate has been successfully created.',
-    type: MeetRate,
+    description: 'The report setting has been successfully created.',
+    type: ReportSettings,
   })
   create(
-    @Body() createMeetRateDto: CreateMeetRateDto,
-  ): Promise<MeetRate> {
-    return this.meetRateService.create(createMeetRateDto);
+    @Body() createReportSettingsDto: CreateReportSettingsDto,
+  ): Promise<ReportSettings> {
+    return this.reportSettingsService.create(createReportSettingsDto);
   }
 
   @Get()
   @ApiOperation({
-    summary: 'Get all meet rates with pagination and filters',
+    summary: 'Get all report settings with pagination and filters',
   })
   @ApiResponse({
     status: 200,
-    description: 'Return all meet rates.',
-    type: [MeetRate],
+    description: 'Return all report settings.',
+    type: [ReportSettings],
   })
   @ApiQuery({
     name: 'page',
@@ -78,10 +78,16 @@ export class MeetRateController {
     description: 'Order direction',
   })
   @ApiQuery({
-    name: 'type',
+    name: 'reportName',
     type: String,
     required: false,
-    description: 'Meeting type',
+    description: 'Report name',
+  })
+  @ApiQuery({
+    name: 'code',
+    type: String,
+    required: false,
+    description: 'Code',
   })
   @ApiQuery({
     name: 'searchTerm',
@@ -116,9 +122,10 @@ export class MeetRateController {
   findAll(
     @Query('page', new ValidationPipe({ transform: true })) page?: number,
     @Query('limit', new ValidationPipe({ transform: true })) limit?: number,
-    @Query('orderBy') orderBy?: MeetRateQueryDto['orderBy'],
+    @Query('orderBy') orderBy?: ReportSettingsQueryDto['orderBy'],
     @Query('orderDir') orderDir?: 'ASC' | 'DESC',
-    @Query('type') type?: string,
+    @Query('reportName') reportName?: string,
+    @Query('code') code?: string,
     @Query('searchTerm') searchTerm?: string,
     @Query('createdAfter', new ValidationPipe({ transform: true }))
     createdAfter?: Date,
@@ -129,12 +136,13 @@ export class MeetRateController {
     @Query('updatedBefore', new ValidationPipe({ transform: true }))
     updatedBefore?: Date,
   ) {
-    const queryOptions: MeetRateQueryDto = {
+    const queryOptions: ReportSettingsQueryDto = {
       page,
       limit,
       orderBy,
       orderDir,
-      type,
+      reportName,
+      code,
       searchTerm,
       createdAfter,
       createdBefore,
@@ -142,45 +150,45 @@ export class MeetRateController {
       updatedBefore,
     };
 
-    return this.meetRateService.findAll(queryOptions);
+    return this.reportSettingsService.findAll(queryOptions);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get a meet rate by ID' })
+  @ApiOperation({ summary: 'Get a report setting by ID' })
   @ApiResponse({
     status: 200,
-    description: 'Return the meet rate.',
-    type: MeetRate,
+    description: 'Return the report setting.',
+    type: ReportSettings,
   })
-  findById(@Param('id', ParseIntPipe) id: number): Promise<MeetRate> {
-    return this.meetRateService.findById(id);
+  findById(@Param('id', ParseIntPipe) id: number): Promise<ReportSettings> {
+    return this.reportSettingsService.findById(id);
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update a meet rate' })
+  @ApiOperation({ summary: 'Update a report setting' })
   @ApiResponse({
     status: 200,
-    description: 'The meet rate has been successfully updated.',
-    type: MeetRate,
+    description: 'The report setting has been successfully updated.',
+    type: ReportSettings,
   })
   update(
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateMeetRateDto: UpdateMeetRateDto,
-  ): Promise<MeetRate> {
-    return this.meetRateService.update(
+    @Body() updateReportSettingsDto: UpdateReportSettingsDto,
+  ): Promise<ReportSettings> {
+    return this.reportSettingsService.update(
       id,
-      updateMeetRateDto,
+      updateReportSettingsDto,
     );
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Delete a meet rate' })
+  @ApiOperation({ summary: 'Delete a report setting' })
   @ApiResponse({
     status: 204,
-    description: 'The meet rate has been successfully deleted.',
+    description: 'The report setting has been successfully deleted.',
   })
   remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
-    return this.meetRateService.remove(id);
+    return this.reportSettingsService.remove(id);
   }
 }

@@ -97,8 +97,11 @@ import { MenuItemsAccessController } from './controllers/menu-items-access.contr
 import { MenuItemsAccessService } from './services/menu-items-access.service';
 import { MenuItemsAccessRepository } from './repositories/menu-items-access.repository';
 import { MeetRateController } from './controllers/meet-rate.controller';
+import { ReportSettingsController } from './controllers/report-settings.controller';
 import { MeetRateService } from './services/meet-rate.service';
 import { MeetRateRepository } from './repositories/meet-rate.repository';
+import { ReportSettingsService } from './services/report-settings.service';
+import { ReportSettingsRepository } from './repositories/report-settings.repository';
 
 @Module({
   imports: [RedisCacheModule],
@@ -132,6 +135,7 @@ import { MeetRateRepository } from './repositories/meet-rate.repository';
     EmployeeAdminController,
     MenuItemsAccessController,
     MeetRateController,
+    ReportSettingsController,
   ],
   providers: [
     // Services
@@ -162,6 +166,7 @@ import { MeetRateRepository } from './repositories/meet-rate.repository';
     MasterdataLabelsService,
     MealAllowanceService,
     MeetRateService,
+    ReportSettingsService,
     MenuItemsAccessService,
     EmployeeAdminService,
     MenuItemsAccessService,
@@ -196,6 +201,7 @@ import { MeetRateRepository } from './repositories/meet-rate.repository';
     EmployeeAdminRepository,
     MenuItemsAccessRepository,
     MeetRateRepository,
+    ReportSettingsRepository,
     // Shared services
     RedisCacheService,
     HolidayWorkRate,
