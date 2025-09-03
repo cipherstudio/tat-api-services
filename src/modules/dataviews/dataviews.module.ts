@@ -20,6 +20,7 @@ import { OpPosWorkRRepository } from './repositories/op-pos-work-r.repository';
 import { OpPositionTRepository } from './repositories/op-position-t.repository';
 import { PsPwJobRepository } from './repositories/ps-pw-job.repository';
 import { OpLevelSalRRepository } from './repositories/op-level-sal-r.repository';
+import { VTxTattrasRepository } from './repositories/v-tx-tattras.repository';
 import { OrganizationStructureController } from './controllers/organization-structure.controller';
 import { OrganizationStructureService } from './services/organization-structure.service';
 import { OrganizationStructureRepository } from './repositories/organization-structure.repository';
@@ -46,6 +47,7 @@ import { OrganizationStructureRepository } from './repositories/organization-str
     VTxOtRepository,
     PsPwJobRepository,
     OpLevelSalRRepository,
+    VTxTattrasRepository,
     OrganizationStructureService,
     OrganizationStructureRepository,
   ],

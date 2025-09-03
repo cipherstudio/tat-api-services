@@ -49,6 +49,9 @@ import {
   OpLevelSalRPaginate,
 } from './repositories/op-level-sal-r.repository';
 import { QueryOpLevelSalRDto } from './dto/query-op-level-sal-r.dto';
+import { VTxTattrasPaginate } from './entities/v-tx-tattras.entity';
+import { VTxTattrasRepository } from './repositories/v-tx-tattras.repository';
+import { QueryVTxTattrasDto } from './dto/query-v-tx-tattras.dto';
 
 @Injectable()
 export class DataviewsService {
@@ -74,6 +77,7 @@ export class DataviewsService {
     private readonly vTxOtRepository: VTxOtRepository,
     private readonly psPwJobRepository: PsPwJobRepository,
     private readonly opLevelSalRRepository: OpLevelSalRRepository,
+    private readonly vTxTattrasRepository: VTxTattrasRepository,
   ) {}
 
   async findAllEmployees(): Promise<Employee[]> {
@@ -180,5 +184,11 @@ export class DataviewsService {
     query: QueryOpLevelSalRDto,
   ): Promise<OpLevelSalRPaginate> {
     return this.opLevelSalRRepository.findWithQuery(query);
+  }
+
+  async findVTxTattrasWithQuery(
+    query: QueryVTxTattrasDto,
+  ): Promise<VTxTattrasPaginate> {
+    return this.vTxTattrasRepository.findWithQuery(query);
   }
 }
