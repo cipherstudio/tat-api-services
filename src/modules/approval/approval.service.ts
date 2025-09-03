@@ -563,6 +563,8 @@ export class ApprovalService {
             'ab.department',
             'ab.budget_code as budgetCode',
             'ab.attachment_id as attachmentId',
+            'ab.strategy',
+            'ab.plan',
             'f.original_name as attachmentFileName',
             'f.path as attachmentFilePath',
           )
@@ -1126,6 +1128,8 @@ export class ApprovalService {
         'department',
         'budget_code as budgetCode',
         'attachment_id as budgetAttachmentId',
+        'strategy',
+        'plan',
       );
 
     // get continuous approval
@@ -1918,6 +1922,8 @@ export class ApprovalService {
                 department: budget.department,
                 budget_code: budget.budget_code,
                 attachment_id: budget.attachment_id ?? null,
+                strategy: budget.strategy ?? null,
+                plan: budget.plan ?? null,
               })
               .returning('id');
           }
@@ -3938,6 +3944,8 @@ export class ApprovalService {
             department: budget.department,
             budget_code: budget.budgetCode,
             attachment_id: budget.budgetAttachmentId,
+            strategy: budget.strategy ?? null,
+            plan: budget.plan ?? null,
           });
         }
       }
