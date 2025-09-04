@@ -626,12 +626,17 @@ export class ApprovalService {
           'approval_continuous_signature',
           approvalId,
         );
+        const accommodationTransportAtts = await this.attachmentService.getAttachments(
+          'approval_accommodation_transport_expense',
+          approvalId,
+        );
         return [
           ...documentAtts,
           ...signatureAtts,
           ...budgetAtts,
           ...clothingAtts,
           ...continuousAtts,
+          ...accommodationTransportAtts,
         ];
       });
       allAttachments = await Promise.all(allAttachmentPromises);
@@ -1034,15 +1039,18 @@ export class ApprovalService {
         // Get accommodation transport expenses for each accommodation expense
         for (const accommodationExpense of accommodationExpenses) {
           const accommodationTransportExpenses = await this.knexService
-            .knex('approval_accommodation_transport_expense')
-            .where('approval_accommodation_expense_id', accommodationExpense.id)
-            .where('approval_id', id)
+            .knex('approval_accommodation_transport_expense as ate')
+            .leftJoin('files as f', 'ate.attachment_id', 'f.id')
+            .where('ate.approval_accommodation_expense_id', accommodationExpense.id)
+            .where('ate.approval_id', id)
             .select(
-              'id',
-              'type',
-              'amount',
-              'checked',
-              'flight_route as flightRoute',
+              'ate.id',
+              'ate.type',
+              'ate.amount',
+              'ate.checked',
+              'ate.flight_route as flightRoute',
+              'ate.attachment_id as attachmentId',
+              'f.original_name as attachmentFileName',
             );
           accommodationExpense.accommodationTransportExpenses =
             accommodationTransportExpenses;
@@ -1688,6 +1696,12 @@ export class ApprovalService {
                     Array.isArray(workLocation.accommodationTransportExpenses)
                   ) {
                     for (const transportExpense of workLocation.accommodationTransportExpenses) {
+                      // Extract attachment_id from files array if present
+                      let attachmentId = transportExpense.attachmentId ?? null;
+                      if (transportExpense.files && Array.isArray(transportExpense.files) && transportExpense.files.length > 0) {
+                        attachmentId = transportExpense.files[0].fileId;
+                      }
+
                       await trx(
                         'approval_accommodation_transport_expense',
                       ).insert({
@@ -1698,6 +1712,7 @@ export class ApprovalService {
                         amount: transportExpense.amount,
                         checked: transportExpense.checked,
                         flight_route: transportExpense.flightRoute,
+                        attachment_id: attachmentId,
                         created_at: new Date(),
                         updated_at: new Date(),
                       });
@@ -2074,6 +2089,28 @@ export class ApprovalService {
                   id,
                   expense.attachments,
                 );
+              }
+            }
+          }
+        }
+      }
+
+      // Process accommodation transport expense attachments after transaction commit
+      if (updateDto.staffMembers && Array.isArray(updateDto.staffMembers)) {
+        for (const staffMember of updateDto.staffMembers) {
+          if (staffMember.workLocations && Array.isArray(staffMember.workLocations)) {
+            for (const workLocation of staffMember.workLocations) {
+              if (workLocation.accommodationTransportExpenses && Array.isArray(workLocation.accommodationTransportExpenses)) {
+                for (const transportExpense of workLocation.accommodationTransportExpenses) {
+                  if (transportExpense.files && Array.isArray(transportExpense.files) && transportExpense.files.length > 0) {
+                    // ใช้ approval ID แทน transport expense ID เพื่อให้ entityId ไม่เปลี่ยน
+                    await this.attachmentService.updateAttachments(
+                      'approval_accommodation_transport_expense',
+                      id,
+                      transportExpense.files,
+                    );
+                  }
+                }
               }
             }
           }
@@ -3794,6 +3831,7 @@ export class ApprovalService {
                         amount: transportExpense.amount,
                         checked: transportExpense.checked,
                         flight_route: transportExpense.flightRoute,
+                        attachment_id: transportExpense.attachmentId ?? null,
                         created_at: new Date(),
                         updated_at: new Date(),
                       });
@@ -3815,6 +3853,7 @@ export class ApprovalService {
                     amount: transportExpense.amount,
                     checked: transportExpense.checked,
                     flight_route: transportExpense.flightRoute,
+                    attachment_id: transportExpense.attachmentId ?? null,
                     created_at: new Date(),
                     updated_at: new Date(),
                   });
@@ -4664,7 +4703,8 @@ export class ApprovalService {
         'approval_signature', 
         'approval_budgets',
         'approval_clothing_expense',
-        'approval_continuous_signature'
+        'approval_continuous_signature',
+        'approval_accommodation_transport_expense'
       ];
       
       if (!validTypes.includes(type)) {
@@ -4695,6 +4735,10 @@ export class ApprovalService {
       'approval_continuous_signature',
       id,
     );
+    const accommodationTransportExpenseAttachments = await this.attachmentService.getAttachments(
+      'approval_accommodation_transport_expense',
+      id,
+    );
 
     const allAttachments = [
       ...approvalDocuments,
@@ -4702,6 +4746,7 @@ export class ApprovalService {
       ...budgetAttachments,
       ...clothingExpenseAttachments,
       ...continuousSignatureAttachments,
+      ...accommodationTransportExpenseAttachments,
     ];
 
     return allAttachments;

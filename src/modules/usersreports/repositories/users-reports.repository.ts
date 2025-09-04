@@ -191,12 +191,17 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
           'approval_continuous_signature',
           approvalId,
         );
+        const accommodationTransportAtts = await this.attachmentService.getAttachments(
+          'approval_accommodation_transport_expense',
+          approvalId,
+        );
         return [
           ...documentAtts,
           ...signatureAtts,
           ...budgetAtts,
           ...clothingAtts,
           ...continuousAtts,
+          ...accommodationTransportAtts,
         ];
       });
       allAttachments = await Promise.all(allAttachmentPromises);

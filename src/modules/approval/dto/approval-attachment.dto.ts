@@ -14,11 +14,11 @@ export class GetApprovalFilesQueryDto {
   @ApiProperty({
     description: 'ประเภทไฟล์แนบที่ต้องการกรอง',
     required: false,
-    enum: ['approval_document', 'approval_signature', 'approval_budgets', 'approval_clothing_expense', 'approval_continuous_signature'],
+    enum: ['approval_document', 'approval_signature', 'approval_budgets', 'approval_clothing_expense', 'approval_continuous_signature', 'approval_accommodation_transport_expense'],
     example: 'approval_document'
   })
   @IsOptional()
-  @IsIn(['approval_document', 'approval_signature', 'approval_budgets', 'approval_clothing_expense', 'approval_continuous_signature'])
+  @IsIn(['approval_document', 'approval_signature', 'approval_budgets', 'approval_clothing_expense', 'approval_continuous_signature', 'approval_accommodation_transport_expense'])
   type?: string;
 }
 
