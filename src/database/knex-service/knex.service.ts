@@ -28,7 +28,24 @@ export class KnexService implements OnModuleInit, OnModuleDestroy {
     // Import knexfile as ES module
     const knexModule = await import(knexfilePath);
     const knexConfig = knexModule.default;
+
     this._knexInstance = knex(knexConfig[environment]);
+
+    // Add error handling for connection issues
+    this._knexInstance.on('query-error', (error, obj) => {
+      console.error('Database query error:', error);
+      console.error('Query:', obj.sql);
+      console.error('Bindings:', obj.bindings);
+    });
+
+    // Test connection on startup
+    try {
+      await this._knexInstance.raw('SELECT 1 FROM DUAL');
+      console.log('Database connection established successfully');
+    } catch (error) {
+      console.error('Failed to establish database connection:', error);
+      throw error;
+    }
   }
 
   async onModuleDestroy() {
@@ -160,7 +177,9 @@ export class KnexService implements OnModuleInit, OnModuleDestroy {
   }
 
   async delete(table: string, id: number, primaryKey: string = 'id') {
-    return this._knexInstance(table).where({ [primaryKey]: id }).delete();
+    return this._knexInstance(table)
+      .where({ [primaryKey]: id })
+      .delete();
   }
 
   // Transaction helper
@@ -168,5 +187,93 @@ export class KnexService implements OnModuleInit, OnModuleDestroy {
     callback: (trx: Knex.Transaction) => Promise<T>,
   ): Promise<T> {
     return this._knexInstance.transaction(callback);
+  }
+
+  // Retry logic for database operations
+  private async withRetry<T>(
+    operation: () => Promise<T>,
+    maxRetries: number = 3,
+    delay: number = 1000,
+  ): Promise<T> {
+    let lastError: Error;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+
+        // Check if it's a connection error that should be retried
+        if (this.isRetryableError(error) && attempt < maxRetries) {
+          console.warn(
+            `Database operation failed (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms...`,
+            error.message,
+          );
+          await new Promise((resolve) => setTimeout(resolve, delay * attempt));
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    throw lastError;
+  }
+
+  // Check if error is retryable
+  private isRetryableError(error: any): boolean {
+    if (!error) return false;
+
+    const retryableErrors = [
+      'ECONNRESET',
+      'ECONNREFUSED',
+      'ETIMEDOUT',
+      'ENOTFOUND',
+      'ECONNABORTED',
+      'EPIPE',
+      'ORA-03113', // Oracle connection lost
+      'ORA-03114', // Oracle not connected
+      'ORA-12541', // Oracle listener not available
+      'ORA-12535', // Oracle timeout
+    ];
+
+    return retryableErrors.some(
+      (errCode) =>
+        error.code === errCode ||
+        error.message?.includes(errCode) ||
+        error.errno === -104, // ECONNRESET
+    );
+  }
+
+  // Wrapper methods with retry logic
+  async findByIdWithRetry(
+    table: string,
+    id: number,
+    orderBy: string = 'id',
+    direction: 'asc' | 'desc' = 'asc',
+  ) {
+    return this.withRetry(() => this.findById(table, id, orderBy, direction));
+  }
+
+  async findOneWithRetry(
+    table: string,
+    conditions: Record<string, any>,
+    orderBy: string = 'id',
+    direction: 'asc' | 'desc' = 'asc',
+  ) {
+    return this.withRetry(() =>
+      this.findOne(table, conditions, orderBy, direction),
+    );
+  }
+
+  async findManyWithRetry(
+    table: string,
+    conditions: Record<string, any> = {},
+    orderBy: string = 'id',
+    direction: 'asc' | 'desc' = 'asc',
+  ) {
+    return this.withRetry(() =>
+      this.findMany(table, conditions, orderBy, direction),
+    );
   }
 }

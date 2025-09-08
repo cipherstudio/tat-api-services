@@ -8,6 +8,18 @@ import { runMigrationsAndSeedsWithTransaction } from './database/migration-utils
 import { HttpExceptionFilter } from './middleware/http-exception.filter';
 
 async function bootstrap() {
+  // Handle uncaught exceptions
+  process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+    // Don't exit immediately, let the app try to recover
+  });
+
+  // Handle unhandled promise rejections
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    // Don't exit immediately, let the app try to recover
+  });
+
   // TODO: Uncomment this when we want to run migrations and seeds
   try {
     console.log('Running database migrations and seeds...');

@@ -8,26 +8,40 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 
-@Catch(HttpException)
+@Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger('HttpException');
 
-  catch(exception: HttpException, host: ArgumentsHost) {
+  catch(exception: any, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    const status =
-      exception instanceof HttpException
-        ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+    let status = HttpStatus.INTERNAL_SERVER_ERROR;
+    let message = 'Internal server error';
+
+    if (exception instanceof HttpException) {
+      status = exception.getStatus();
+      message = exception.message;
+    } else {
+      // Handle database connection errors
+      if (exception.code === 'ECONNRESET' || exception.errno === -104) {
+        status = HttpStatus.SERVICE_UNAVAILABLE;
+        message = 'Database connection lost. Please try again.';
+      } else if (exception.code === 'ETIMEDOUT') {
+        status = HttpStatus.REQUEST_TIMEOUT;
+        message = 'Request timeout. Please try again.';
+      } else if (exception.message) {
+        message = exception.message;
+      }
+    }
 
     const errorResponse = {
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
       method: request.method,
-      message: exception.message || null,
+      message: message,
     };
 
     // Include stack trace for 5xx errors in non-production environments
@@ -48,13 +62,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
     };
 
     // Log the error with different log levels based on status code
-    const message = `${request.method} ${request.url} ${status} - Error: ${exception.message}`;
+    const logMessage = `${request.method} ${request.url} ${status} - Error: ${message}`;
     if (status >= 500) {
-      this.logger.error({ message, ...logData }, exception.stack);
+      this.logger.error({ message: logMessage, ...logData }, exception.stack);
     } else if (status >= 400) {
-      this.logger.warn({ message, ...logData });
+      this.logger.warn({ message: logMessage, ...logData });
     } else {
-      this.logger.log({ message, ...logData });
+      this.logger.log({ message: logMessage, ...logData });
     }
 
     response.status(status).json(errorResponse);
