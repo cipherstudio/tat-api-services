@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsDateString, IsEnum, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsDateString, IsEnum, IsString, ValidateNested, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 import { EmployeeDestinationDto } from './employee-destination.dto';
 
@@ -17,6 +17,14 @@ export class CheckClothingExpenseEligibilityDto {
   })
   @IsDateString()
   workStartDate: string;
+
+  @ApiProperty({
+    description: 'Approval ID to check (optional)',
+    example: 123,
+    required: false,
+  })
+  @IsOptional()
+  approval_id?: number;
 
   @ApiProperty({
     description: 'List of employees with their destinations',

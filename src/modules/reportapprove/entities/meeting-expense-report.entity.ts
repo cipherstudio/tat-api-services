@@ -64,6 +64,12 @@ export class MeetingExpenseReport {
   @ApiProperty({ example: null })
   deletedAt?: Date;
 
+  @ApiProperty({ example: '๖๕', description: 'เลขที่หัวเอกสาร PDF' })
+  pdfHeaderNumber?: string;
+
+  @ApiProperty({ example: '๒๕๖๘', description: 'ปีที่หัวเอกสาร PDF' })
+  pdfHeaderYear?: string;
+
   constructor(partial: Partial<MeetingExpenseReport>) {
     Object.assign(this, partial);
   }

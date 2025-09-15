@@ -10,6 +10,7 @@ import { ReportAccommodationRepository } from '../repositories/report-accommodat
 import { ReportOtherExpenseRepository } from '../repositories/report-other-expense.repository';
 import { ReportTransportationRepository } from '../repositories/report-transportation.repository';
 import { ReportAllowanceRepository } from '../repositories/report-allowance.repository';
+import { ReportOtherExpenseListRepository } from '../repositories/report-other-expense-list.repository';
 
 @Injectable()
 export class ReportApproveService {
@@ -22,6 +23,7 @@ export class ReportApproveService {
     private readonly reportOtherExpenseRepo: ReportOtherExpenseRepository,
     private readonly reportTransportationRepo: ReportTransportationRepository,
     private readonly reportAllowanceRepo: ReportAllowanceRepository,
+    private readonly reportOtherExpenseListRepo: ReportOtherExpenseListRepository,
   ) {}
 
   async findAll(query: ReportApproveQueryDto) {
@@ -62,9 +64,34 @@ export class ReportApproveService {
   }
 
   async update(id: number, dto: UpdateReportApproveDto) {
-    const { reportTravellerForm, ...rest } = dto;
+    const { reportTravellerForm, otherExpenseList, ...rest } = dto;
     // Update main report
     const result = await this.reportApproveRepo.update(id, rest);
+
+    if (otherExpenseList && Array.isArray(otherExpenseList)) {
+      await this.reportOtherExpenseListRepo.deleteByReportId(id);
+      
+      for (const expense of otherExpenseList) {
+        const createdExpense = await this.reportOtherExpenseListRepo.create({
+          reportId: id,
+          expenseId: expense.id,
+          name: expense.name,
+          requestAmount: expense.requestAmount,
+          actualAmount: expense.actualAmount
+        });
+        
+        if (expense.receipts && Array.isArray(expense.receipts)) {
+          for (const receipt of expense.receipts) {
+            await this.reportOtherExpenseListRepo.createReceipt({
+              listId: createdExpense.listId,
+              receiptDetailId: receipt.id,
+              detail: receipt.detail,
+              amount: receipt.amount
+            });
+          }
+        }
+      }
+    }
 
     if (Array.isArray(reportTravellerForm)) {
       for (const form of reportTravellerForm) {
@@ -476,6 +503,15 @@ export class ReportApproveService {
               });
             }
           }
+          
+          (result as any).reportTravellerForm = [
+            {
+              travelerCode: traveller_code,
+              formId: createdForm.form_id,
+              travelerId: createdForm.traveler_id,
+              reportId: createdForm.report_id,
+            }
+          ];
         }
       }
     }

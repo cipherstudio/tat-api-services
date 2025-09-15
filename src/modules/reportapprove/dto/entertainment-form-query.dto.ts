@@ -58,6 +58,11 @@ export class EntertainmentFormQueryDto {
   @IsString()
   entertainmentType?: string;
 
+  @ApiProperty({ example: 'มกราคม', required: false, description: 'เดือนที่ทำรายงาน' })
+  @IsOptional()
+  @IsString()
+  month?: string;
+
   @ApiProperty({ example: 15000, required: false, description: 'จำนวนเงิน' })
   @IsOptional()
   @Transform(({ value }) => parseFloat(value))

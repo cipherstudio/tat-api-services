@@ -11,6 +11,7 @@ import { ReportAccommodationRepository } from './repositories/report-accommodati
 import { ReportOtherExpenseRepository } from './repositories/report-other-expense.repository';
 import { ReportTransportationRepository } from './repositories/report-transportation.repository';
 import { ReportAllowanceRepository } from './repositories/report-allowance.repository';
+import { ReportOtherExpenseListRepository } from './repositories/report-other-expense-list.repository';
 
 // Entertainment Form Components
 import { EntertainmentFormController } from './controllers/entertainment-form.controller';
@@ -26,12 +27,19 @@ import { MeetingExpenseReportRepository } from './repositories/meeting-expense-r
 import { MeetingTypeRepository } from './repositories/meeting-type.repository';
 import { MeetingTypeRateRepository } from './repositories/meeting-type-rate.repository';
 
+// Certificate Report Components
+import { CertificateReportController } from './controllers/certificate-report.controller';
+import { CertificateReportService } from './services/certificate-report.service';
+import { ReportCertificateRepository } from './repositories/report-certificate.repository';
+import { ReportCertificateExpenseRepository } from './repositories/report-certificate-expense.repository';
+
 @Module({
   imports: [RedisCacheModule],
   controllers: [
     ReportApproveController,
     EntertainmentFormController,
     MeetingExpenseReportController,
+    CertificateReportController,
   ],
   providers: [
     ReportApproveService,
@@ -44,6 +52,7 @@ import { MeetingTypeRateRepository } from './repositories/meeting-type-rate.repo
     ReportOtherExpenseRepository,
     ReportTransportationRepository,
     ReportAllowanceRepository,
+    ReportOtherExpenseListRepository,
 
     // Entertainment Form Providers
     EntertainmentFormService,
@@ -56,11 +65,17 @@ import { MeetingTypeRateRepository } from './repositories/meeting-type-rate.repo
     MeetingExpenseReportRepository,
     MeetingTypeRepository,
     MeetingTypeRateRepository,
+
+    // Certificate Report Providers
+    CertificateReportService,
+    ReportCertificateRepository,
+    ReportCertificateExpenseRepository,
   ],
   exports: [
     ReportApproveService,
     EntertainmentFormService,
     MeetingExpenseReportService,
+    CertificateReportService,
   ],
 })
 export class ReportApproveModule {}

@@ -12,14 +12,15 @@ export class ApprovalClothingExpenseService {
   ) {}
 
   async findAll(query: ApprovalClothingExpenseQueryDto) {
-    const { page, limit, order_by, direction, ...conditions } = query;
-
+    const { page, limit, order_by, direction, search, ...conditions } = query;
+    
     return this.approvalClothingExpenseRepository.findWithPaginationAndSearch(
       page,
       limit,
       conditions,
       order_by,
       direction,
+      search,
     );
   }
 
@@ -36,6 +37,7 @@ export class ApprovalClothingExpenseService {
       clothing_reason: dto.clothing_reason,
       reporting_date: dto.reporting_date,
       next_claim_date: dto.next_claim_date,
+      work_start_date: dto.work_start_date,
       work_end_date: dto.work_end_date,
       //approval_accommodation_expense_id: dto.approval_accommodation_expense_id,
       staff_member_id: dto.staff_member_id,
@@ -57,6 +59,7 @@ export class ApprovalClothingExpenseService {
       clothing_reason: dto.clothing_reason,
       reporting_date: dto.reporting_date,
       next_claim_date: dto.next_claim_date,
+      work_start_date: dto.work_start_date,
       work_end_date: dto.work_end_date,
       //approval_accommodation_expense_id: dto.approval_accommodation_expense_id,
       staff_member_id: dto.staff_member_id,

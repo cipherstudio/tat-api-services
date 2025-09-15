@@ -103,6 +103,8 @@ export class MeetingExpenseReportService {
       totalAmount: reportData.totalAmount,
       status: reportData.status,
       statusDescription: reportData.statusDescription,
+      pdfHeaderNumber: reportData.pdfHeaderNumber,
+      pdfHeaderYear: reportData.pdfHeaderYear,
     };
 
     if (reportData.meetingDate) {

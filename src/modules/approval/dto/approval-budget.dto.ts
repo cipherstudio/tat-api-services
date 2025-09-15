@@ -58,6 +58,24 @@ export class ApprovalBudgetDto {
   attachment_id?: number;
 
   @ApiProperty({
+    description: 'กลยุทธ์',
+    example: 'กลยุทธ์การพัฒนาองค์กร',
+    required: false
+  })
+  @IsString()
+  @IsOptional()
+  strategy?: string;
+
+  @ApiProperty({
+    description: 'แผนงาน',
+    example: 'แผนงานประจำปี 2567',
+    required: false
+  })
+  @IsString()
+  @IsOptional()
+  plan?: string;
+
+  @ApiProperty({
     description: 'ไฟล์แนบเพิ่มเติม',
     type: [CreateAttachmentDto],
     required: false,

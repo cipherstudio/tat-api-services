@@ -123,20 +123,49 @@ export class AuthController {
     const tokens = await this.authService.refreshTokens(user as any);
     await this.sessionService.deactivateSession(session.id);
 
-    // await this.auditLogService.createLog({
-    //   employeeCode: user.pmtCode,
-    //   employeeName: user.pmtNameT,
-    //   action: 'REFRESH_TOKEN',
-    //   ipAddress: req.ip,
-    //   userAgent: req.headers['user-agent'] as string,
-    //   status: AuditLogStatus.SUCCESS,
-    //   category: AuditLogCategory.AUTH,
-    // });
     return {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       // sessionId: newSession.id,
     };
+  }
+
+  @Version('1')
+  @Post('sso-login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'SSO Login user' })
+  @ApiResponse({ status: 200, description: 'User successfully logged in.' })
+  @ApiResponse({ status: 401, description: 'Unauthorized.' })
+  @ApiBody({
+    schema: {
+      properties: { employeeCode: { type: 'string', example: '123456' } },
+    },
+  })
+  async ssoLogin(@Body() body: { employeeCode: string }, @Req() req: Request) {
+    const user = await this.employeeRepository.findByCodeWithPosition4ot(
+      body.employeeCode,
+    );
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const tokens = await this.authService.ssoLogin(
+      user as any,
+      req.headers['user-agent'] as string,
+      req.ip,
+    );
+
+    await this.auditLogService.createLog({
+      employeeCode: user.pmtCode,
+      employeeName: user.pmtNameT,
+      action: 'SSO_LOGIN',
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'] as string,
+      status: AuditLogStatus.SUCCESS,
+      category: AuditLogCategory.AUTH,
+    });
+
+    return tokens;
   }
 
   @Version('1')

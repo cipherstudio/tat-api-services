@@ -43,6 +43,7 @@ import { ViewPosition4ot } from '../dataviews/entities/view-position-4ot.entity'
 import { OpLevelSalR } from '../dataviews/entities/op-level-sal-r.entity';
 //import { ApprovalWorkLocationDto } from './dto/approval-work-location.dto';
 import { AttachmentResponseDto, GetApprovalFilesQueryDto } from './dto/approval-attachment.dto';
+import { UpdateApprovalStaffMembersDto } from './dto/update-approval-staff-members.dto';
 
 interface RequestWithUser extends Request {
   user: User & { employee?: Employee & ViewPosition4ot & OpLevelSalR };
@@ -598,6 +599,32 @@ export class ApprovalController {
       id,
       req.user.employee.code,
       req.user.employee.name,
+    );
+  }
+
+  @Patch(':id/staff-members-cancelled-status')
+  @ApiOperation({
+    summary: 'Update staff members cancelled status',
+    description: 'อัปเดตสถานะ cancelled ของ staff members ใน approval',
+  })
+  @ApiBody({ type: UpdateApprovalStaffMembersDto })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Staff members cancelled status updated successfully' 
+  })
+  @ApiResponse({ status: 404, description: 'Approval not found' })
+  updateStaffMembersCancelledStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateDto: UpdateApprovalStaffMembersDto,
+    @Req() req: RequestWithUser,
+  ) {
+    if (!req.user.employee) {
+      throw new Error('Employee data not found for user');
+    }
+    return this.approvalService.updateStaffMembersCancelledStatus(
+      id,
+      updateDto,
+      req.user.employee.code,
     );
   }
 }

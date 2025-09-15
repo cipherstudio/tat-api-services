@@ -117,4 +117,14 @@ export class UpdateMeetingExpenseReportDto {
   @ValidateNested({ each: true })
   @Type(() => CreateMeetingExpenseReportSnackRowDto)
   snackRows?: CreateMeetingExpenseReportSnackRowDto[];
+
+  @ApiProperty({ example: '๖๕', description: 'เลขที่หัวเอกสาร PDF', required: false })
+  @IsOptional()
+  @IsString()
+  pdfHeaderNumber?: string;
+
+  @ApiProperty({ example: '๒๕๖๘', description: 'ปีที่หัวเอกสาร PDF', required: false })
+  @IsOptional()
+  @IsString()
+  pdfHeaderYear?: string;
 }

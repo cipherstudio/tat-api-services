@@ -56,4 +56,22 @@ export class ApprovalAccommodationTransportExpenseDto {
   @IsOptional()
   @IsNumber()
   approvalId?: number;
+
+  @ApiProperty({
+    description: 'รหัสไฟล์',
+    example: '1',
+    required: false
+  })
+  @IsOptional()
+  @IsNumber()
+  attachmentId?: number;
+
+  @ApiProperty({
+    description: 'ไฟล์แนบ',
+    type: [Object],
+    required: false,
+    example: [{ fileId: 123, fileName: 'document.pdf' }]
+  })
+  @IsOptional()
+  files?: Array<{ fileId: number; fileName: string }>;
 } 

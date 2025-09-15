@@ -11,17 +11,21 @@ import {
   HttpStatus,
   Query,
   ValidationPipe,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { MeetRateService } from '../services/meet-rate.service';
 import { CreateMeetRateDto } from '../dto/create-meet-rate.dto';
 import { UpdateMeetRateDto } from '../dto/update-meet-rate.dto';
 import { MeetRateQueryDto } from '../dto/meet-rate-query.dto';
 import { PaginatedResult } from '../../../common/interfaces/pagination.interface';
 import { MeetRate } from '../entities/meet-rate.entity';
+import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 
 @ApiTags('Master Data')
 @Controller('master-data/meet-rate')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth('JWT-auth')
 export class MeetRateController {
   constructor(
     private readonly meetRateService: MeetRateService,

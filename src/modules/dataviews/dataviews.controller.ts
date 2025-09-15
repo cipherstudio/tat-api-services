@@ -22,6 +22,7 @@ import { QueryVBudgetCodeDto } from './dto/query-v-budget-code.dto';
 import { QueryVTxOtDto } from './dto/query-v-tx-ot.dto';
 import { QueryPsPwJobDto } from './dto/query-ps-pw-job.dto';
 import { QueryOpLevelSalRDto } from './dto/query-op-level-sal-r.dto';
+import { QueryVTxTattrasDto } from './dto/query-v-tx-tattras.dto';
 import {
   ApiOperation,
   ApiQuery,
@@ -43,6 +44,7 @@ import { VBudgetCodePaginate } from './entities/v-budget-code.entity';
 import { VTxOtPaginate } from './entities/v-tx-ot.entity';
 import { PsPwJobPaginate } from './entities/ps-pw-job.entity';
 import { OpLevelSalRPaginate } from './repositories/op-level-sal-r.repository';
+import { VTxTattrasPaginate } from './entities/v-tx-tattras.entity';
 
 @ApiTags('dataviews')
 @Controller('dataviews')
@@ -574,5 +576,74 @@ export class DataviewsController {
     @Query() query: QueryOpLevelSalRDto,
   ): Promise<OpLevelSalRPaginate> {
     return this.dataviewsService.findOpLevelSalRWithQuery(query);
+  }
+
+  @Version('1')
+  @Get('v-tx-tattras')
+  @ApiOperation({
+    summary: 'ค้นหาข้อมูล V_TX_TATTRAS ด้วยเงื่อนไข',
+    description:
+      'สามารถกรองข้อมูล V_TX_TATTRAS ตาม budYear, sectionCode, sectionName, overviewStrategyId, overviewStrategyNameTh, activitySubCode, activitySubDesc, outputPlanCode, outputPlanDesc, budgetCode, limit, offset ได้',
+  })
+  @ApiQuery({ name: 'budYear', required: false, description: 'BUD_YEAR' })
+  @ApiQuery({
+    name: 'sectionCode',
+    required: false,
+    description: 'SECTION_CODE',
+  })
+  @ApiQuery({
+    name: 'sectionName',
+    required: false,
+    description: 'SECTION_NAME',
+  })
+  @ApiQuery({
+    name: 'overviewStrategyId',
+    required: false,
+    description: 'OVERVIEW_STRATEGY_ID',
+  })
+  @ApiQuery({
+    name: 'overviewStrategyNameTh',
+    required: false,
+    description: 'OVERVIEW_STRATEGY_NAME_TH',
+  })
+  @ApiQuery({
+    name: 'activitySubCode',
+    required: false,
+    description: 'ACTIVITY_SUB_CODE',
+  })
+  @ApiQuery({
+    name: 'activitySubDesc',
+    required: false,
+    description: 'ACTIVITY_SUB_DESC',
+  })
+  @ApiQuery({
+    name: 'outputPlanCode',
+    required: false,
+    description: 'OUTPUT_PLAN_CODE',
+  })
+  @ApiQuery({
+    name: 'outputPlanDesc',
+    required: false,
+    description: 'OUTPUT_PLAN_DESC',
+  })
+  @ApiQuery({ name: 'budgetCode', required: false, description: 'BUDGET_CODE' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'จำนวนรายการต่อหน้า',
+    type: Number,
+    example: 10,
+  })
+  @ApiQuery({
+    name: 'offset',
+    required: false,
+    description: 'ข้ามกี่รายการ',
+    type: Number,
+    example: 0,
+  })
+  findVTxTattrasWithQuery(
+    @Query() query: QueryVTxTattrasDto,
+  ): Promise<VTxTattrasPaginate> {
+    return this.dataviewsService.findVTxTattrasWithQuery(query);
   }
 }
