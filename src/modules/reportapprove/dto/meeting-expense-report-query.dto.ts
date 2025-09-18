@@ -63,6 +63,11 @@ export class MeetingExpenseReportQueryDto {
   @IsString()
   topic?: string;
 
+  @ApiProperty({ example: 'ดร.สมชาย ใจดี', required: false })
+  @IsOptional()
+  @IsString()
+  chairman?: string;
+
   @ApiProperty({ example: 5000.0, required: false })
   @IsOptional()
   @IsNumber()
