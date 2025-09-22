@@ -1861,10 +1861,12 @@ export class ApprovalService {
           (staff) => staff.employeeCode,
         );
         //create notification for wach member
+        const creatorName = await this.getEmployeeName(employeeCode);
         await this.notificationService.createApprovalCreatedNotification(
           id,
           updateDto.documentTitle,
           employeeCode,
+          creatorName,
           memberCodes,
         );
       }
@@ -4594,6 +4596,7 @@ export class ApprovalService {
       approval.id,
       approvalTitle,
       creatorEmployeeCode,
+      creatorName,
       relatedEmployeeCodes,
     );
   }
