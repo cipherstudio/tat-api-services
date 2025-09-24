@@ -7,6 +7,7 @@ import {
   ValidateNested,
   IsDateString,
   IsEnum,
+  ValidateIf,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import {
@@ -72,11 +73,12 @@ export class UpdateMeetingExpenseReportDto {
 
   @ApiProperty({ example: '2024-06-21' })
   @IsOptional()
-  @IsDateString()
+  @ValidateIf((o) => o.meetingDate && o.meetingDate !== '')
+  @IsDateString({}, { message: 'meetingDate must be a valid date string' })
   @Transform(({ value }) => {
-    if (!value) return value;
+    if (!value || value === '') return null;
     const date = new Date(value);
-    if (isNaN(date.getTime())) return value;
+    if (isNaN(date.getTime())) return null;
     return date.toISOString().split('T')[0];
   })
   meetingDate?: string;

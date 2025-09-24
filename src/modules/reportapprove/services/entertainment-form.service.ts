@@ -191,7 +191,7 @@ export class EntertainmentFormService {
   }
 
   toOracleDate(date: Date | string) {
-    if (!date) return null;
+    if (!date || date === '') return null;
     if (date instanceof Date) return date;
     if (typeof date === 'string' && date.length >= 10) {
       // '2025-07-02' => new Date('2025-07-02T00:00:00Z')

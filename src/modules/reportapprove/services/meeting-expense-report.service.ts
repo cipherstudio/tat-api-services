@@ -44,7 +44,7 @@ export class MeetingExpenseReportService {
     // Create report
     const report = await this.meetingExpenseReportRepo.create({
       ...reportData,
-      meetingDate: new Date(reportData.meetingDate),
+      meetingDate: reportData.meetingDate ? new Date(reportData.meetingDate) : null,
     });
 
     // Create food rows with proper column mapping
@@ -107,8 +107,10 @@ export class MeetingExpenseReportService {
       pdfHeaderYear: reportData.pdfHeaderYear,
     };
 
-    if (reportData.meetingDate) {
+    if (reportData.meetingDate && reportData.meetingDate !== '') {
       updateData.meetingDate = new Date(reportData.meetingDate);
+    } else if (reportData.meetingDate === '') {
+      updateData.meetingDate = null;
     }
 
     await this.meetingExpenseReportRepo.update(id, updateData);

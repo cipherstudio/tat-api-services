@@ -6,8 +6,9 @@ import {
   IsArray,
   ValidateNested,
   IsDateString,
+  ValidateIf,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { CreateEntertainmentItemDto } from './create-entertainment-form.dto';
 
 export class UpdateEntertainmentItemDto {
@@ -33,7 +34,14 @@ export class UpdateEntertainmentItemDto {
 
   @ApiProperty({ example: '2024-06-21' })
   @IsOptional()
-  @IsDateString()
+  @ValidateIf((o) => o.eventDate && o.eventDate !== '')
+  @IsDateString({}, { message: 'eventDate must be a valid date string' })
+  @Transform(({ value }) => {
+    if (!value || value === '') return null;
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return null;
+    return date.toISOString().split('T')[0];
+  })
   eventDate?: Date;
 
   @ApiProperty({ example: 'ต้อนรับลูกค้าใหม่' })

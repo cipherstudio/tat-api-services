@@ -8,6 +8,7 @@ import {
   ValidateNested,
   IsDateString,
   IsEnum,
+  ValidateIf,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 
@@ -115,19 +116,19 @@ export class CreateMeetingExpenseReportDto {
   position: string;
 
   @ApiProperty({ example: 'การประชุมวางแผนงานประจำเดือน' })
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  topic: string;
+  topic?: string;
 
   @ApiProperty({ example: 'ห้องประชุมใหญ่' })
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  place: string;
+  place?: string;
 
   @ApiProperty({ example: 'ประชุมประจำเดือน' })
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  meetingType: string;
+  meetingType?: string;
 
   @ApiProperty({ example: 'ดร.สมชาย ใจดี' })
   @IsOptional()
@@ -135,20 +136,21 @@ export class CreateMeetingExpenseReportDto {
   chairman?: string;
 
   @ApiProperty({ example: '15' })
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  attendees: string;
+  attendees?: string;
 
   @ApiProperty({ example: '2024-06-21' })
-  @IsNotEmpty()
-  @IsDateString()
+  @IsOptional()
+  @ValidateIf((o) => o.meetingDate && o.meetingDate !== '')
+  @IsDateString({}, { message: 'meetingDate must be a valid date string' })
   @Transform(({ value }) => {
-    if (!value) return value;
+    if (!value || value === '') return null;
     const date = new Date(value);
-    if (isNaN(date.getTime())) return value;
+    if (isNaN(date.getTime())) return null;
     return date.toISOString().split('T')[0];
   })
-  meetingDate: string;
+  meetingDate?: string;
 
   @ApiProperty({ example: 5000.0 })
   @IsOptional()
