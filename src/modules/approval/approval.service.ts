@@ -4058,7 +4058,7 @@ export class ApprovalService {
         document_number: originalApproval.documentNumber,
         document_tel: originalApproval.documentTel,
         document_to: originalApproval.documentTo,
-        document_title: originalApproval.documentTitle,
+        document_title: originalApproval.documentTitle ? `${originalApproval.documentTitle} (ยกเลิก)` : '(ยกเลิก)',
         attachment_id: null,
         form3_total_outbound: 0,
         form3_total_inbound: 0,
