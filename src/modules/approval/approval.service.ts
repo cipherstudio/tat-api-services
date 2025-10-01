@@ -1312,6 +1312,8 @@ export class ApprovalService {
       employeeCode: string;
       travelType: string;
       documentTitle: string;
+      documentNumber?: string;
+      approvalDate?: string;
       createdAt: Date;
       updatedAt: Date;
     } | null = null;
@@ -1327,6 +1329,8 @@ export class ApprovalService {
           'employee_code as employeeCode',
           'travel_type as travelType',
           'document_title as documentTitle',
+          'document_number as documentNumber',
+          'approval_date as approvalDate',
           'created_at as createdAt',
           'updated_at as updatedAt',
         )
