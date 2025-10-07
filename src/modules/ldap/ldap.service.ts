@@ -238,7 +238,7 @@ export class LdapService {
                     id: dbUser.pmtCode,
                     email: dbUser.pmtEmailAddr,
                     fullName: dbUser.pmtNameT,
-                    role: 'admin',
+                    role: dbUser.isAdmin ? 'admin' : 'user',
                     position: dbUser.posPositionname,
                     employeeCode: dbUser.pmtCode,
                     isAdmin: dbUser.isAdmin ?? false,

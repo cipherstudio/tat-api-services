@@ -156,7 +156,7 @@ export class AuthService {
         id: user.id,
         email: user.pmtEmailAddr,
         fullName: user.pmtNameT,
-        role: user.role,
+        role: user.isAdmin === 1 ? UserRole.ADMIN : UserRole.USER,
         position: user.posPositionname,
         employeeCode: existingUser.pmtCode,
         isAdmin: existingUser.isAdmin === 1,
