@@ -207,11 +207,13 @@ export class LdapService {
                   );
                 }
 
+                const isAdmin = await this.employeeRepository.checkIsAdmin(dbUser.pmtCode);
+
                 // สร้าง JWT payload
                 const payload = {
                   sub: dbUser.pmtCode,
                   email: dbUser.pmtEmailAddr,
-                  role: 'admin',
+                  role: isAdmin ? 'admin' : 'user',
                   employeeCode: dbUser.pmtCode,
                 };
 
@@ -238,10 +240,10 @@ export class LdapService {
                     id: dbUser.pmtCode,
                     email: dbUser.pmtEmailAddr,
                     fullName: dbUser.pmtNameT,
-                    role: dbUser.isAdmin ? 'admin' : 'user',
+                    role: isAdmin ? 'admin' : 'user',
                     position: dbUser.posPositionname,
                     employeeCode: dbUser.pmtCode,
-                    isAdmin: dbUser.isAdmin ?? false,
+                    isAdmin: isAdmin,
                   },
                   ldapUser: user, // ข้อมูลจาก LDAP
                 });

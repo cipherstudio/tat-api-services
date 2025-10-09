@@ -368,14 +368,22 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
       | undefined;
   }
 
-  async checkIsAdmin(pmtCode: string): Promise<boolean> {
+  async checkIsAdmin(pmtCode: string, userRole?: string): Promise<boolean> {
     const result = await this.knex('employee_admin')
       .where('pmt_code', pmtCode)
       .where('is_active', true)
       .whereNull('deleted_at')
       .first();
 
-    return !!result;
+    if (result) {
+      return true;
+    }
+
+    if (userRole === 'admin') {
+      return true;
+    }
+
+    return false;
   }
 
   async findByEmailWithPosition4ot(

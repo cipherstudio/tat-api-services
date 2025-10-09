@@ -17,6 +17,7 @@ import { OpLevelSalR } from '@modules/dataviews/entities/op-level-sal-r.entity';
 import { ViewPosition4ot } from '@modules/dataviews/entities/view-position-4ot.entity';
 import { Employee } from '@modules/dataviews/entities/employee.entity';
 import { OpMasterT } from '@modules/dataviews/entities/op-master-t.entity';
+import { EmployeeRepository } from '@modules/dataviews/repositories/employee.repository';
 
 interface JwtPayload {
   sub: string;
@@ -39,6 +40,7 @@ export class AuthService {
     private readonly sessionService: SessionService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly employeeRepository: EmployeeRepository,
   ) {}
 
   async refreshTokens(
@@ -124,17 +126,19 @@ export class AuthService {
     deviceInfo?: string,
     ipAddress?: string,
   ) {
-    const payload: JwtPayload = {
-      sub: user.pmtCode,
-      email: user.email,
-      role: user.role,
-      employeeCode: user.pmtCode,
-    };
-
     const existingUser = await this.usersService.findByEmail(user.email);
     if (!existingUser) {
       throw new NotFoundException('User not found');
     }
+
+    const isAdmin = await this.employeeRepository.checkIsAdmin(user.pmtCode, user.role);
+
+    const payload: JwtPayload = {
+      sub: user.pmtCode,
+      email: user.email,
+      role: isAdmin ? UserRole.ADMIN : UserRole.USER,
+      employeeCode: user.pmtCode,
+    };
 
     // Create session with employee_code and employee_name
     const accessToken = this.jwtService.sign(payload);
@@ -156,10 +160,10 @@ export class AuthService {
         id: user.id,
         email: user.pmtEmailAddr,
         fullName: user.pmtNameT,
-        role: user.isAdmin === 1 ? UserRole.ADMIN : UserRole.USER,
+        role: isAdmin ? UserRole.ADMIN : UserRole.USER,
         position: user.posPositionname,
         employeeCode: existingUser.pmtCode,
-        isAdmin: existingUser.isAdmin === 1,
+        isAdmin: isAdmin,
       },
     };
   }
@@ -173,10 +177,13 @@ export class AuthService {
     deviceInfo?: string,
     ipAddress?: string,
   ) {
+    // Check admin status properly with deleted_at check and fallback to user.role
+    const isAdmin = await this.employeeRepository.checkIsAdmin(user.pmtCode, user.role);
+
     const payload: JwtPayload = {
       sub: user.pmtCode,
       email: user.email,
-      role: user.role,
+      role: isAdmin ? UserRole.ADMIN : UserRole.USER,
       employeeCode: user.pmtCode,
     };
 
@@ -200,10 +207,10 @@ export class AuthService {
         id: Number(user.pmtCode),
         email: user.pmtEmailAddr,
         fullName: user.pmtNameT,
-        role: user.isAdmin === 1 ? UserRole.ADMIN : UserRole.USER,
+        role: isAdmin ? UserRole.ADMIN : UserRole.USER,
         position: user.posPositionname,
         employeeCode: user.pmtCode,
-        isAdmin: user.isAdmin === 1,
+        isAdmin: isAdmin,
       },
     };
   }
