@@ -13,7 +13,11 @@ export class ReportEntertainmentFormRepository extends KnexBaseRepository<Report
     super(knexService, 'report_entertainment_form');
   }
 
-  private convertToDateWithoutTimezone(eventDate: any): Date {
+  private convertToDateWithoutTimezone(eventDate: any): Date | null {
+    if (!eventDate || eventDate === '') {
+      return null;
+    }
+    
     if (eventDate instanceof Date) {
       // Create new Date with local date components to remove timezone
       const year = eventDate.getFullYear();
@@ -28,7 +32,7 @@ export class ReportEntertainmentFormRepository extends KnexBaseRepository<Report
       const day = parseInt(dateParts[2]);
       return new Date(year, month, day);
     } else {
-      return new Date();
+      return null;
     }
   }
 

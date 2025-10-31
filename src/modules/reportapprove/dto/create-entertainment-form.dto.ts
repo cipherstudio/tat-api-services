@@ -7,6 +7,7 @@ import {
   IsArray,
   ValidateNested,
   IsDateString,
+  ValidateIf,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 
@@ -22,21 +23,21 @@ export class CreateEntertainmentItemDto {
   peopleCount?: string;
 
   @ApiProperty({ example: 'โรงแรมแกรนด์ พลาซ่า' })
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  venue: string;
+  venue?: string;
 
   @ApiProperty({ example: '2024-06-21' })
-  @IsNotEmpty()
-  @IsDateString()
+  @IsOptional()
+  @ValidateIf((o) => o.eventDate && o.eventDate !== '')
+  @IsDateString({}, { message: 'eventDate must be a valid date string' })
   @Transform(({ value }) => {
-    if (!value) return value;
-    // Ensure date is in YYYY-MM-DD format
+    if (!value || value === '') return null;
     const date = new Date(value);
-    if (isNaN(date.getTime())) return value;
+    if (isNaN(date.getTime())) return null;
     return date.toISOString().split('T')[0];
   })
-  eventDate: Date;
+  eventDate?: Date;
 
   @ApiProperty({ example: 'ต้อนรับลูกค้าใหม่' })
   @IsOptional()
@@ -54,9 +55,9 @@ export class CreateEntertainmentItemDto {
   receiptBook?: string;
 
   @ApiProperty({ example: 5000.0 })
-  @IsNotEmpty()
+  @IsOptional()
   @IsNumber()
-  amount: number;
+  amount?: number;
 
   @ApiProperty({ example: 'ห้าพันบาทถ้วน' })
   @IsOptional()
@@ -81,14 +82,14 @@ export class CreateEntertainmentFormDto {
   employeeName: string;
 
   @ApiProperty({ example: 'Manager' })
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  employeePosition: string;
+  employeePosition?: string;
 
   @ApiProperty({ example: 'IT Department' })
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  department: string;
+  department?: string;
 
   @ApiProperty({ example: 'Development Team' })
   @IsOptional()
@@ -96,9 +97,9 @@ export class CreateEntertainmentFormDto {
   section?: string;
 
   @ApiProperty({ example: 'Project Alpha' })
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  job: string;
+  job?: string;
 
   @ApiProperty({ example: 'พนักงาน ททท.', description: 'Employee type (พนักงาน ททท., ผู้ว่าการ)' })
   @IsOptional()

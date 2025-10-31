@@ -21,6 +21,7 @@ export class MeetingExpenseReportRepository extends KnexBaseRepository<MeetingEx
       job,
       meetingType,
       topic,
+      chairman,
       totalAmount,
       status,
       orderBy = 'created_at',
@@ -80,6 +81,13 @@ export class MeetingExpenseReportRepository extends KnexBaseRepository<MeetingEx
         'mer.topic',
         'like',
         `%${topic}%`,
+      );
+    }
+    if (chairman) {
+      baseQuery = baseQuery.where(
+        'mer.chairman',
+        'like',
+        `%${chairman}%`,
       );
     }
     if (totalAmount) {

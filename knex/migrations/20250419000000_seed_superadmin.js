@@ -10,13 +10,13 @@ exports.up = async function (knex) {
 
   // Check if the admin user already exists
   const existingAdmin = await knex('users')
-    .where({ email: 'admin@example.com' })
+    .where({ email: 'admin@email.com' })
     .first();
 
   if (!existingAdmin) {
     // Insert superadmin user
     await knex('users').insert({
-      email: 'admin@example.com',
+      email: 'admin@email.com',
       password: hashedPassword,
       full_name: 'Super Admin',
       role: 'admin',
@@ -27,7 +27,7 @@ exports.up = async function (knex) {
     });
 
     console.log('Superadmin user created successfully!');
-    console.log('Email: admin@example.com');
+    console.log('Email: admin@email.com');
     console.log('Password: Admin@123');
   } else {
     console.log('Superadmin user already exists.');
@@ -39,5 +39,5 @@ exports.up = async function (knex) {
  * @returns { Promise<void> }
  */
 exports.down = function (knex) {
-  return knex('users').where({ email: 'admin@example.com' }).del();
+  return knex('users').where({ email: 'admin@email.com' }).del();
 };

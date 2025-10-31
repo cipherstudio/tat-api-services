@@ -85,4 +85,34 @@ export class ReportApproveQueryDto {
   @IsOptional()
   @IsDate()
   deletedAt?: Date;
+
+  @ApiPropertyOptional({
+    example: '2024-01-01',
+    description: 'วันที่ทำเรื่องเริ่มต้น (YYYY-MM-DD)',
+  })
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => {
+    if (!value) return value;
+    // Ensure date is in YYYY-MM-DD format
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return value;
+    return date.toISOString().split('T')[0];
+  })
+  startDate?: string;
+
+  @ApiPropertyOptional({
+    example: '2024-12-31',
+    description: 'วันที่ทำเรื่องสิ้นสุด (YYYY-MM-DD)',
+  })
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => {
+    if (!value) return value;
+    // Ensure date is in YYYY-MM-DD format
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return value;
+    return date.toISOString().split('T')[0];
+  })
+  endDate?: string;
 }

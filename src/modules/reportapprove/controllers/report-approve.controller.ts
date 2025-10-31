@@ -27,7 +27,10 @@ export class ReportApproveController {
   constructor(private readonly reportApproveService: ReportApproveService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get all report approvals' })
+  @ApiOperation({ 
+    summary: 'Get all report approvals with pagination and search',
+    description: 'Supports filtering by: title, creator name, creator code, document number, status, approve ID, and date range (startDate, endDate).'
+  })
   @ApiOkResponse({ type: [ReportApprove] })
   async findAll(@Query() query: ReportApproveQueryDto) {
     return this.reportApproveService.findAll(query);

@@ -177,14 +177,16 @@ export class NotificationService {
     approvalId: number,
     approvalTitle: string,
     creatorEmployeeCode: string,
+    creatorName: string,
     relatedEmployeeCodes: string[],
   ): Promise<void> {
     const title = 'มีการสร้างรายการอนุมัติใหม่';
-    const message = `รายการ "${approvalTitle}" ถูกสร้างโดย ${creatorEmployeeCode}`;
+    const message = `รายการ "${approvalTitle}" ถูกสร้างโดย ${creatorName}`;
     const metadata = {
       approvalId,
       approvalTitle,
       creatorEmployeeCode,
+      creatorName,
     };
 
     // Create notifications for all related employees

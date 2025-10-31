@@ -39,6 +39,26 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         idQuery.where('report_approve.status', dbFilter.status);
         delete dbFilter.status;
       }
+      
+      // Handle date filtering
+      if (dbFilter.start_date) {
+        idQuery.where(
+          'report_approve.created_at',
+          '>=',
+          this.knex.raw(`TO_DATE('${dbFilter.start_date}', 'YYYY-MM-DD')`),
+        );
+        delete dbFilter.start_date;
+      }
+      
+      if (dbFilter.end_date) {
+        idQuery.where(
+          'report_approve.created_at',
+          '<=',
+          this.knex.raw(`TO_DATE('${dbFilter.end_date} 23:59:59', 'YYYY-MM-DD HH24:MI:SS')`),
+        );
+        delete dbFilter.end_date;
+      }
+      
       idQuery.where(dbFilter);
     }
     const countResult = await idQuery

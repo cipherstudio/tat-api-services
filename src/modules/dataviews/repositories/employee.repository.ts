@@ -362,15 +362,65 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
       ])
       .first();
 
-    const employeeCamel = employee ? await toCamelCase(employee) : undefined;
+    if (!employee) {
+      const fallback = await this.knex('EMPLOYEE')
+        .whereRaw('RTRIM("CODE") = ?', [code])
+        .leftJoin('VIEW_POSITION_4OT', (builder) => {
+          builder.on(
+            'VIEW_POSITION_4OT.POS_POSITIONCODE',
+            '=',
+            this.knex.raw('RTRIM("EMPLOYEE"."APA_PPN_NUMBER")'),
+          );
+        })
+        .leftJoin('OP_LEVEL_SAL_R', (builder) => {
+          builder.on(
+            this.knex.raw(
+              'RTRIM("OP_LEVEL_SAL_R"."PLV_CODE") = RTRIM("EMPLOYEE"."LEVEL_POSITION")',
+            ),
+          );
+        })
+        .leftJoin('employee_admin', (builder) => {
+          builder.on(
+            'employee_admin.pmt_code',
+            '=',
+            this.knex.raw('RTRIM("EMPLOYEE"."CODE")'),
+          );
+        })
+        .select([
+          'EMPLOYEE.*',
+          'VIEW_POSITION_4OT.*',
+          'OP_LEVEL_SAL_R.*',
+          this.knex.raw(
+            'RTRIM("EMPLOYEE"."CODE") AS "PMT_CODE"',
+          ),
+          this.knex.raw(
+            'TO_NUMBER(CASE WHEN "employee_admin"."id" IS NOT NULL THEN 1 ELSE 0 END) AS "is_admin"',
+          ),
+        ])
+        .first();
+
+      const fallbackCamel = fallback
+        ? await toCamelCase(fallback)
+        : undefined;
+      return fallbackCamel as
+        | (Employee & ViewPosition4ot & OpLevelSalR & { isAdmin?: boolean })
+        | undefined;
+    }
+
+    const employeeCamel = await toCamelCase(employee);
     return employeeCamel as
       | (Employee & ViewPosition4ot & OpLevelSalR & { isAdmin?: boolean })
       | undefined;
   }
 
-  async checkIsAdmin(pmtCode: string): Promise<boolean> {
+  async checkIsAdmin(pmtCode: string, userRole?: string): Promise<boolean> {
+    const trimmed = (pmtCode ?? '').trim();
+    if (!trimmed) {
+      return false;
+    }
+
     const result = await this.knex('employee_admin')
-      .where('pmt_code', pmtCode)
+      .whereRaw('RTRIM("pmt_code") = ?', [trimmed])
       .where('is_active', true)
       .whereNull('deleted_at')
       .first();
@@ -419,7 +469,60 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
       ])
       .first();
 
-    const employeeCamel = employee ? await toCamelCase(employee) : undefined;
+    if (!employee) {
+      // Fallback by EMPLOYEE email
+      // Subquery: latest PAY job row per employee for salary level mapping
+      const fallback = await this.knex('EMPLOYEE')
+        .whereRaw('RTRIM("EMAIL") = ?', [email])
+        .leftJoin('VIEW_POSITION_4OT', (builder) => {
+          builder.on(
+            'VIEW_POSITION_4OT.POS_POSITIONCODE',
+            '=',
+            this.knex.raw('RTRIM("EMPLOYEE"."APA_PPN_NUMBER")'),
+          );
+        })
+        .leftJoin('OP_LEVEL_SAL_R', (builder) => {
+          builder.on(
+            this.knex.raw(
+              'RTRIM("OP_LEVEL_SAL_R"."PLV_CODE") = RTRIM("EMPLOYEE"."LEVEL_POSITION")',
+            ),
+          );
+        })
+        .leftJoin('employee_admin', (builder) => {
+          builder.on(
+            'employee_admin.pmt_code',
+            '=',
+            this.knex.raw('RTRIM("EMPLOYEE"."CODE")'),
+          );
+        })
+        .select([
+          'EMPLOYEE.*',
+          'VIEW_POSITION_4OT.*',
+          'OP_LEVEL_SAL_R.*',
+          this.knex.raw(
+            'RTRIM("EMPLOYEE"."CODE") AS "PMT_CODE"',
+          ),
+          this.knex.raw(
+            'RTRIM("EMPLOYEE"."EMAIL") AS "PMT_EMAIL_ADDR"',
+          ),
+          this.knex.raw(
+            'RTRIM("EMPLOYEE"."NAME") AS "PMT_NAME_T"',
+          ),
+          this.knex.raw(
+            'TO_NUMBER(CASE WHEN "employee_admin"."id" IS NOT NULL THEN 1 ELSE 0 END) AS "is_admin"',
+          ),
+        ])
+        .first();
+
+      const fallbackCamel = fallback
+        ? await toCamelCase(fallback)
+        : undefined;
+      return fallbackCamel as
+        | (Employee & ViewPosition4ot & OpLevelSalR & { isAdmin?: boolean })
+        | undefined;
+    }
+
+    const employeeCamel = await toCamelCase(employee);
     return employeeCamel as
       | (Employee & ViewPosition4ot & OpLevelSalR & { isAdmin?: boolean })
       | undefined;

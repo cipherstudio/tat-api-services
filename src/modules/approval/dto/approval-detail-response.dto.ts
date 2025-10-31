@@ -809,6 +809,8 @@ export class ApprovalDetailResponseDto implements Approval {
       employeeCode: '66019',
       travelType: 'international',
       documentTitle: 'Business Trip Request',
+      documentNumber: 'เลขอ้างอิงงาน 456/2567',
+      approvalDate: '2024-03-20',
       createdAt: '2024-03-20T10:00:00.000Z',
       updatedAt: '2024-03-20T10:00:00.000Z'
     }
@@ -820,6 +822,8 @@ export class ApprovalDetailResponseDto implements Approval {
     employeeCode: string;
     travelType: string;
     documentTitle: string;
+    documentNumber?: string;
+    approvalDate?: string;
     createdAt: Date;
     updatedAt: Date;
   } | null | undefined;

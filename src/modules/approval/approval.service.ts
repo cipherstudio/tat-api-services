@@ -1312,6 +1312,8 @@ export class ApprovalService {
       employeeCode: string;
       travelType: string;
       documentTitle: string;
+      documentNumber?: string;
+      approvalDate?: string;
       createdAt: Date;
       updatedAt: Date;
     } | null = null;
@@ -1327,6 +1329,8 @@ export class ApprovalService {
           'employee_code as employeeCode',
           'travel_type as travelType',
           'document_title as documentTitle',
+          'document_number as documentNumber',
+          'approval_date as approvalDate',
           'created_at as createdAt',
           'updated_at as updatedAt',
         )
@@ -1861,10 +1865,12 @@ export class ApprovalService {
           (staff) => staff.employeeCode,
         );
         //create notification for wach member
+        const creatorName = await this.getEmployeeName(employeeCode);
         await this.notificationService.createApprovalCreatedNotification(
           id,
           updateDto.documentTitle,
           employeeCode,
+          creatorName,
           memberCodes,
         );
       }
@@ -4056,7 +4062,7 @@ export class ApprovalService {
         document_number: originalApproval.documentNumber,
         document_tel: originalApproval.documentTel,
         document_to: originalApproval.documentTo,
-        document_title: originalApproval.documentTitle,
+        document_title: originalApproval.documentTitle ? `${originalApproval.documentTitle} (ยกเลิก)` : '(ยกเลิก)',
         attachment_id: null,
         form3_total_outbound: 0,
         form3_total_inbound: 0,
@@ -4594,6 +4600,7 @@ export class ApprovalService {
       approval.id,
       approvalTitle,
       creatorEmployeeCode,
+      creatorName,
       relatedEmployeeCodes,
     );
   }
