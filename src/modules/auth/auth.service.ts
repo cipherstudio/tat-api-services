@@ -54,12 +54,18 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
+    const resolvedPmtCode = ((user as any)?.pmtCode ?? (user as any)?.employeeCode ?? '')
+      .toString()
+      .trim();
+    if (!resolvedPmtCode) {
+      throw new BadRequestException('Unable to resolve employee code for refresh');
+    }
+
     const payload: JwtPayload = {
-      sub: user.pmtCode,
+      sub: resolvedPmtCode,
       email: user.email,
       role: user.role,
-      employeeCode: user.pmtCode,
-      isAdmin: user.isAdmin === 1,
+      employeeCode: resolvedPmtCode,
     };
 
     return {
@@ -131,13 +137,24 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    const isAdmin = await this.employeeRepository.checkIsAdmin(user.pmtCode, user.role);
+    const resolvedPmtCode = (
+      (user as any)?.pmtCode ||
+      (user as any)?.code ||
+      ((existingUser as any)?.employee_code || '')
+    )
+      .toString()
+      .trim();
+    if (!resolvedPmtCode) {
+      throw new BadRequestException('Unable to resolve employee code');
+    }
+
+    const isAdmin = await this.employeeRepository.checkIsAdmin(resolvedPmtCode, user.role);
 
     const payload: JwtPayload = {
-      sub: user.pmtCode,
+      sub: resolvedPmtCode,
       email: user.email,
       role: isAdmin ? UserRole.ADMIN : UserRole.USER,
-      employeeCode: user.pmtCode,
+      employeeCode: resolvedPmtCode,
     };
 
     // Create session with employee_code and employee_name
@@ -146,23 +163,35 @@ export class AuthService {
       expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN'),
     });
     await this.sessionService.createSession(
-      user.pmtCode, // employee_code
-      user.pmtNameT, // employee_name
+      resolvedPmtCode,
+      (user as any).pmtNameT || (existingUser as any).fullName || '',
       refreshToken,
       deviceInfo,
       ipAddress,
     );
+
+    const richEmp = await this.employeeRepository.findByCodeWithPosition4ot(
+      resolvedPmtCode,
+    );
+
+    const trimOrEmpty = (v: any) => (typeof v === 'string' ? v.trim() : (v ?? ''));
+    const normalizedEmail = trimOrEmpty(
+      (existingUser as any)?.email || (user as any)?.email || (richEmp as any)?.email || '',
+    );
+    const normalizedFullName =
+      (richEmp as any)?.name || (existingUser as any)?.fullName || '';
+    const normalizedPosition = (richEmp as any)?.posPositionname || '';
 
     return {
       access_token: accessToken,
       refresh_token: refreshToken,
       user: {
         id: user.id,
-        email: user.pmtEmailAddr,
-        fullName: user.pmtNameT,
+        email: normalizedEmail,
+        fullName: normalizedFullName,
         role: isAdmin ? UserRole.ADMIN : UserRole.USER,
-        position: user.posPositionname,
-        employeeCode: existingUser.pmtCode,
+        position: normalizedPosition,
+        employeeCode: resolvedPmtCode,
         isAdmin: isAdmin,
       },
     };
@@ -193,8 +222,8 @@ export class AuthService {
       expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN'),
     });
     await this.sessionService.createSession(
-      user.pmtCode, // employee_code
-      user.pmtNameT, // employee_name
+      user.pmtCode,
+      user.pmtNameT,
       refreshToken,
       deviceInfo,
       ipAddress,
