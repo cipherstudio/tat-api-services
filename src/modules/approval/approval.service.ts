@@ -1795,22 +1795,22 @@ export class ApprovalService {
                     workEndDate = updateDto.workEndDate;
                   }
 
-                  // get next claim date
                   let nextClaimDate = null;
                   let workStartDate = null;
                   if (updateDto.travelType === 'international') {
                     workStartDate = updateDto.travelDateRanges[0].start_date;
-                    nextClaimDate = null;
                   } else if (
                     ['temporary-international', 'training-international', 'temporary-both'].includes(updateDto.travelType)
                   ) {
                     workStartDate = updateDto.workStartDate;
-                    nextClaimDate = this.calculateNextClaimDate(workStartDate);
+                  }
+
+                  if (existingExpense?.reporting_date) {
+                    nextClaimDate = this.calculateNextClaimDate(existingExpense.reporting_date);
                   }
 
                   let clothingExpenseId;
                   if (existingExpense) {
-                    // Update existing record
                     await trx('approval_clothing_expense')
                       .where({
                         approval_id: id,
@@ -1820,10 +1820,10 @@ export class ApprovalService {
                         clothing_file_checked: expense.clothingFileChecked,
                         clothing_amount: expense.clothingAmount,
                         clothing_reason: expense.clothingReason,
-                        reporting_date: null, // ไม่ต้องส่ง มาจาก cron + manual save
+                        reporting_date: null,
                         next_claim_date: nextClaimDate,
                         work_start_date: workStartDate,
-                        work_end_date: workEndDate, // ไม่ต้องส่ง เอามาจาก step 1
+                        work_end_date: workEndDate,
                         increment_id: approval.incrementId,
                         destination_country: destinationCountry ?? null,
                         attachment_id: expense.attachmentId ?? null,
@@ -1831,7 +1831,6 @@ export class ApprovalService {
                       });
                     clothingExpenseId = existingExpense.id;
                   } else {
-                    // Insert new record
                     const [insertedClothingExpense] = await trx(
                       'approval_clothing_expense',
                     )
@@ -1842,10 +1841,10 @@ export class ApprovalService {
                         clothing_file_checked: expense.clothingFileChecked,
                         clothing_amount: expense.clothingAmount,
                         clothing_reason: expense.clothingReason,
-                        reporting_date: null, // ไม่ต้องส่ง มาจาก cron + manual save
+                        reporting_date: null,
                         next_claim_date: nextClaimDate,
                         work_start_date: workStartDate,
-                        work_end_date: workEndDate, // ไม่ต้องส่ง เอามาจาก step 1
+                        work_end_date: workEndDate,
                         increment_id: approval.incrementId,
                         destination_country: destinationCountry ?? null,
                         attachment_id: expense.attachmentId ?? null,
@@ -2325,10 +2324,14 @@ export class ApprovalService {
     const trx = await this.knexService.knex.transaction();
 
     try {
-      // Update clothing expense dates
+      let nextClaimDate = updateDatesDto.nextClaimDate;
+      if (updateDatesDto.reportingDate && !updateDatesDto.nextClaimDate) {
+        nextClaimDate = this.calculateNextClaimDate(updateDatesDto.reportingDate);
+      }
+
       await trx('approval_clothing_expense').where('approval_id', id).update({
         reporting_date: updateDatesDto.reportingDate,
-        next_claim_date: updateDatesDto.nextClaimDate,
+        next_claim_date: nextClaimDate,
         ddwork_end_date: updateDatesDto.ddworkEndDate,
         updated_at: new Date(),
       });
@@ -2849,11 +2852,11 @@ export class ApprovalService {
     }
   }
 
-  private calculateNextClaimDate(workStartDate: string): string {
-    //  next_cliam_date = (workSartDate s  + 2 ปี + 1 วัน )
-    const workStartDateObj = new Date(workStartDate);
+  private calculateNextClaimDate(reportingDate: string): string {
+    //  next_claim_date = (reportingDate + 2 ปี + 1 วัน )
+    const reportingDateObj = new Date(reportingDate);
     const nextClaimDate = new Date(
-      workStartDateObj.getTime() +
+      reportingDateObj.getTime() +
         2 * 365 * 24 * 60 * 60 * 1000 +
         24 * 60 * 60 * 1000,
     );

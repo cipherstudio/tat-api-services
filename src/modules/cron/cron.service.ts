@@ -28,7 +28,6 @@ export class CronService {
   private async copyReportDate(): Promise<void> {
     this.logger.log('Copying report date from MSSQL');
 
-    // หา rows ที่ยังไม่มี reporting_date
     const pendingExpenses = await this.knexService
       .knex('approval_clothing_expense')
       .whereNull('reporting_date')
@@ -44,11 +43,10 @@ export class CronService {
     );
 
     let updatedCount = 0;
+    let nextClaimDateCalculatedCount = 0;
 
     for (const expense of pendingExpenses) {
       try {
-        // หาวันรายงานตัวจาก MSSQL ViewDutyFormCommands
-
         const mssqlData = await this.mssqlConnection
           .select('*')
           .from('ViewDutyFormCommands')
@@ -64,12 +62,15 @@ export class CronService {
               .toISOString()
               .split('T')[0];
 
-            // อัปเดตค่า reporting_date
+            const nextClaimDate = this.calculateNextClaimDate(formattedDate);
+            nextClaimDateCalculatedCount += 1;
+
             await this.knexService
               .knex('approval_clothing_expense')
               .where('id', expense.id)
               .update({
                 reporting_date: formattedDate,
+                next_claim_date: nextClaimDate,
                 updated_at: new Date(),
               });
 
@@ -85,5 +86,19 @@ export class CronService {
     }
 
     this.logger.log(`Updated reporting_date for ${updatedCount} records`);
+    this.logger.log(
+      `Calculated next_claim_date for ${nextClaimDateCalculatedCount} records`,
+    );
+  }
+
+  private calculateNextClaimDate(reportingDate: string): string {
+    //  next_claim_date = (reportingDate + 2 ปี + 1 วัน )
+    const reportingDateObj = new Date(reportingDate);
+    const nextClaimDate = new Date(
+      reportingDateObj.getTime() +
+        2 * 365 * 24 * 60 * 60 * 1000 +
+        24 * 60 * 60 * 1000,
+    );
+    return nextClaimDate.toISOString().split('T')[0];
   }
 }
