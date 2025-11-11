@@ -22,6 +22,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       ? ['RS256', 'HS256']
       : ['HS256'];
     
+    // Create JWKS provider once if JWKS URI is available
+    const jwksSecretProvider = jwksUri ? passportJwtSecret({
+      jwksUri: jwksUri,
+      cache: true,
+      cacheMaxAge: 86400000, // 24 hours
+      rateLimit: true,
+      jwksRequestsPerMinute: 10,
+    }) : null;
+    
     // Build options object before calling super()
     const strategyOptions: any = {
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -29,18 +38,21 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       algorithms: algorithms,
     };
     
-    if (jwksUri) {
-      const secretOrKeyProvider = passportJwtSecret({
-        jwksUri: jwksUri,
-        cache: true,
-        cacheMaxAge: 86400000, // 24 hours
-        rateLimit: true,
-        jwksRequestsPerMinute: 10,
-      });
-      strategyOptions.secretOrKeyProvider = secretOrKeyProvider;
-    } else {
-      strategyOptions.secretOrKey = jwtSecret;
-    }
+    strategyOptions.secretOrKeyProvider = (req: any, rawJwtToken: string, done: any) => {
+      try {
+        const header = JSON.parse(Buffer.from(rawJwtToken.split('.')[0], 'base64').toString());
+        
+        if (header.alg === 'RS256' && jwksSecretProvider) {
+          jwksSecretProvider(req, rawJwtToken, done);
+        } else if (header.alg === 'HS256') {
+          done(null, jwtSecret);
+        } else {
+          done(new Error(`Unsupported algorithm: ${header.alg}${header.alg === 'RS256' && !jwksUri ? ' (JWKS URI not configured)' : ''}`), null);
+        }
+      } catch (err) {
+        done(null, jwtSecret);
+      }
+    };
     
     super(strategyOptions);
     
