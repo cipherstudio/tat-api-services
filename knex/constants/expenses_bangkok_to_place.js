@@ -49,6 +49,7 @@ const EXPENSES_BANGKOK_TO_PLACE = [
   { amphur_id: 3, place_id: 1, rate: 500 },
   { amphur_id: 41, place_id: 1, rate: 430 },
   { amphur_id: 17, place_id: 1, rate: 250 },
+  { amphur_id: 930, place_id: 1, rate: 170 },
   { amphur_id: 33, place_id: 2, rate: 500 },
   { amphur_id: 18, place_id: 2, rate: 500 },
   { amphur_id: 46, place_id: 2, rate: 500 },
@@ -99,6 +100,7 @@ const EXPENSES_BANGKOK_TO_PLACE = [
   { amphur_id: 3, place_id: 2, rate: 500 },
   { amphur_id: 41, place_id: 2, rate: 300 },
   { amphur_id: 17, place_id: 2, rate: 500 },
+  { amphur_id: 930, place_id: 2, rate: 430 },
   { amphur_id: 33, place_id: 3, rate: 250 },
   { amphur_id: 18, place_id: 3, rate: 170 },
   { amphur_id: 46, place_id: 3, rate: 500 },
@@ -149,6 +151,7 @@ const EXPENSES_BANGKOK_TO_PLACE = [
   { amphur_id: 3, place_id: 3, rate: 500 },
   { amphur_id: 41, place_id: 3, rate: 430 },
   { amphur_id: 17, place_id: 3, rate: 300 },
+  { amphur_id: 930, place_id: 3, rate: 250 },
   { amphur_id: 33, place_id: 4, rate: 370 },
   { amphur_id: 18, place_id: 4, rate: 300 },
   { amphur_id: 46, place_id: 4, rate: 500 },
@@ -199,6 +202,7 @@ const EXPENSES_BANGKOK_TO_PLACE = [
   { amphur_id: 3, place_id: 4, rate: 500 },
   { amphur_id: 41, place_id: 4, rate: 300 },
   { amphur_id: 17, place_id: 4, rate: 300 },
+  { amphur_id: 930, place_id: 4, rate: 250 },
   { amphur_id: 33, place_id: 5, rate: 370 },
   { amphur_id: 18, place_id: 5, rate: 300 },
   { amphur_id: 46, place_id: 5, rate: 500 },
@@ -249,6 +253,7 @@ const EXPENSES_BANGKOK_TO_PLACE = [
   { amphur_id: 3, place_id: 5, rate: 500 },
   { amphur_id: 41, place_id: 5, rate: 430 },
   { amphur_id: 17, place_id: 5, rate: 370 },
+  { amphur_id: 930, place_id: 5, rate: 300 },
   { amphur_id: 33, place_id: 6, rate: 250 },
   { amphur_id: 18, place_id: 6, rate: 300 },
   { amphur_id: 46, place_id: 6, rate: 500 },
@@ -299,6 +304,7 @@ const EXPENSES_BANGKOK_TO_PLACE = [
   { amphur_id: 3, place_id: 6, rate: 500 },
   { amphur_id: 41, place_id: 6, rate: 430 },
   { amphur_id: 17, place_id: 6, rate: 300 },
+  { amphur_id: 930, place_id: 6, rate: 250 },
   { amphur_id: 33, place_id: 7, rate: 520 },
   { amphur_id: 18, place_id: 7, rate: 600 },
   { amphur_id: 46, place_id: 7, rate: 590 },
@@ -348,7 +354,8 @@ const EXPENSES_BANGKOK_TO_PLACE = [
   { amphur_id: 23, place_id: 7, rate: 600 },
   { amphur_id: 3, place_id: 7, rate: 600 },
   { amphur_id: 41, place_id: 7, rate: 600 },
-  { amphur_id: 17, place_id: 7, rate: 600 }
+  { amphur_id: 17, place_id: 7, rate: 600 },
+  { amphur_id: 930, place_id: 7, rate: 600 }
 ];
 
 module.exports = EXPENSES_BANGKOK_TO_PLACE;

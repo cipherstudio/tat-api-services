@@ -5572,7 +5572,13 @@ const amphurs = [
     "name_th": "เจาะไอร้อง",
     "name_en": "Cho-airong",
     "province_id": 76
-}
+},
+    {
+    "id": 930,
+    "name_th": "ททท. สำนักงานใหญ่",
+    "name_en": "TAT Head Office	",
+    "province_id": 1
+},
 ];
 
 module.exports = amphurs;

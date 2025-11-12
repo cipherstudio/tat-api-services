@@ -9,11 +9,11 @@ exports.seed = async function (knex) {
   // Inserts seed entries
   await knex('employee_admin').insert([
     {
-      pmt_code: '38019',
-      employee_code: '38019',
-      employee_name: 'นาย สัญชัย ธรรมโหร',
-      position: 'รองผู้อำนวยการภูมิภาคภาคเหนือ',
-      department: 'ภูมิภาคภาคเหนือ',
+      pmt_code: '65028',
+      employee_code: '65028',
+      employee_name: 'นางสาว อรกานต์ วัฒนกิตติคุณ',
+      position: 'พนักงานการเงิน',
+      department: '',
       division: 'Information Technology',
       section: 'System Management',
       is_active: true,

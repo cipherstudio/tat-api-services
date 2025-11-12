@@ -28,18 +28,26 @@ export class CronService {
   private async copyReportDate(): Promise<void> {
     this.logger.log('Copying report date from MSSQL');
 
+    await this.updateExistingRecords();
+
+    await this.createNewRecordsFromMSSQL();
+  }
+
+  private async updateExistingRecords(): Promise<void> {
+    this.logger.log('[Update Existing] Starting to update existing records');
+
     const pendingExpenses = await this.knexService
       .knex('approval_clothing_expense')
       .whereNull('reporting_date')
-      .select('id', 'employee_code', 'work_start_date');
+      .select('id', 'employee_code');
 
     if (!pendingExpenses || pendingExpenses.length === 0) {
-      this.logger.log('No clothing expenses pending reporting_date');
+      this.logger.log('[Update Existing] No clothing expenses pending reporting_date');
       return;
     }
 
     this.logger.log(
-      `Found ${pendingExpenses.length} expenses pending reporting_date`,
+      `[Update Existing] Found ${pendingExpenses.length} expenses pending reporting_date`,
     );
 
     let updatedCount = 0;
@@ -47,48 +55,145 @@ export class CronService {
 
     for (const expense of pendingExpenses) {
       try {
+        const employeeCodeStr = String(expense.employee_code);
+        
+        this.logger.log(
+          `[Update Existing] Querying MSSQL for Employee ${employeeCodeStr} (Expense ID: ${expense.id})`,
+        );
+
         const mssqlData = await this.mssqlConnection
           .select('*')
           .from('ViewDutyFormCommands')
-          .where('EmployeeId', expense.employee_code)
+          .where('EmployeeId', employeeCodeStr)
           .first();
 
-        if (mssqlData) {
-          const reportingDate =
-            mssqlData.DutyReportTime || mssqlData.ArrivedDate;
+        if (mssqlData && mssqlData.DutyReportTime) {
+          const reportingDate = mssqlData.DutyReportTime;
+          const formattedDate = new Date(reportingDate)
+            .toISOString()
+            .split('T')[0];
 
-          if (reportingDate) {
-            const formattedDate = new Date(reportingDate)
-              .toISOString()
-              .split('T')[0];
+          this.logger.log(
+            `[Update Existing] Found DutyReportTime for Employee ${employeeCodeStr}: ${formattedDate}`,
+          );
 
-            const nextClaimDate = this.calculateNextClaimDate(formattedDate);
-            nextClaimDateCalculatedCount += 1;
+          const nextClaimDate = this.calculateNextClaimDate(formattedDate);
+          nextClaimDateCalculatedCount += 1;
 
-            await this.knexService
-              .knex('approval_clothing_expense')
-              .where('id', expense.id)
-              .update({
-                reporting_date: formattedDate,
-                next_claim_date: nextClaimDate,
-                updated_at: new Date(),
-              });
+          await this.knexService
+            .knex('approval_clothing_expense')
+            .where('id', expense.id)
+            .update({
+              reporting_date: formattedDate,
+              next_claim_date: nextClaimDate,
+              updated_at: new Date(),
+            });
 
-            updatedCount += 1;
-          }
+          updatedCount += 1;
+        } else {
+          this.logger.warn(
+            `[Update Existing] No DutyReportTime found for Employee ${employeeCodeStr} (Expense ID: ${expense.id})`,
+          );
         }
       } catch (error) {
         this.logger.error(
-          `Error processing expense ${expense.id} for employee ${expense.employee_code}:`,
-          error.message,
+          `[Update Existing] Error processing expense ${expense.id} for employee ${expense.employee_code}:`,
+          error instanceof Error ? error.stack : JSON.stringify(error),
         );
       }
     }
 
-    this.logger.log(`Updated reporting_date for ${updatedCount} records`);
+    this.logger.log(`[Update Existing] Updated reporting_date for ${updatedCount} records`);
     this.logger.log(
-      `Calculated next_claim_date for ${nextClaimDateCalculatedCount} records`,
+      `[Update Existing] Calculated next_claim_date for ${nextClaimDateCalculatedCount} records`,
     );
+  }
+
+  private async createNewRecordsFromMSSQL(): Promise<void> {
+    this.logger.log('[Create New] Starting to create new records from MSSQL');
+
+    try {
+      const mssqlRecords = await this.mssqlConnection
+        .select('*')
+        .from('ViewDutyFormCommands')
+        .whereNotNull('DutyReportTime');
+
+      this.logger.log(
+        `[Create New] Found ${mssqlRecords.length} records with DutyReportTime in MSSQL`,
+      );
+
+      let createdCount = 0;
+      let skippedCount = 0;
+
+      for (const mssqlData of mssqlRecords) {
+        try {
+          const employeeCode = parseInt(mssqlData.EmployeeId);
+          const commandId = String(mssqlData.CommandId);
+          const reportingDate = mssqlData.DutyReportTime;
+          const formattedReportingDate = new Date(reportingDate)
+            .toISOString()
+            .split('T')[0];
+
+          if (!employeeCode || !commandId || !reportingDate) {
+            this.logger.warn(
+              `[Create New] Skipping record with missing data: EmployeeId=${mssqlData.EmployeeId}, CommandId=${mssqlData.CommandId}, DutyReportTime=${reportingDate}`,
+            );
+            continue;
+          }
+
+          const existing = await this.knexService
+            .knex('approval_clothing_expense')
+            .where('employee_code', employeeCode)
+            .where(function() {
+              this.where('increment_id', commandId).orWhere(
+                'reporting_date',
+                formattedReportingDate,
+              );
+            })
+            .first();
+
+          if (existing) {
+            this.logger.log(
+              `[Create New] Record already exists for Employee ${employeeCode}, CommandId ${commandId}, skipping`,
+            );
+            skippedCount += 1;
+            continue;
+          }
+
+          const nextClaimDate = this.calculateNextClaimDate(
+            formattedReportingDate,
+          );
+
+          await this.knexService.knex('approval_clothing_expense').insert({
+            employee_code: employeeCode,
+            increment_id: commandId,
+            reporting_date: formattedReportingDate,
+            next_claim_date: nextClaimDate,
+            clothing_file_checked: false,
+            created_at: new Date(),
+            updated_at: new Date(),
+          });
+
+          this.logger.log(
+            `[Create New] Created new record for Employee ${employeeCode}, CommandId ${commandId}, reporting_date ${formattedReportingDate}`,
+          );
+          createdCount += 1;
+        } catch (error) {
+          this.logger.error(
+            `[Create New] Error processing MSSQL record:`,
+            error instanceof Error ? error.stack : JSON.stringify(error),
+          );
+        }
+      }
+
+      this.logger.log(`[Create New] Created ${createdCount} new records`);
+      this.logger.log(`[Create New] Skipped ${skippedCount} existing records`);
+    } catch (error) {
+      this.logger.error(
+        `[Create New] Error querying MSSQL:`,
+        error instanceof Error ? error.stack : JSON.stringify(error),
+      );
+    }
   }
 
   private calculateNextClaimDate(reportingDate: string): string {

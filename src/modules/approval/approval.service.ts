@@ -2587,19 +2587,22 @@ export class ApprovalService {
       }
 
       // ถ้าไม่มีข้อมูลการเบิกหรือถึงวันที่เบิกได้แล้ว → เช็ค PS_PW_JOB
-      const pwJob = await this.getPwJob(employeeCode);
+      // const pwJob = await this.getPwJob(employeeCode);
 
-      // ถ้าไม่เจอข้อมูลการเบิกล่าสุด, set isEligible true
-      if (!pwJob) {
-        this.updateEligibility(result, employeeCode, true);
-      } else {
-        await this.processPwJobForInternational(
-          pwJob,
-          checkEligibilityDto,
-          result,
-          employeeCode,
-        );
-      }
+      // // ถ้าไม่เจอข้อมูลการเบิกล่าสุด, set isEligible true
+      // if (!pwJob) {
+      //   this.updateEligibility(result, employeeCode, true);
+      // } else {
+      //   await this.processPwJobForInternational(
+      //     pwJob,
+      //     checkEligibilityDto,
+      //     result,
+      //     employeeCode,
+      //   );
+      // }
+
+      // ถ้าไม่มีข้อมูลการเบิก → set isEligible true
+      this.updateEligibility(result, employeeCode, true);
     }
   }
 
@@ -2607,30 +2610,44 @@ export class ApprovalService {
     checkEligibilityDto: CheckClothingExpenseEligibilityDto,
     result: ClothingExpenseEligibilityResponseDto[],
   ): Promise<void> {
+    
     for (const employeeCode of result.map((r) => r.employeeCode)) {
+      
       // เช็คข้อมูลจาก approval_clothing_expense ก่อน
       const existingClothingExpenses = await this.knexService
         .knex('approval_clothing_expense')
         .where('employee_code', employeeCode)
         .orderBy('created_at', 'desc');
 
+
       if (existingClothingExpenses.length > 0) {
         
         let latestTemporaryRecord = null;
+        let latestRecordWithNextClaimDate = null;
         
         for (const expense of existingClothingExpenses) {
-          const approval = await this.knexService
-            .knex('approval')
-            .where('id', expense.approval_id)
-            .select('travel_type')
-            .first();
-            
-          if (['temporary-international', 'training-international', 'temporary-both'].includes(approval?.travel_type)) {
-            latestTemporaryRecord = { expense, approval };
-            break;
+          // ถ้ามี approval_id ให้เช็ค travel_type
+          if (expense.approval_id) {
+            const approval = await this.knexService
+              .knex('approval')
+              .where('id', expense.approval_id)
+              .select('travel_type')
+              .first();
+              
+              
+            if (['temporary-international', 'training-international', 'temporary-both'].includes(approval?.travel_type)) {
+              latestTemporaryRecord = { expense, approval };
+              break;
+            }
+          } else {
+            // ถ้าไม่มี approval_id แต่มี next_claim_date ให้เก็บไว้เช็ค
+            if (expense.next_claim_date && !latestRecordWithNextClaimDate) {
+              latestRecordWithNextClaimDate = expense;
+            }
           }
         }
         
+        // ถ้าเจอ temporary record ที่มี approval_id
         if (latestTemporaryRecord) {
           const expense = latestTemporaryRecord.expense;
           
@@ -2638,196 +2655,240 @@ export class ApprovalService {
             const nextClaimDate = new Date(expense.next_claim_date);
             const today = new Date();
             
+            
             if (today < nextClaimDate) {
               this.updateEligibility(result, employeeCode, false);
+              continue;
+            } else {
+              this.updateEligibility(result, employeeCode, true);
               continue;
             }
           } else {
             this.updateEligibility(result, employeeCode, false);
             continue;
           }
+        } 
+        // ถ้าไม่เจอ temporary record แต่เจอ record ที่มี next_claim_date (แม้ไม่มี approval_id)
+        else if (latestRecordWithNextClaimDate) {
+          const expense = latestRecordWithNextClaimDate;
+          const nextClaimDate = new Date(expense.next_claim_date);
+          const today = new Date();
+          
+          if (today < nextClaimDate) {
+            this.updateEligibility(result, employeeCode, false);
+            continue;
+          } else {
+            this.updateEligibility(result, employeeCode, true);
+            continue;
+          }
+        } 
+        // ถ้าไม่เจอ temporary record และไม่มี next_claim_date
+        else {
+          this.updateEligibility(result, employeeCode, true);
+          continue;
         }
+      } else {
+        this.updateEligibility(result, employeeCode, true);
+        continue;
       }
 
       // ถ้าไม่มีข้อมูลการเบิกหรือถึงวันที่เบิกได้แล้ว → เช็ค PS_PW_JOB
-      const pwJob = await this.getPwJob(employeeCode);
+      // this.logger.log(`[Temporary International] Querying PS_PW_JOB for employee ${employeeCode}`);
+      // const pwJob = await this.getPwJob(employeeCode);
 
-      // ถ้าไม่เจอข้อมูลการเบิกล่าสุด, set isEligible true
-      if (!pwJob) {
-        this.updateEligibility(result, employeeCode, true);
-      } else {
-        await this.processPwJobForTemporaryInternational(
-          pwJob,
-          checkEligibilityDto,
-          result,
-          employeeCode,
-        );
-      }
+      // // ถ้าไม่เจอข้อมูลการเบิกล่าสุด, set isEligible true
+      // if (!pwJob) {
+      //   this.logger.log(`[Temporary International] No PS_PW_JOB found for employee ${employeeCode}, setting isEligible = true`);
+      //   this.updateEligibility(result, employeeCode, true);
+      // } else {
+      //   this.logger.log(`[Temporary International] Found PS_PW_JOB: ${JSON.stringify(pwJob)}`);
+      //   await this.processPwJobForTemporaryInternational(
+      //     pwJob,
+      //     checkEligibilityDto,
+      //     result,
+      //     employeeCode,
+      //   );
+      // }
     }
   }
 
-  private async getPwJob(employeeCode: string | number) {
-    // จัดการ employee code ที่มี '-'
-    let cleanEmployeeCode = employeeCode;
-    if (typeof employeeCode === 'string' && employeeCode.includes('-')) {
-      // เอาเฉพาะตัวเลข
-      cleanEmployeeCode = employeeCode.replace(/\D/g, '');
-      if (!cleanEmployeeCode) {
-        return null;
-      }
-    }
+  // private async getPwJob(employeeCode: string | number) {
+  //   this.logger.log(`[GetPwJob] Querying PS_PW_JOB for employee: ${employeeCode}`);
+  //   
+  //   // จัดการ employee code ที่มี '-'
+  //   let cleanEmployeeCode = employeeCode;
+  //   if (typeof employeeCode === 'string' && employeeCode.includes('-')) {
+  //     // เอาเฉพาะตัวเลข
+  //     cleanEmployeeCode = employeeCode.replace(/\D/g, '');
+  //     this.logger.log(`[GetPwJob] Cleaned employee code: ${cleanEmployeeCode}`);
+  //     if (!cleanEmployeeCode) {
+  //       this.logger.warn(`[GetPwJob] No valid employee code after cleaning`);
+  //       return null;
+  //     }
+  //   }
 
-    const query = this.knexService
-      .knex('PS_PW_JOB')
-      .where('EMPLID', cleanEmployeeCode)
-      .andWhere('ACTION', 'XFR')
-      .andWhere('ACTION_REASON', '008')
-      .orderBy('EFFDT', 'desc');
-    
-    const result = await query.first();
-    
-    return result;
-  }
+  //   const query = this.knexService
+  //     .knex('PS_PW_JOB')
+  //     .where('EMPLID', cleanEmployeeCode)
+  //     .andWhere('ACTION', 'XFR')
+  //     .andWhere('ACTION_REASON', '008')
+  //     .orderBy('EFFDT', 'desc');
+  //   
+  //   const result = await query.first();
+  //   
+  //   if (result) {
+  //     this.logger.log(`[GetPwJob] Found PS_PW_JOB record: EFFDT=${result.EFFDT}, DEPTID=${result.DEPTID}`);
+  //   } else {
+  //     this.logger.log(`[GetPwJob] No PS_PW_JOB record found for employee ${cleanEmployeeCode}`);
+  //   }
+  //   
+  //   return result;
+  // }
 
-  private async processPwJobForInternational(
-    pwJob: any,
-    checkEligibilityDto: CheckClothingExpenseEligibilityDto,
-    result: ClothingExpenseEligibilityResponseDto[],
-    employeeCode: number,
-  ): Promise<void> {
-    // เอา pwJob.DEPTID ไปเช็ค table OP_ORGANIZE_R_TEMP ว่าเป็นหน่วยงานต่างประเทศไหม
-    const organize = await this.knexService
-      .knex('OP_ORGANIZE_R')
-      .where('POG_CODE', pwJob.DEPTID)
-      .first();
+  // private async processPwJobForInternational(
+  //   pwJob: any,
+  //   checkEligibilityDto: CheckClothingExpenseEligibilityDto,
+  //   result: ClothingExpenseEligibilityResponseDto[],
+  //   employeeCode: number,
+  // ): Promise<void> {
+  //   // เอา pwJob.DEPTID ไปเช็ค table OP_ORGANIZE_R_TEMP ว่าเป็นหน่วยงานต่างประเทศไหม
+  //   const organize = await this.knexService
+  //     .knex('OP_ORGANIZE_R')
+  //     .where('POG_CODE', pwJob.DEPTID)
+  //     .first();
 
-    if (organize.POG_TYPE == 3) {
-      // POG_TYPE 2 = ในประเทศ / 3 = ต่างประเทศ
-      // ถ้าเป็นหน่วยงานต่างประเทศ
-      // เอา organize.POG_CODE ไปเช็ค table office_international ว่าเป็นสำนักงาน นั้นเป็น ประเภทไหน
+  //   if (organize.POG_TYPE == 3) {
+  //     // POG_TYPE 2 = ในประเทศ / 3 = ต่างประเทศ
+  //     // ถ้าเป็นหน่วยงานต่างประเทศ
+  //     // เอา organize.POG_CODE ไปเช็ค table office_international ว่าเป็นสำนักงาน นั้นเป็น ประเภทไหน
 
-      // หา กลุ่มประเทศค่าเครื่องแต่งกายของ office international จากใบเก่า
-      const oldCountry = await this.knexService
-        .knex('office_international')
-        .where('pog_code', organize.POG_CODE)
-        .join('countries', 'office_international.country_id', 'countries.id')
-        .select('countries.*')
-        .first();
+  //     // หา กลุ่มประเทศค่าเครื่องแต่งกายของ office international จากใบเก่า
+  //     const oldCountry = await this.knexService
+  //       .knex('office_international')
+  //       .where('pog_code', organize.POG_CODE)
+  //       .join('countries', 'office_international.country_id', 'countries.id')
+  //       .select('countries.*')
+  //       .first();
 
-      let oldDestinationGroup;
-      if (oldCountry) {
-        oldDestinationGroup = await this.knexService
-          .knex('attire_destination_group_countries as adgc')
-          .join('attire_destination_groups as adg', 'adgc.destination_group_id', 'adg.id')
-          .where('adgc.country_id', oldCountry.id)
-          .where('adg.assignment_type', 'PERMANENT')
-          .select('adg.*')
-          .first();
+  //     let oldDestinationGroup;
+  //     if (oldCountry) {
+  //       oldDestinationGroup = await this.knexService
+  //         .knex('attire_destination_group_countries as adgc')
+  //         .join('attire_destination_groups as adg', 'adgc.destination_group_id', 'adg.id')
+  //         .where('adgc.country_id', oldCountry.id)
+  //         .where('adg.assignment_type', 'PERMANENT')
+  //         .select('adg.*')
+  //         .first();
 
-        // ถ้าไม่เจอ group → ให้ถือว่าเป็น PERM_A
-        if (!oldDestinationGroup) {
-          oldDestinationGroup = await this.knexService
-            .knex('attire_destination_groups')
-            .where('group_code', 'PERM_A')
-            .where('assignment_type', 'PERMANENT')
-            .first();
-        }
-      }
+  //       // ถ้าไม่เจอ group → ให้ถือว่าเป็น PERM_A
+  //       if (!oldDestinationGroup) {
+  //         oldDestinationGroup = await this.knexService
+  //           .knex('attire_destination_groups')
+  //           .where('group_code', 'PERM_A')
+  //           .where('assignment_type', 'PERMANENT')
+  //           .first();
+  //       }
+  //     }
 
-      // หา กลุ่มประเทศค่าเครื่องแต่งกายของ current destination employee
-      const destination = checkEligibilityDto.employees.find(
-        (emp) => emp.employeeCode === employeeCode,
-      );
-      
-      let currentDestinationGroup;
-      if (destination.destinationTable === 'countries') {
-        const currentCountry = await this.knexService
-          .knex('countries')
-          .where('id', destination.destinationId)
-          .first();
+  //     // หา กลุ่มประเทศค่าเครื่องแต่งกายของ current destination employee
+  //     const destination = checkEligibilityDto.employees.find(
+  //       (emp) => emp.employeeCode === employeeCode,
+  //     );
+  //     
+  //     let currentDestinationGroup;
+  //     if (destination.destinationTable === 'countries') {
+  //       const currentCountry = await this.knexService
+  //         .knex('countries')
+  //         .where('id', destination.destinationId)
+  //         .first();
 
-        if (currentCountry) {
-          currentDestinationGroup = await this.knexService
-            .knex('attire_destination_group_countries as adgc')
-            .join('attire_destination_groups as adg', 'adgc.destination_group_id', 'adg.id')
-            .where('adgc.country_id', currentCountry.id)
-            .where('adg.assignment_type', 'PERMANENT')
-            .select('adg.*')
-            .first();
+  //       if (currentCountry) {
+  //         currentDestinationGroup = await this.knexService
+  //           .knex('attire_destination_group_countries as adgc')
+  //           .join('attire_destination_groups as adg', 'adgc.destination_group_id', 'adg.id')
+  //           .where('adgc.country_id', currentCountry.id)
+  //           .where('adg.assignment_type', 'PERMANENT')
+  //           .select('adg.*')
+  //           .first();
 
-          // ถ้าไม่เจอ group → ให้ถือว่าเป็น PERM_A
-          if (!currentDestinationGroup) {
-            currentDestinationGroup = await this.knexService
-              .knex('attire_destination_groups')
-              .where('group_code', 'PERM_A')
-              .where('assignment_type', 'PERMANENT')
-              .first();
-          }
-        }
-      } else if (destination.destinationTable === 'tatOffices') {
-        const currentOffice = await this.knexService
-          .knex('office_international')
-          .where('office_international.id', destination.destinationId)
-          .join('countries', 'office_international.country_id', 'countries.id')
-          .select('countries.*')
-          .first();
+  //         // ถ้าไม่เจอ group → ให้ถือว่าเป็น PERM_A
+  //         if (!currentDestinationGroup) {
+  //           currentDestinationGroup = await this.knexService
+  //             .knex('attire_destination_groups')
+  //             .where('group_code', 'PERM_A')
+  //             .where('assignment_type', 'PERMANENT')
+  //             .first();
+  //         }
+  //       }
+  //     } else if (destination.destinationTable === 'tatOffices') {
+  //       const currentOffice = await this.knexService
+  //         .knex('office_international')
+  //         .where('office_international.id', destination.destinationId)
+  //         .join('countries', 'office_international.country_id', 'countries.id')
+  //         .select('countries.*')
+  //         .first();
 
-        if (currentOffice) {
-          currentDestinationGroup = await this.knexService
-            .knex('attire_destination_group_countries as adgc')
-            .join('attire_destination_groups as adg', 'adgc.destination_group_id', 'adg.id')
-            .where('adgc.country_id', currentOffice.id)
-            .where('adg.assignment_type', 'PERMANENT')
-            .select('adg.*')
-            .first();
+  //       if (currentOffice) {
+  //         currentDestinationGroup = await this.knexService
+  //           .knex('attire_destination_group_countries as adgc')
+  //           .join('attire_destination_groups as adg', 'adgc.destination_group_id', 'adg.id')
+  //           .where('adgc.country_id', currentOffice.id)
+  //           .where('adg.assignment_type', 'PERMANENT')
+  //           .select('adg.*')
+  //           .first();
 
-          // ถ้าไม่เจอ group → ให้ถือว่าเป็น PERM_A
-          if (!currentDestinationGroup) {
-            currentDestinationGroup = await this.knexService
-              .knex('attire_destination_groups')
-              .where('group_code', 'PERM_A')
-              .where('assignment_type', 'PERMANENT')
-              .first();
-          }
-        }
-      }
+  //         // ถ้าไม่เจอ group → ให้ถือว่าเป็น PERM_A
+  //         if (!currentDestinationGroup) {
+  //           currentDestinationGroup = await this.knexService
+  //             .knex('attire_destination_groups')
+  //             .where('group_code', 'PERM_A')
+  //             .where('assignment_type', 'PERMANENT')
+  //             .first();
+  //         }
+  //       }
+  //     }
 
-      if (currentDestinationGroup && oldDestinationGroup) {
-        // ถ้าเป็นกลุ่มประเทศค่าเครื่องแต่งกายของ ใบเก่า และ ใบใหม่ ไม่เหมือนกัน, set isEligible true
-        if (currentDestinationGroup.group_code !== oldDestinationGroup.group_code) {
-          this.updateEligibility(result, employeeCode, true);
-        } else {
-          // ถ้ากลุ่มเหมือนกัน
-          // ให้เอา EFFDT จาก pwJob มาเช็คกับ checkEligibilityDto.workStartDate ว่าเกิน 2 ปี หรือยัง ถ้าเกินแล้ว, set isEligible true
-          // @todo อาจต้องเปลี่ยนไปเช็ค วันรายงานตัวกับ ViewDutyformCommands (รอคอนเฟิม)
-          const isOverTwoYears = this.isOverTwoYears(
-            pwJob.EFFDT,
-            checkEligibilityDto.workStartDate,
-          );
-          this.updateEligibility(result, employeeCode, isOverTwoYears);
-        }
-      } else {
-        this.updateEligibility(result, employeeCode, true);
-      }
-    } else {
-      // @todo ถ้าเป็น type อื่นๆ
-      this.updateEligibility(result, employeeCode, true);
-    }
-  }
+  //     if (currentDestinationGroup && oldDestinationGroup) {
+  //       // ถ้าเป็นกลุ่มประเทศค่าเครื่องแต่งกายของ ใบเก่า และ ใบใหม่ ไม่เหมือนกัน, set isEligible true
+  //       if (currentDestinationGroup.group_code !== oldDestinationGroup.group_code) {
+  //         this.updateEligibility(result, employeeCode, true);
+  //       } else {
+  //         // ถ้ากลุ่มเหมือนกัน
+  //         // ให้เอา EFFDT จาก pwJob มาเช็คกับ checkEligibilityDto.workStartDate ว่าเกิน 2 ปี หรือยัง ถ้าเกินแล้ว, set isEligible true
+  //         // @todo อาจต้องเปลี่ยนไปเช็ค วันรายงานตัวกับ ViewDutyformCommands (รอคอนเฟิม)
+  //         const isOverTwoYears = this.isOverTwoYears(
+  //           pwJob.EFFDT,
+  //           checkEligibilityDto.workStartDate,
+  //         );
+  //         this.updateEligibility(result, employeeCode, isOverTwoYears);
+  //       }
+  //     } else {
+  //       this.updateEligibility(result, employeeCode, true);
+  //     }
+  //   } else {
+  //     // @todo ถ้าเป็น type อื่นๆ
+  //     this.updateEligibility(result, employeeCode, true);
+  //   }
+  // }
 
-  private async processPwJobForTemporaryInternational(
-    pwJob: any,
-    checkEligibilityDto: CheckClothingExpenseEligibilityDto,
-    result: ClothingExpenseEligibilityResponseDto[],
-    employeeCode: number,
-  ): Promise<void> {
-    // เช็ค 2 ปีจาก EFFDT
-    const isOverTwoYears = this.isOverTwoYears(
-      pwJob.EFFDT,
-      checkEligibilityDto.workStartDate,
-    );
-    this.updateEligibility(result, employeeCode, isOverTwoYears);
-  }
+  // private async processPwJobForTemporaryInternational(
+  //   pwJob: any,
+  //   checkEligibilityDto: CheckClothingExpenseEligibilityDto,
+  //   result: ClothingExpenseEligibilityResponseDto[],
+  //   employeeCode: number,
+  // ): Promise<void> {
+  //   this.logger.log(`[ProcessPwJob] Processing for employee ${employeeCode}`);
+  //   this.logger.log(`[ProcessPwJob] EFFDT: ${pwJob.EFFDT}, workStartDate: ${checkEligibilityDto.workStartDate}`);
+  //   
+  //   // เช็ค 2 ปีจาก EFFDT
+  //   const isOverTwoYears = this.isOverTwoYears(
+  //     pwJob.EFFDT,
+  //     checkEligibilityDto.workStartDate,
+  //   );
+  //   
+  //   this.logger.log(`[ProcessPwJob] Is over 2 years: ${isOverTwoYears}, setting isEligible = ${isOverTwoYears}`);
+  //   this.updateEligibility(result, employeeCode, isOverTwoYears);
+  // }
 
   private isOverTwoYears(effdt: string, workStartDate: string): boolean {
     const effdtDate = new Date(effdt);
