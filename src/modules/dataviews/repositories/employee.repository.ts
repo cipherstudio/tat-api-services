@@ -62,64 +62,200 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
       ])
       .first();
 
-    if (!dbEntity) return undefined;
-
-    // Query PS_PW_JOB เฉพาะ ACTION = 'PAY' และ ACTION_REASON = '001' และ EFFDT ล่าสุด 2 อัน
-    const salaryRows = await this.knex('PS_PW_JOB')
-      .whereRaw('RTRIM("EMPLID") = ?', [code])
-      .andWhere('ACTION', 'PAY')
-      .andWhere('ACTION_REASON', '001')
-      .leftJoin('OP_LEVEL_SAL_R', (builder) => {
-        builder.on(
-          'OP_LEVEL_SAL_R.PLV_CODE',
-          '=',
-          this.knex.raw('RTRIM("PS_PW_JOB"."STEP")'),
-        );
-      })
-      .leftJoin('holiday_work_rates', (builder) => {
-        builder.on(
-          'holiday_work_rates.salary',
-          '=',
-          'OP_LEVEL_SAL_R.PLV_SALARY',
-        );
-      })
-      .orderBy('EFFDT', 'desc')
-      .limit(2);
-
-    // Helper function to enrich salaryRow with holidayWorkHour
-    const enrichWithHolidayWorkHour = async (salaryRow: any) => {
-      if (!salaryRow || !salaryRow['id']) return undefined;
-      const holidayWorkHour = await this.knex('holiday_work_hours')
-        .where('rate_id', salaryRow['id'])
-        .andWhere('hour', 1)
+    if (!dbEntity) {
+      // Fallback: ถ้าไม่เจอใน OP_MASTER_T ให้หาใน EMPLOYEE
+      const fallback = await this.knex('EMPLOYEE')
+        .whereRaw('RTRIM("CODE") = ?', [code])
+        .leftJoin('VIEW_POSITION_4OT', (builder) => {
+          builder.on(
+            'VIEW_POSITION_4OT.POS_POSITIONCODE',
+            '=',
+            this.knex.raw('RTRIM("EMPLOYEE"."APA_PPN_NUMBER")'),
+          );
+        })
+        .leftJoin('employee_admin', (builder) => {
+          builder.on(
+            'employee_admin.pmt_code',
+            '=',
+            this.knex.raw('RTRIM("EMPLOYEE"."CODE")'),
+          );
+        })
+        .select([
+          'EMPLOYEE.*',
+          'VIEW_POSITION_4OT.*',
+          this.knex.raw(
+            'RTRIM("EMPLOYEE"."CODE") AS "PMT_CODE"',
+          ),
+          this.knex.raw(
+            'TO_NUMBER(CASE WHEN "employee_admin"."id" IS NOT NULL THEN 1 ELSE 0 END) AS "is_admin"',
+          ),
+        ])
         .first();
-      return {
-        ...salaryRow,
-        holidayWorkHour: holidayWorkHour
-          ? await toCamelCase(holidayWorkHour)
-          : null,
-      };
-    };
+
+      if (!fallback) return undefined;
+
+      // ใช้ salary จาก EMPLOYEE ไปหา holiday_work_rates เพื่อสร้าง salaryHistory
+      const employeeSalary = fallback['SALARY'] ? Number(fallback['SALARY']) : null;
+      let salaryHistory: { current?: any; previous?: any } | undefined = undefined;
+
+      if (employeeSalary && !isNaN(employeeSalary)) {
+        // Query holiday_work_rates โดยใช้ EMPLOYEE.SALARY
+        const salaryData = await this.knex('holiday_work_rates')
+          .where('salary', employeeSalary)
+          .first();
+
+        if (salaryData) {
+          // Helper function to enrich salaryData with holidayWorkHour
+          const enrichWithHolidayWorkHour = async (salaryRow: any) => {
+            if (!salaryRow || !salaryRow['id']) {
+              return salaryRow;
+            }
+            const holidayWorkHour = await this.knex('holiday_work_hours')
+              .where('rate_id', salaryRow['id'])
+              .andWhere('hour', 1)
+              .first();
+            return {
+              ...salaryRow,
+              salary: employeeSalary, // ใช้ salary จาก EMPLOYEE
+              holidayWorkHour: holidayWorkHour
+                ? await toCamelCase(holidayWorkHour)
+                : null,
+            };
+          };
+
+          const enrichedData = await enrichWithHolidayWorkHour(salaryData);
+          if (enrichedData) {
+            salaryHistory = {
+              current: await toCamelCase(enrichedData),
+              previous: await toCamelCase(enrichedData),
+            };
+          }
+        }
+      }
+
+      const fallbackCamel = await toCamelCase<Employee>(fallback);
+      if (salaryHistory && fallbackCamel && typeof fallbackCamel === 'object') {
+        return Object.assign({}, fallbackCamel, { salaryHistory });
+      }
+      return fallbackCamel;
+    }
+
+    // โค้ดเก่า: Query PS_PW_JOB เฉพาะ ACTION = 'PAY' และ ACTION_REASON = '001' และ EFFDT ล่าสุด 2 อัน
+    // const salaryRows = await this.knex('PS_PW_JOB')
+    //   .whereRaw('RTRIM("EMPLID") = ?', [code])
+    //   .andWhere('ACTION', 'PAY')
+    //   .andWhere('ACTION_REASON', '001')
+    //   .leftJoin('OP_LEVEL_SAL_R', (builder) => {
+    //     builder.on(
+    //       'OP_LEVEL_SAL_R.PLV_CODE',
+    //       '=',
+    //       this.knex.raw('RTRIM("PS_PW_JOB"."STEP")'),
+    //     );
+    //   })
+    //   .leftJoin('holiday_work_rates', (builder) => {
+    //     builder.on(
+    //       'holiday_work_rates.salary',
+    //       '=',
+    //       'OP_LEVEL_SAL_R.PLV_SALARY',
+    //     );
+    //   })
+    //   .orderBy('EFFDT', 'desc')
+    //   .limit(2);
+
+    // โค้ดเก่า: Helper function to enrich salaryRow with holidayWorkHour
+    // const enrichWithHolidayWorkHour = async (salaryRow: any) => {
+    //   if (!salaryRow || !salaryRow['id']) return undefined;
+    //   const holidayWorkHour = await this.knex('holiday_work_hours')
+    //     .where('rate_id', salaryRow['id'])
+    //     .andWhere('hour', 1)
+    //     .first();
+    //   return {
+    //     ...salaryRow,
+    //     holidayWorkHour: holidayWorkHour
+    //       ? await toCamelCase(holidayWorkHour)
+    //       : null,
+    //   };
+    // };
+
+    // โค้ดเก่า: let salaryHistory: { current?: any; previous?: any } | undefined =
+    //   undefined;
+    // if (salaryRows.length > 0) {
+    //   const current = await enrichWithHolidayWorkHour(salaryRows[0]);
+    //   const previous = salaryRows[1]
+    //     ? await enrichWithHolidayWorkHour(salaryRows[1])
+    //     : undefined;
+    //   if (current || previous) {
+    //     salaryHistory = {};
+    //     if (current) salaryHistory.current = await toCamelCase(current);
+    //     if (previous) salaryHistory.previous = await toCamelCase(previous);
+    //   } else {
+    //     salaryHistory = undefined;
+    //   }
+    // }
+
+    // ใช้ PMT_SAL_CODE จาก OP_MASTER_T ไปหาใน OP_LEVEL_SAL_R
+    // แปลงเป็น number เพื่อเอา "0" นำหน้าออก (เช่น "040" -> 40) เพราะ PLV_CODE เป็น number
+    const pmtSalCodeStr = dbEntity['PMT_SAL_CODE']
+      ? dbEntity['PMT_SAL_CODE'].toString().trim()
+      : null;
+    const pmtSalCode = pmtSalCodeStr && pmtSalCodeStr !== '' ? Number(pmtSalCodeStr) : null;
 
     let salaryHistory: { current?: any; previous?: any } | undefined =
       undefined;
-    if (salaryRows.length > 0) {
-      const current = await enrichWithHolidayWorkHour(salaryRows[0]);
-      const previous = salaryRows[1]
-        ? await enrichWithHolidayWorkHour(salaryRows[1])
-        : undefined;
-      if (current || previous) {
-        salaryHistory = {};
-        if (current) salaryHistory.current = await toCamelCase(current);
-        if (previous) salaryHistory.previous = await toCamelCase(previous);
-      } else {
-        salaryHistory = undefined;
+
+    // ถ้ามี PMT_SAL_CODE ให้ query หา salaryHistory
+    if (pmtSalCode && !isNaN(pmtSalCode)) {
+      // Query OP_LEVEL_SAL_R โดยใช้ PMT_SAL_CODE (แปลงเป็น number แล้ว)
+      const salaryData = await this.knex('OP_LEVEL_SAL_R')
+        .where('PLV_CODE', pmtSalCode)
+        .leftJoin('holiday_work_rates', (builder) => {
+          builder.on(
+            'holiday_work_rates.salary',
+            '=',
+            'OP_LEVEL_SAL_R.PLV_SALARY',
+          );
+        })
+        .first();
+
+      if (salaryData) {
+        // Helper function to enrich salaryData with holidayWorkHour
+        const enrichWithHolidayWorkHour = async (salaryRow: any) => {
+          if (!salaryRow || !salaryRow['id']) {
+            // ถ้าไม่มี id จาก holiday_work_rates ก็ยัง return ข้อมูลที่มี
+            return salaryRow;
+          }
+          const holidayWorkHour = await this.knex('holiday_work_hours')
+            .where('rate_id', salaryRow['id'])
+            .andWhere('hour', 1)
+            .first();
+          return {
+            ...salaryRow,
+            holidayWorkHour: holidayWorkHour
+              ? await toCamelCase(holidayWorkHour)
+              : null,
+          };
+        };
+
+        const enrichedData = await enrichWithHolidayWorkHour(salaryData);
+        if (enrichedData) {
+          salaryHistory = {
+            current: await toCamelCase(enrichedData),
+            previous: await toCamelCase(enrichedData), // ใช้ค่าเดียวกันทั้ง current และ previous
+          };
+        }
       }
     }
 
     const camelEntity = await toCamelCase<Employee>(dbEntity);
-    if (salaryHistory && camelEntity && typeof camelEntity === 'object') {
-      return Object.assign({}, camelEntity, { salaryHistory });
+    if (camelEntity && typeof camelEntity === 'object') {
+      if (salaryHistory && salaryHistory.current) {
+        const plvSalary = salaryHistory.current?.plvSalary || salaryHistory.current?.PLV_SALARY;
+        return Object.assign({}, camelEntity, { 
+          salary: plvSalary || camelEntity.salary,
+          salaryHistory 
+        });
+      }
+      return camelEntity;
     }
     return camelEntity;
   }
