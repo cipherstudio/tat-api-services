@@ -1,0 +1,15 @@
+# Health check configuration for auto-restart
+# Add this to your docker-compose files to enable health checks
+
+version: '3.8'
+
+services:
+  tat-api:
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/v1/ || exit 1"]
+      interval: 30s          # Check every 30 seconds
+      timeout: 10s           # Timeout after 10 seconds
+      retries: 3             # Retry 3 times before marking as unhealthy
+      start_period: 40s     # Give 40 seconds for startup
+    restart: always          # Auto-restart when unhealthy
+

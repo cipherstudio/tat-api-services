@@ -10,12 +10,47 @@ import { HttpExceptionFilter } from './middleware/http-exception.filter';
 async function bootstrap() {
   // Handle uncaught exceptions
   process.on('uncaughtException', (error) => {
+    // Handle connection reset errors gracefully (don't crash)
+    if (error.code === 'ECONNRESET' || error.errno === -104) {
+      console.error(
+        'Connection reset error (handled gracefully):',
+        error.message,
+      );
+      // Don't exit for connection reset errors - they're usually recoverable
+      return;
+    }
+
+    // Handle other uncaught exceptions
     console.error('Uncaught Exception:', error);
-    // Don't exit immediately, let the app try to recover
+    // Log but don't exit immediately for other errors - let the app try to recover
+    // Only exit for critical errors that can't be recovered
+    if (
+      error.message?.includes('FATAL') ||
+      error.message?.includes('CRITICAL')
+    ) {
+      console.error('Critical error detected, exiting...');
+      process.exit(1);
+    }
   });
 
   // Handle unhandled promise rejections
   process.on('unhandledRejection', (reason, promise) => {
+    // Handle connection reset errors in promises
+    if (
+      reason &&
+      typeof reason === 'object' &&
+      ('code' in reason || 'errno' in reason)
+    ) {
+      const error = reason as any;
+      if (error.code === 'ECONNRESET' || error.errno === -104) {
+        console.error(
+          'Connection reset in promise (handled gracefully):',
+          error.message,
+        );
+        return; // Don't log as error, just return
+      }
+    }
+
     console.error('Unhandled Rejection at:', promise, 'reason:', reason);
     // Don't exit immediately, let the app try to recover
   });

@@ -33,9 +33,57 @@ export class KnexService implements OnModuleInit, OnModuleDestroy {
 
     // Add error handling for connection issues
     this._knexInstance.on('query-error', (error, obj) => {
+      // Handle connection reset errors gracefully
+      if (error.code === 'ECONNRESET' || error.errno === -104) {
+        console.warn(
+          'Database connection reset during query (will retry):',
+          error.message,
+        );
+        console.warn('Query:', obj.sql);
+        // Don't log as error - connection resets are recoverable
+        return;
+      }
+
       console.error('Database query error:', error);
       console.error('Query:', obj.sql);
       console.error('Bindings:', obj.bindings);
+    });
+
+    // Handle connection pool errors
+    this._knexInstance.client.pool.on('error', (error: any) => {
+      // Handle connection reset errors in pool gracefully
+      if (error.code === 'ECONNRESET' || error.errno === -104) {
+        console.warn(
+          'Database connection pool reset (will reconnect):',
+          error.message,
+        );
+        // Connection pool will automatically recreate connections
+        return;
+      }
+      console.error('Database connection pool error:', error);
+    });
+
+    // Handle connection pool acquire errors (when getting connection from pool)
+    this._knexInstance.client.pool.on(
+      'acquireRequestTimeout',
+      (timeout: any) => {
+        console.warn(
+          'Database connection pool acquire timeout - pool may be exhausted',
+        );
+      },
+    );
+
+    // Handle connection pool creation errors
+    this._knexInstance.client.pool.on('createError', (error: any) => {
+      if (error.code === 'ECONNRESET' || error.errno === -104) {
+        console.warn(
+          'Database connection creation failed (will retry):',
+          error.message,
+        );
+        // Pool will retry based on createRetryIntervalMillis
+        return;
+      }
+      console.error('Database connection creation error:', error);
     });
 
     // Test connection on startup

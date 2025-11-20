@@ -107,6 +107,15 @@ export class WebSocketUtil extends EventEmitter {
     });
 
     (client as WebSocket).on('error', (error: Error) => {
+      // Handle connection reset errors gracefully
+      const errorAny = error as any;
+      if (errorAny.code === 'ECONNRESET' || errorAny.errno === -104) {
+        console.warn(`WebSocket client ${client.id} connection reset (handled gracefully):`, error.message);
+        // Remove client and emit disconnect instead of error
+        this.clients.delete(client.id);
+        this.emit('disconnect', client);
+        return;
+      }
       console.error(`Client ${client.id} error:`, error.message);
       this.emit('error', error);
     });
