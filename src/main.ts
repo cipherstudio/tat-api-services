@@ -11,7 +11,8 @@ async function bootstrap() {
   // Handle uncaught exceptions
   process.on('uncaughtException', (error) => {
     // Handle connection reset errors gracefully (don't crash)
-    if (error.code === 'ECONNRESET' || error.errno === -104) {
+    const errorAny = error as any;
+    if (errorAny.code === 'ECONNRESET' || errorAny.errno === -104) {
       console.error(
         'Connection reset error (handled gracefully):',
         error.message,
