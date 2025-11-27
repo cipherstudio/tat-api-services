@@ -13,9 +13,9 @@ module.exports = {
       port: parseInt(process.env.DB_PORT || '1521', 10),
       connectString: `(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=${process.env.DB_HOST})(PORT=${process.env.DB_PORT || '1521'}))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=${process.env.DB_DATABASE})))`,
       // Oracle specific connection options
-      connectTimeout: 30000,
+      connectTimeout: 10000, // ลดจาก 30000 เป็น 10000 เพื่อ fail fast
       requestTimeout: 30000,
-      poolTimeout: 30000,
+      poolTimeout: 10000, // ลดจาก 30000 เป็น 10000 เพื่อ fail fast
       // Enable connection pooling
       poolMin: 2,
       poolMax: 10,
@@ -29,8 +29,8 @@ module.exports = {
     pool: {
       min: 2,
       max: 10,
-      acquireTimeoutMillis: 30000,
-      createTimeoutMillis: 30000,
+      acquireTimeoutMillis: 10000, // ลดจาก 30000 เป็น 10000 เพื่อ fail fast
+      createTimeoutMillis: 10000, // ลดจาก 30000 เป็น 10000 เพื่อ fail fast
       destroyTimeoutMillis: 5000,
       idleTimeoutMillis: 30000,
       reapIntervalMillis: 1000,

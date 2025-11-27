@@ -77,6 +77,32 @@ async function bootstrap() {
   // Get config service
   const configService = app.get(ConfigService);
 
+  // Add request timeout middleware (prevent hanging requests)
+  app.use((req, res, next) => {
+    // Set timeout for requests (30 seconds)
+    req.setTimeout(30000, () => {
+      if (!res.headersSent) {
+        res.status(408).json({
+          statusCode: 408,
+          message: 'Request timeout',
+          timestamp: new Date().toISOString(),
+        });
+      }
+    });
+    
+    res.setTimeout(30000, () => {
+      if (!res.headersSent) {
+        res.status(408).json({
+          statusCode: 408,
+          message: 'Response timeout',
+          timestamp: new Date().toISOString(),
+        });
+      }
+    });
+    
+    next();
+  });
+
   // Custom middleware to handle /service prefix
   app.use((req, res, next) => {
     const originalUrl = req.url;

@@ -8,6 +8,7 @@ import { isNaN } from 'lodash';
 @Injectable()
 export class KnexService implements OnModuleInit, OnModuleDestroy {
   private _knexInstance: Knex;
+  private healthCheckInterval: NodeJS.Timeout | null = null;
 
   constructor(private configService: ConfigService) {}
 
@@ -64,14 +65,11 @@ export class KnexService implements OnModuleInit, OnModuleDestroy {
     });
 
     // Handle connection pool acquire errors (when getting connection from pool)
-    this._knexInstance.client.pool.on(
-      'acquireRequestTimeout',
-      (timeout: any) => {
-        console.warn(
-          'Database connection pool acquire timeout - pool may be exhausted',
-        );
-      },
-    );
+    this._knexInstance.client.pool.on('acquireRequestTimeout', () => {
+      console.warn(
+        'Database connection pool acquire timeout - pool may be exhausted',
+      );
+    });
 
     // Handle connection pool creation errors
     this._knexInstance.client.pool.on('createError', (error: any) => {
@@ -94,9 +92,99 @@ export class KnexService implements OnModuleInit, OnModuleDestroy {
       console.error('Failed to establish database connection:', error);
       throw error;
     }
+
+    // Start periodic connection health check
+    this.startConnectionHealthCheck();
+  }
+
+  /**
+   * Check database connection health
+   */
+  async checkConnectionHealth(): Promise<boolean> {
+    try {
+      await this._knexInstance.raw('SELECT 1 FROM DUAL');
+      return true;
+    } catch (error) {
+      const errorAny = error as any;
+      console.error('Connection health check failed:', errorAny.message);
+
+      // If connection reset, try to force pool cleanup
+      if (errorAny.code === 'ECONNRESET' || errorAny.errno === -104) {
+        console.warn(
+          'Connection reset detected in health check, cleaning up pool...',
+        );
+        try {
+          // Force destroy all connections in pool to trigger reconnection
+          if (this._knexInstance.client.pool) {
+            await this._knexInstance.client.pool.destroyAllNow();
+            console.log(
+              'Pool cleaned up, connections will be recreated on next use',
+            );
+          }
+        } catch (cleanupError) {
+          console.error('Error during pool cleanup:', cleanupError);
+        }
+      }
+
+      return false;
+    }
+  }
+
+  /**
+   * Start periodic connection health check
+   */
+  private startConnectionHealthCheck(): void {
+    const checkInterval = 60000; // Check every 60 seconds
+    const unhealthyThreshold = 3; // Restart if unhealthy for 3 consecutive checks
+
+    let unhealthyCount = 0;
+
+    this.healthCheckInterval = setInterval(async () => {
+      const isHealthy = await this.checkConnectionHealth();
+
+      if (!isHealthy) {
+        unhealthyCount++;
+        console.warn(
+          `Database connection unhealthy (${unhealthyCount}/${unhealthyThreshold})`,
+        );
+
+        if (unhealthyCount >= unhealthyThreshold) {
+          console.error(
+            'Database connection unhealthy for too long, forcing pool cleanup...',
+          );
+          try {
+            // Force cleanup all connections
+            if (this._knexInstance.client.pool) {
+              await this._knexInstance.client.pool.destroyAllNow();
+              unhealthyCount = 0; // Reset counter after cleanup
+              console.log(
+                'Pool cleanup completed, monitoring will continue...',
+              );
+            }
+          } catch (error) {
+            console.error('Error during forced pool cleanup:', error);
+          }
+        }
+      } else {
+        if (unhealthyCount > 0) {
+          console.log('Database connection recovered');
+          unhealthyCount = 0; // Reset counter on recovery
+        }
+      }
+    }, checkInterval) as unknown as NodeJS.Timeout;
+
+    console.log(
+      `Connection health check started (interval: ${checkInterval}ms)`,
+    );
   }
 
   async onModuleDestroy() {
+    // Stop health check interval
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+      this.healthCheckInterval = null;
+    }
+
     await this._knexInstance.destroy();
   }
 
