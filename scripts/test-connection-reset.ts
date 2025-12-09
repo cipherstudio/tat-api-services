@@ -141,7 +141,7 @@ async function testConnectionReset() {
         resolve();
       });
       
-      req.on('error', (err) => {
+      req.on('error', (err: NodeJS.ErrnoException) => {
         if (err.code === 'ECONNREFUSED') {
           console.log('   ⚠ Application not running (expected in test environment)');
           resolve(); // Not a failure, just not running
