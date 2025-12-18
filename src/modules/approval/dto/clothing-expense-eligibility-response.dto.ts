@@ -12,4 +12,11 @@ export class ClothingExpenseEligibilityResponseDto {
     example: true,
   })
   isEligible: boolean;
-} 
+
+  @ApiProperty({
+    description: 'Reason why not eligible (only sent when isEligible = false)',
+    example: 'วันที่ทำการเบิกครั้งล่าสุด 2024-01-15 ครั้งต่อไปที่เบิกได้ 2026-01-16',
+    required: false,
+  })
+  reason?: string;
+}

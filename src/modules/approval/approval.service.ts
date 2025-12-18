@@ -2361,7 +2361,7 @@ export class ApprovalService {
     );
 
     // set default result isEligible false
-    const result = employeeCodes.map((employeeCode) => ({
+    const result: ClothingExpenseEligibilityResponseDto[] = employeeCodes.map((employeeCode) => ({
       employeeCode,
       isEligible: false,
     }));
@@ -2373,7 +2373,9 @@ export class ApprovalService {
         .first();
       
       if (existingApproval) {
-        result.forEach((r) => (r.isEligible = true));
+        result.forEach((r) => {
+          r.isEligible = true;
+        });
         return result;
       }
     }
@@ -2384,6 +2386,9 @@ export class ApprovalService {
       )
     ) {
       // return all employee codes with isEligible false
+      result.forEach((r) => {
+        r.reason = 'ประเภทการเดินทางไม่มีสิทธิ์เบิกค่าเครื่องแต่งกาย';
+      });
       return result;
     }
 
@@ -2441,18 +2446,32 @@ export class ApprovalService {
         
         if (latestInternationalRecord) {
           const expense = latestInternationalRecord.expense;
+          const lastClaimDateStr = expense.created_at 
+            ? new Date(expense.created_at).toISOString().split('T')[0] 
+            : undefined;
           
           if (expense.next_claim_date) {
             // มี next_claim_date → เช็คว่าถึงเวลาหรือยัง
             const nextClaimDate = new Date(expense.next_claim_date);
+            const nextClaimDateStr = nextClaimDate.toISOString().split('T')[0];
             const today = new Date();
             
             if (today < nextClaimDate) {
-              this.updateEligibility(result, employeeCode, false);
+              this.updateEligibility(
+                result, 
+                employeeCode, 
+                false, 
+                `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr} ครั้งต่อไปที่เบิกได้ ${nextClaimDateStr}`,
+              );
               continue; // ข้ามไปพนักงานถัดไป
             }
           } else {
-            this.updateEligibility(result, employeeCode, false);
+            this.updateEligibility(
+              result, 
+              employeeCode, 
+              false, 
+              `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr}`,
+            );
             continue; // ข้ามไปพนักงานถัดไป
           }
         }
@@ -2570,6 +2589,13 @@ export class ApprovalService {
         }
       }
       if (currentDestinationGroup && oldDestinationGroup) {
+        const lastClaimDateStr = latestExpense.created_at 
+          ? new Date(latestExpense.created_at).toISOString().split('T')[0] 
+          : undefined;
+        const nextClaimDateStr = latestExpense.next_claim_date
+          ? new Date(latestExpense.next_claim_date).toISOString().split('T')[0]
+          : undefined;
+          
         // ถ้าเป็นกลุ่มประเทศค่าเครื่องแต่งกายของ ใบเก่า และ ใบใหม่ ไม่เหมือนกัน, set isEligible true
         if (currentDestinationGroup.group_code !== oldDestinationGroup.group_code) {
           this.updateEligibility(result, employeeCode, true);
@@ -2580,7 +2606,14 @@ export class ApprovalService {
             latestExpense.created_at,
             checkEligibilityDto.workStartDate,
           );
-          this.updateEligibility(result, employeeCode, isOverTwoYears);
+          if (isOverTwoYears) {
+            this.updateEligibility(result, employeeCode, true);
+          } else {
+            const reason = nextClaimDateStr
+              ? `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr} ครั้งต่อไปที่เบิกได้ ${nextClaimDateStr}`
+              : `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr}`;
+            this.updateEligibility(result, employeeCode, false, reason);
+          }
           continue; // ข้ามไปพนักงานถัดไป
         }
       }
@@ -2613,7 +2646,27 @@ export class ApprovalService {
     
     for (const employeeCode of result.map((r) => r.employeeCode)) {
       
-      // เช็คข้อมูลจาก approval_clothing_expense ก่อน
+      const destination = checkEligibilityDto.employees.find(
+        (emp) => emp.employeeCode === employeeCode,
+      );
+      
+      if (destination) {
+        const exemptedInfo = await this.getCountryExemptedInfo(
+          destination.destinationTable,
+          destination.destinationId,
+        );
+        
+        if (exemptedInfo.isExempted) {
+          this.updateEligibility(
+            result, 
+            employeeCode, 
+            false, 
+            `เป็นประเทศที่ไม่สามารถเบิกได้ (${exemptedInfo.countryName})`,
+          );
+          continue;
+        }
+      }
+      
       const existingClothingExpenses = await this.knexService
         .knex('approval_clothing_expense')
         .where('employee_code', employeeCode)
@@ -2650,32 +2703,55 @@ export class ApprovalService {
         // ถ้าเจอ temporary record ที่มี approval_id
         if (latestTemporaryRecord) {
           const expense = latestTemporaryRecord.expense;
+          const lastClaimDateStr = expense.created_at 
+            ? new Date(expense.created_at).toISOString().split('T')[0] 
+            : undefined;
           
           if (expense.next_claim_date) {
             const nextClaimDate = new Date(expense.next_claim_date);
+            const nextClaimDateStr = nextClaimDate.toISOString().split('T')[0];
             const today = new Date();
             
             
             if (today < nextClaimDate) {
-              this.updateEligibility(result, employeeCode, false);
+              this.updateEligibility(
+                result, 
+                employeeCode, 
+                false, 
+                `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr} ครั้งต่อไปที่เบิกได้ ${nextClaimDateStr}`,
+              );
               continue;
             } else {
               this.updateEligibility(result, employeeCode, true);
               continue;
             }
           } else {
-            this.updateEligibility(result, employeeCode, false);
+            this.updateEligibility(
+              result, 
+              employeeCode, 
+              false, 
+              `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr}`,
+            );
             continue;
           }
         } 
         // ถ้าไม่เจอ temporary record แต่เจอ record ที่มี next_claim_date (แม้ไม่มี approval_id)
         else if (latestRecordWithNextClaimDate) {
           const expense = latestRecordWithNextClaimDate;
+          const lastClaimDateStr = expense.created_at 
+            ? new Date(expense.created_at).toISOString().split('T')[0] 
+            : undefined;
           const nextClaimDate = new Date(expense.next_claim_date);
+          const nextClaimDateStr = nextClaimDate.toISOString().split('T')[0];
           const today = new Date();
           
           if (today < nextClaimDate) {
-            this.updateEligibility(result, employeeCode, false);
+            this.updateEligibility(
+              result, 
+              employeeCode, 
+              false, 
+              `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr} ครั้งต่อไปที่เบิกได้ ${nextClaimDateStr}`,
+            );
             continue;
           } else {
             this.updateEligibility(result, employeeCode, true);
@@ -2710,6 +2786,64 @@ export class ApprovalService {
       //   );
       // }
     }
+  }
+
+  private async isCountryInTempExemptedGroup(
+    destinationTable: string,
+    destinationId: number,
+  ): Promise<boolean> {
+    const info = await this.getCountryExemptedInfo(destinationTable, destinationId);
+    return info.isExempted;
+  }
+
+  private async getCountryExemptedInfo(
+    destinationTable: string,
+    destinationId: number,
+  ): Promise<{ isExempted: boolean; countryName?: string }> {
+    let countryId: number | null = null;
+    let countryName: string | undefined = undefined;
+
+    if (destinationTable === 'countries') {
+      countryId = destinationId;
+      const country = await this.knexService
+        .knex('countries')
+        .where('id', destinationId)
+        .select('name_th')
+        .first();
+      if (country) {
+        countryName = country.name_th;
+      }
+    } else if (destinationTable === 'tatOffices') {
+      // หา country_id จาก office_international
+      const office = await this.knexService
+        .knex('office_international')
+        .where('office_international.id', destinationId)
+        .join('countries', 'office_international.country_id', 'countries.id')
+        .select('countries.id as country_id', 'countries.name_th')
+        .first();
+      
+      if (office) {
+        countryId = office.country_id;
+        countryName = office.name_th;
+      }
+    }
+
+    if (!countryId) {
+      return { isExempted: false };
+    }
+
+    const exemptedGroup = await this.knexService
+      .knex('attire_destination_group_countries as adgc')
+      .join('attire_destination_groups as adg', 'adgc.destination_group_id', 'adg.id')
+      .where('adgc.country_id', countryId)
+      .where('adg.group_code', 'TEMP_EXEMPTED')
+      .where('adg.assignment_type', 'TEMPORARY')
+      .first();
+
+    return {
+      isExempted: !!exemptedGroup,
+      countryName,
+    };
   }
 
   // private async getPwJob(employeeCode: string | number) {
@@ -2906,10 +3040,17 @@ export class ApprovalService {
     result: ClothingExpenseEligibilityResponseDto[],
     employeeCode: number,
     isEligible: boolean,
+    reason?: string,
   ): void {
     const employeeResult = result.find((r) => r.employeeCode === employeeCode);
     if (employeeResult) {
       employeeResult.isEligible = isEligible;
+      // ส่ง reason เฉพาะกรณีเบิกไม่ได้
+      if (!isEligible && reason) {
+        employeeResult.reason = reason;
+      } else {
+        delete employeeResult.reason;
+      }
     }
   }
 
