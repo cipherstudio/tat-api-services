@@ -105,25 +105,24 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
           .first();
 
         if (salaryData) {
-          // Helper function to enrich salaryData with holidayWorkHour
-          const enrichWithHolidayWorkHour = async (salaryRow: any) => {
+          // Helper function to enrich salaryData with holidayWorkHours (all 8 hours)
+          const enrichWithHolidayWorkHours = async (salaryRow: any) => {
             if (!salaryRow || !salaryRow['id']) {
               return salaryRow;
             }
-            const holidayWorkHour = await this.knex('holiday_work_hours')
+            const holidayWorkHours = await this.knex('holiday_work_hours')
               .where('rate_id', salaryRow['id'])
-              .andWhere('hour', 1)
-              .first();
+              .orderBy('hour', 'asc');
             return {
               ...salaryRow,
               salary: employeeSalary, // ใช้ salary จาก EMPLOYEE
-              holidayWorkHour: holidayWorkHour
-                ? await toCamelCase(holidayWorkHour)
-                : null,
+              holidayWorkHours: holidayWorkHours.length > 0
+                ? await Promise.all(holidayWorkHours.map(h => toCamelCase(h)))
+                : [],
             };
           };
 
-          const enrichedData = await enrichWithHolidayWorkHour(salaryData);
+          const enrichedData = await enrichWithHolidayWorkHours(salaryData);
           if (enrichedData) {
             salaryHistory = {
               current: await toCamelCase(enrichedData),
@@ -218,25 +217,24 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
         .first();
 
       if (salaryData) {
-        // Helper function to enrich salaryData with holidayWorkHour
-        const enrichWithHolidayWorkHour = async (salaryRow: any) => {
+        // Helper function to enrich salaryData with holidayWorkHours (all 8 hours)
+        const enrichWithHolidayWorkHours = async (salaryRow: any) => {
           if (!salaryRow || !salaryRow['id']) {
             // ถ้าไม่มี id จาก holiday_work_rates ก็ยัง return ข้อมูลที่มี
             return salaryRow;
           }
-          const holidayWorkHour = await this.knex('holiday_work_hours')
+          const holidayWorkHours = await this.knex('holiday_work_hours')
             .where('rate_id', salaryRow['id'])
-            .andWhere('hour', 1)
-            .first();
+            .orderBy('hour', 'asc');
           return {
             ...salaryRow,
-            holidayWorkHour: holidayWorkHour
-              ? await toCamelCase(holidayWorkHour)
-              : null,
+            holidayWorkHours: holidayWorkHours.length > 0
+              ? await Promise.all(holidayWorkHours.map(h => toCamelCase(h)))
+              : [],
           };
         };
 
-        const enrichedData = await enrichWithHolidayWorkHour(salaryData);
+        const enrichedData = await enrichWithHolidayWorkHours(salaryData);
         if (enrichedData) {
           salaryHistory = {
             current: await toCamelCase(enrichedData),
