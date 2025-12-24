@@ -81,12 +81,17 @@ export class ApprovalService {
   }
 
   private async generateApprovalPrintNumber(): Promise<string> {
-    // ex. 0001 : 25680708 : 1720
+    // ex. 0001 : 25680708 : 0830
     const now = new Date();
     const beYear = now.getFullYear() + 543;
     const currentMonth = (now.getMonth() + 1).toString().padStart(2, '0');
     const currentDay = now.getDate().toString().padStart(2, '0');
-    const currentTime = now.getHours() * 100 + now.getMinutes();
+    // แปลงเป็นเวลา 12 ชั่วโมง
+    let hour12 = now.getHours() % 12;
+    if (hour12 === 0) hour12 = 12;
+    const currentHour = hour12.toString().padStart(2, '0');
+    const currentMinute = now.getMinutes().toString().padStart(2, '0');
+    const currentTime = `${currentHour}${currentMinute}`;
     const sequence = 1;
     return `${sequence.toString().padStart(4, '0')} : ${beYear}${currentMonth}${currentDay} : ${currentTime}`;
   }
@@ -1551,7 +1556,18 @@ export class ApprovalService {
         await trx('approval_entertainment_expense')
           .where('approval_id', id)
           .delete();
-        await trx('approval_continuous').where('approval_id', id).delete();
+        const rejectedStatusId = await trx('approval_continuous_status')
+          .where('status_code', 'REJECTED')
+          .select('id')
+          .first();
+        await trx('approval_continuous')
+          .where('approval_id', id)
+          .where(function() {
+            if (rejectedStatusId) {
+              this.whereNot('approval_continuous_status_id', rejectedStatusId.id);
+            }
+          })
+          .delete();
         await trx('approval_clothing_expense').where('approval_id', id).delete();
 
         for (const staffMember of updateDto.staffMembers) {
@@ -1791,7 +1807,7 @@ export class ApprovalService {
 
                   // get work end date
                   let workEndDate = null;
-                  if (updateDto.travelType === 'temporary-international') {
+                  if (['temporary-international', 'training-international', 'temporary-both'].includes(updateDto.travelType)) {
                     workEndDate = updateDto.workEndDate;
                   }
 
@@ -1799,14 +1815,16 @@ export class ApprovalService {
                   let workStartDate = null;
                   if (updateDto.travelType === 'international') {
                     workStartDate = updateDto.travelDateRanges[0].start_date;
+                    if (existingExpense?.reporting_date) {
+                      nextClaimDate = this.calculateNextClaimDate(existingExpense.reporting_date);
+                    }
                   } else if (
                     ['temporary-international', 'training-international', 'temporary-both'].includes(updateDto.travelType)
                   ) {
                     workStartDate = updateDto.workStartDate;
-                  }
-
-                  if (existingExpense?.reporting_date) {
-                    nextClaimDate = this.calculateNextClaimDate(existingExpense.reporting_date);
+                    if (workEndDate) {
+                      nextClaimDate = this.calculateNextClaimDate(workEndDate);
+                    }
                   }
 
                   let clothingExpenseId;

@@ -54,7 +54,7 @@ const countries = [
     { id: 53, code: "CW", name_en: "CURACAO", name_th: "กือราเซา" },
     { id: 54, code: "CX", name_en: "CHRISTMAS ISLAND", name_th: "เกาะคริสต์มาส" },
     { id: 55, code: "CY", name_en: "CYPRUS", name_th: "ไซปรัส" },
-    { id: 56, code: "CZ", name_en: "CZECH REPUBLIC", name_th: "เช็กเกีย" },
+    { id: 56, code: "CZ", name_en: "CZECH REPUBLIC", name_th: "สาธารณรัฐเช็ก" },
     { id: 57, code: "DE", name_en: "GERMANY", name_th: "เยอรมนี" },
     { id: 58, code: "DJ", name_en: "DJIBOUTI", name_th: "จิบูตี" },
     { id: 59, code: "DK", name_en: "DENMARK", name_th: "เดนมาร์ก" },

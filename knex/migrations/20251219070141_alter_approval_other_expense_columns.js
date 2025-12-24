@@ -4,8 +4,8 @@
  */
 exports.up = function(knex) {
   return knex.schema.alterTable('approval_other_expense', function(table) {
-    table.string('type', 1000).nullable().alter();
-    table.string('reason', 1000).nullable().alter();
+    table.string('type', 1000).alter();
+    table.string('reason', 1000).alter();
   });
 };
 
@@ -15,7 +15,7 @@ exports.up = function(knex) {
  */
 exports.down = function(knex) {
   return knex.schema.alterTable('approval_other_expense', function(table) {
-    table.string('type', 255).nullable().alter();
-    table.string('reason', 255).nullable().alter();
+    table.string('type', 255).alter();
+    table.string('reason', 255).alter();
   });
 };

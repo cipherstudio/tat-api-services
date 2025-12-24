@@ -39,6 +39,7 @@ export class CronService {
     const pendingExpenses = await this.knexService
       .knex('approval_clothing_expense')
       .whereNull('reporting_date')
+      .whereNull('next_claim_date')
       .select('id', 'employee_code');
 
     if (!pendingExpenses || pendingExpenses.length === 0) {
