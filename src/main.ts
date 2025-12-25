@@ -57,13 +57,13 @@ async function bootstrap() {
   });
 
   // TODO: Uncomment this when we want to run migrations and seeds
-  try {
-    console.log('Running database migrations and seeds...');
-    await runMigrationsAndSeedsWithTransaction();
-  } catch (error) {
-    console.error('Error running migrations or seeds:', error);
-    // Don't exit - we can still start the app even if migrations or seeds fail
-  }
+  // try {
+  //   console.log('Running database migrations and seeds...');
+  //   await runMigrationsAndSeedsWithTransaction();
+  // } catch (error) {
+  //   console.error('Error running migrations or seeds:', error);
+  //   // Don't exit - we can still start the app even if migrations or seeds fail
+  // }
 
   const app = await NestFactory.create(AppModule);
 

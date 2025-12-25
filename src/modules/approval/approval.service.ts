@@ -1556,18 +1556,10 @@ export class ApprovalService {
         await trx('approval_entertainment_expense')
           .where('approval_id', id)
           .delete();
-        const rejectedStatusId = await trx('approval_continuous_status')
-          .where('status_code', 'REJECTED')
-          .select('id')
-          .first();
-        await trx('approval_continuous')
-          .where('approval_id', id)
-          .where(function() {
-            if (rejectedStatusId) {
-              this.whereNot('approval_continuous_status_id', rejectedStatusId.id);
-            }
-          })
-          .delete();
+        const isRejected = approval.currentStatus === 'ไม่อนุมัติ';
+        if (!isRejected) {
+          await trx('approval_continuous').where('approval_id', id).delete();
+        }
         await trx('approval_clothing_expense').where('approval_id', id).delete();
 
         for (const staffMember of updateDto.staffMembers) {
