@@ -2456,8 +2456,8 @@ export class ApprovalService {
         
         if (latestInternationalRecord) {
           const expense = latestInternationalRecord.expense;
-          const lastClaimDateStr = expense.created_at 
-            ? new Date(expense.created_at).toISOString().split('T')[0] 
+          const lastClaimDateStr = expense.work_start_date 
+            ? expense.work_start_date
             : undefined;
           
           if (expense.next_claim_date) {
@@ -2599,8 +2599,8 @@ export class ApprovalService {
         }
       }
       if (currentDestinationGroup && oldDestinationGroup) {
-        const lastClaimDateStr = latestExpense.created_at 
-          ? new Date(latestExpense.created_at).toISOString().split('T')[0] 
+        const lastClaimDateStr = latestExpense.work_start_date 
+          ? latestExpense.work_start_date
           : undefined;
         const nextClaimDateStr = latestExpense.next_claim_date
           ? new Date(latestExpense.next_claim_date).toISOString().split('T')[0]
@@ -2713,8 +2713,8 @@ export class ApprovalService {
         // ถ้าเจอ temporary record ที่มี approval_id
         if (latestTemporaryRecord) {
           const expense = latestTemporaryRecord.expense;
-          const lastClaimDateStr = expense.created_at 
-            ? new Date(expense.created_at).toISOString().split('T')[0] 
+          const lastClaimDateStr = expense.work_start_date 
+            ? expense.work_start_date
             : undefined;
           
           if (expense.next_claim_date) {
@@ -2748,8 +2748,8 @@ export class ApprovalService {
         // ถ้าไม่เจอ temporary record แต่เจอ record ที่มี next_claim_date (แม้ไม่มี approval_id)
         else if (latestRecordWithNextClaimDate) {
           const expense = latestRecordWithNextClaimDate;
-          const lastClaimDateStr = expense.created_at 
-            ? new Date(expense.created_at).toISOString().split('T')[0] 
+          const lastClaimDateStr = expense.work_start_date 
+            ? expense.work_start_date
             : undefined;
           const nextClaimDate = new Date(expense.next_claim_date);
           const nextClaimDateStr = nextClaimDate.toISOString().split('T')[0];
