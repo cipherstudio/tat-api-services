@@ -1814,8 +1814,8 @@ export class ApprovalService {
                     ['temporary-international', 'training-international', 'temporary-both'].includes(updateDto.travelType)
                   ) {
                     workStartDate = updateDto.workStartDate;
-                    if (workEndDate) {
-                      nextClaimDate = this.calculateNextClaimDate(workEndDate);
+                    if (workStartDate) {
+                      nextClaimDate = this.calculateNextClaimDate(workStartDate);
                     }
                   }
 
