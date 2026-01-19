@@ -2376,19 +2376,19 @@ export class ApprovalService {
       isEligible: false,
     }));
 
-    if (checkEligibilityDto.approval_id) {
-      const existingApproval = await this.knexService
-        .knex('approval_clothing_expense')
-        .where('approval_id', checkEligibilityDto.approval_id)
-        .first();
+    // if (checkEligibilityDto.approval_id) {
+    //   const existingApproval = await this.knexService
+    //     .knex('approval_clothing_expense')
+    //     .where('approval_id', checkEligibilityDto.approval_id)
+    //     .first();
       
-      if (existingApproval) {
-        result.forEach((r) => {
-          r.isEligible = true;
-        });
-        return result;
-      }
-    }
+    //   if (existingApproval) {
+    //     result.forEach((r) => {
+    //       r.isEligible = true;
+    //     });
+    //     return result;
+    //   }
+    // }
 
     if (
       !['international', 'temporary-international', 'training-international', 'temporary-both'].includes(
