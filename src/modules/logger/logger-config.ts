@@ -87,6 +87,7 @@ export const loggerConfig = {
   transports: createTransports(),
   // Default meta data for log messages
   defaultMeta: { service: APP_NAME, environment: NODE_ENV },
+  exitOnError: false,
   // Exception handling
   exceptionHandlers: [
     new winston.transports.DailyRotateFile({
