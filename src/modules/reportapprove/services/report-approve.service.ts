@@ -94,6 +94,101 @@ export class ReportApproveService {
     }
 
     if (Array.isArray(reportTravellerForm)) {
+      // 1. หา form ทั้งหมดที่มีอยู่ใน DB สำหรับ report นี้
+      const existingForms = await this.reportTravellerFormRepo.findByReportId(id);
+      
+      // 2. สร้าง Set ของ form_id ที่จะเก็บไว้ (match กับข้อมูลที่ส่งมา)
+      const formsToKeep = new Set<number>();
+      
+      // 3. สำหรับแต่ละ form ที่ส่งมา หา form ที่ match ใน DB
+      for (const form of reportTravellerForm) {
+        form.reportId = id;
+        
+        // หา existing form โดยใช้ logic เดียวกับโค้ดเดิม
+        // ใช้ formId หรือ form_id (รองรับทั้งสองแบบ)
+        const incomingFormId = (form as any).formId || (form as any).form_id;
+        
+        if (incomingFormId) {
+          // ถ้ามี formId ให้ check ว่ามีอยู่ใน DB หรือไม่
+          // toCamelCase แปลง form_id เป็น formId แล้ว
+          const matched = existingForms.find(f => (f as any).formId === incomingFormId || (f as any).form_id === incomingFormId);
+          if (matched) {
+            const formIdToKeep = (matched as any).formId || (matched as any).form_id;
+            formsToKeep.add(formIdToKeep);
+          }
+        } else if (form.travelerId && form.reportId) {
+          // ถ้าไม่มี formId ให้ใช้ travelerId + reportId แทน
+          const matched = await this.reportTravellerFormRepo
+            .knex('report_traveller_form')
+            .where({
+              traveler_id: form.travelerId,
+              report_id: form.reportId,
+            })
+            .first();
+          
+          if (matched) {
+            // matched มาจาก raw query จึงเป็น form_id (snake_case)
+            // แต่ต้องหาใน existingForms ที่ผ่าน toCamelCase แล้ว
+            const matchedInExisting = existingForms.find(
+              f => (f as any).formId === matched.form_id || (f as any).form_id === matched.form_id
+            );
+            if (matchedInExisting) {
+              const formIdToKeep = (matchedInExisting as any).formId || (matchedInExisting as any).form_id;
+              formsToKeep.add(formIdToKeep);
+            }
+          }
+        }
+      }
+      
+      // 4. ลบ form ที่ไม่อยู่ใน formsToKeep
+      for (const existingForm of existingForms) {
+        // toCamelCase แปลง form_id เป็น formId แล้ว
+        const existingFormId = (existingForm as any).formId || (existingForm as any).form_id;
+        
+        if (!formsToKeep.has(existingFormId)) {
+          // ลบ nested data ทั้งหมดของ form นี้ก่อน
+          // Daily Travel Details
+          const dailyDetails = await this.reportDailyTravelDetailRepo.findByFormId(existingFormId);
+          for (const detail of dailyDetails) {
+            await this.reportDailyTravelDetailRepo.delete(detail.detailId);
+          }
+          
+          // Holiday Wage Details
+          const holidayDetails = await this.reportHolidayWageDetailRepo.findByFormId(existingFormId);
+          for (const detail of holidayDetails) {
+            await this.reportHolidayWageDetailRepo.delete(detail.holidayId);
+          }
+          
+          // Accommodation Details
+          const accommodationDetails = await this.reportAccommodationRepo.findByFormId(existingFormId);
+          for (const detail of accommodationDetails) {
+            await this.reportAccommodationRepo.delete(detail.accommodationId);
+          }
+          
+          // Other Expense Details
+          const otherExpenseDetails = await this.reportOtherExpenseRepo.findByFormId(existingFormId);
+          for (const detail of otherExpenseDetails) {
+            await this.reportOtherExpenseRepo.delete(detail.expenseId);
+          }
+          
+          // Transportation Details
+          const transportationDetails = await this.reportTransportationRepo.findByFormId(existingFormId);
+          for (const detail of transportationDetails) {
+            await this.reportTransportationRepo.delete(detail.transportId);
+          }
+          
+          // Allowance Calculations
+          const allowanceDetails = await this.reportAllowanceRepo.findByFormId(existingFormId);
+          for (const detail of allowanceDetails) {
+            await this.reportAllowanceRepo.delete(detail.allowanceId);
+          }
+          
+          // ลบ form เอง (ใช้ form_id จาก database)
+          await this.reportTravellerFormRepo.delete(existingFormId);
+        }
+      }
+      
+      // 4. อัปเดตหรือสร้าง form ใหม่ตามข้อมูลที่ส่งมา
       for (const form of reportTravellerForm) {
         form.reportId = id;
         const traveller_code = form.travelerCode;

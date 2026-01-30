@@ -105,4 +105,24 @@ export class ReportTravellerFormRepository extends KnexBaseRepository<ReportTrav
     }
     return results;
   }
+
+  async findByReportId(reportId: number): Promise<ReportTravellerForm[]> {
+    const rows = await this.knex('report_traveller_form')
+      .where({ report_id: reportId })
+      .select('*')
+      .orderBy('form_id', 'asc');
+    return Promise.all(rows.map((r) => toCamelCase<ReportTravellerForm>(r)));
+  }
+
+  async deleteByReportId(reportId: number): Promise<number> {
+    return this.knex('report_traveller_form')
+      .where({ report_id: reportId })
+      .del();
+  }
+
+  async delete(formId: number): Promise<number> {
+    return this.knex('report_traveller_form')
+      .where({ form_id: formId })
+      .del();
+  }
 }
