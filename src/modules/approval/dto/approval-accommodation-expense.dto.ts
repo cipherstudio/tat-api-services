@@ -105,6 +105,15 @@ export class ApprovalAccommodationExpenseDto {
   allowanceOutTotal?: number;
 
   @ApiProperty({
+    description: 'ค่าสิทธิ์ที่ user แก้ไขสำหรับเบี้ยเลี้ยงนอกพื้นที่ตั้งสำนักงาน (ต่างจังหวัด) - ไม่เกิน rate × days',
+    example: 2000.00,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  allowanceOutRights?: number;
+
+  @ApiProperty({
     description: 'Whether allowance inside is checked',
     example: true,
     required: false,
@@ -139,6 +148,15 @@ export class ApprovalAccommodationExpenseDto {
   @IsOptional()
   @IsNumber()
   allowanceInTotal?: number;
+
+  @ApiProperty({
+    description: 'ค่าสิทธิ์ที่ user แก้ไขสำหรับเบี้ยเลี้ยงในเขตพื้นที่ตั้งสำนักงาน - ไม่เกิน rate × days',
+    example: 700.00,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  allowanceInRights?: number;
 
   // International allowance properties
   @ApiProperty({
