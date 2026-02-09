@@ -1007,12 +1007,10 @@ export class ApprovalService {
             'allowance_out_rate as allowanceOutRate',
             'allowance_out_days as allowanceOutDays',
             'allowance_out_total as allowanceOutTotal',
-            'allowance_out_rights as allowanceOutRights',
             'allowance_in_checked as allowanceInChecked',
             'allowance_in_rate as allowanceInRate',
             'allowance_in_days as allowanceInDays',
             'allowance_in_total as allowanceInTotal',
-            'allowance_in_rights as allowanceInRights',
             'lodging_fixed_checked as lodgingFixedChecked',
             'lodging_double_checked as lodgingDoubleChecked',
             'lodging_single_checked as lodgingSingleChecked',
@@ -1645,24 +1643,6 @@ export class ApprovalService {
               // Process accommodation expenses
               if (Array.isArray(workLocation.accommodationExpenses)) {
                 for (const expense of workLocation.accommodationExpenses) {
-                  // Validate allowance rights
-                  if (expense.allowanceOutRights !== null && expense.allowanceOutRights !== undefined) {
-                    const maxAllowanceOut = (expense.allowanceOutRate || 0) * (expense.allowanceOutDays || 0);
-                    if (expense.allowanceOutRights > maxAllowanceOut) {
-                      throw new BadRequestException(
-                        `allowanceOutRights (${expense.allowanceOutRights}) ต้องไม่เกิน rate × days (${maxAllowanceOut})`,
-                      );
-                    }
-                  }
-                  if (expense.allowanceInRights !== null && expense.allowanceInRights !== undefined) {
-                    const maxAllowanceIn = (expense.allowanceInRate || 0) * (expense.allowanceInDays || 0);
-                    if (expense.allowanceInRights > maxAllowanceIn) {
-                      throw new BadRequestException(
-                        `allowanceInRights (${expense.allowanceInRights}) ต้องไม่เกิน rate × days (${maxAllowanceIn})`,
-                      );
-                    }
-                  }
-
                   const [accommodationExpense] = await trx(
                     'approval_accommodation_expense',
                   )
@@ -1681,12 +1661,10 @@ export class ApprovalService {
                       allowance_out_rate: expense.allowanceOutRate,
                       allowance_out_days: expense.allowanceOutDays,
                       allowance_out_total: expense.allowanceOutTotal,
-                      allowance_out_rights: expense.allowanceOutRights ?? null,
                       allowance_in_checked: expense.allowanceInChecked,
                       allowance_in_rate: expense.allowanceInRate,
                       allowance_in_days: expense.allowanceInDays,
                       allowance_in_total: expense.allowanceInTotal,
-                      allowance_in_rights: expense.allowanceInRights ?? null,
                       lodging_fixed_checked: expense.lodgingFixedChecked,
                       lodging_double_checked: expense.lodgingDoubleChecked,
                       lodging_single_checked: expense.lodgingSingleChecked,
@@ -4016,12 +3994,10 @@ export class ApprovalService {
                       allowance_out_rate: expense.allowanceOutRate,
                       allowance_out_days: expense.allowanceOutDays,
                       allowance_out_total: expense.allowanceOutTotal,
-                      allowance_out_rights: expense.allowanceOutRights ?? null,
                       allowance_in_checked: expense.allowanceInChecked,
                       allowance_in_rate: expense.allowanceInRate,
                       allowance_in_days: expense.allowanceInDays,
                       allowance_in_total: expense.allowanceInTotal,
-                      allowance_in_rights: expense.allowanceInRights ?? null,
                       lodging_fixed_checked: expense.lodgingFixedChecked,
                       lodging_double_checked: expense.lodgingDoubleChecked,
                       lodging_single_checked: expense.lodgingSingleChecked,
