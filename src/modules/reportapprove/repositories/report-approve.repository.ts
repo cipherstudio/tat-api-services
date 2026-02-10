@@ -150,6 +150,7 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_approve.document_number',
         'report_approve.approve_id',
         'report_approve.status',
+        'report_approve.last_selected_traveler_code',
         'report_approve.created_at',
         'report_approve.updated_at',
         // Status columns
@@ -555,6 +556,7 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_approve.document_number',
         'report_approve.approve_id',
         'report_approve.status',
+        'report_approve.last_selected_traveler_code',
         'report_approve.created_at',
         'report_approve.updated_at',
         // Status columns
@@ -696,6 +698,7 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
       documentNumber: row.documentNumber,
       approveId: row.approveId,
       status: row.status,
+      lastSelectedTravelerCode: row.lastSelectedTravelerCode,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       statusName: row.statusName,

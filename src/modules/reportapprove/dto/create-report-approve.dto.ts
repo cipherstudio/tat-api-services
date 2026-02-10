@@ -27,6 +27,11 @@ export class CreateReportApproveDto {
   @IsString()
   documentNumber?: string;
 
+  @ApiProperty({ example: 'TRAV001', required: false })
+  @IsOptional()
+  @IsString()
+  lastSelectedTravelerCode?: string;
+
   @ApiProperty({
     example: 1,
     required: false,
