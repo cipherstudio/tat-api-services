@@ -1097,10 +1097,10 @@ export class ApprovalService {
         );
       staffMember.entertainmentExpenses = entertainmentExpenses;
 
-      // Get clothing expenses for each staff member
+      // Get clothing expenses for each staff member (bind as string for Oracle VARCHAR2 - กัน ORA-01722 เมื่อมี UUID ในคอลัมน์)
       const clothingExpenses = await this.knexService
         .knex('approval_clothing_expense')
-        .where('employee_code', staffMember.employeeCode)
+        .where('employee_code', String(staffMember.employeeCode))
         .where('approval_id', id)
         .select(
           'id',
@@ -1774,21 +1774,14 @@ export class ApprovalService {
                 }
               }
 
-              // Process clothing expenses for each staff member
+              // Process clothing expenses for each staff member (including committee/outsider/contractor with UUID employeeCode)
               if (Array.isArray(staffMember.clothingExpenses)) {
-                if (
-                  typeof staffMember.employeeCode === 'string' &&
-                  staffMember.employeeCode.includes('-')
-                ) {
-                  continue;
-                }
-
                 for (const expense of staffMember.clothingExpenses) {
-                  // Check if record exists
+                  // Check if record exists (bind employee_code as string เพื่อกัน ORA-01722 ใน Oracle)
                   const existingExpense = await trx('approval_clothing_expense')
                     .where({
                       approval_id: id,
-                      employee_code: staffMember.employeeCode,
+                      employee_code: String(staffMember.employeeCode),
                     })
                     .first();
 
@@ -1824,7 +1817,7 @@ export class ApprovalService {
                     await trx('approval_clothing_expense')
                       .where({
                         approval_id: id,
-                        employee_code: staffMember.employeeCode,
+                        employee_code: String(staffMember.employeeCode),
                       })
                       .update({
                         clothing_file_checked: expense.clothingFileChecked,
@@ -1847,7 +1840,7 @@ export class ApprovalService {
                       .insert({
                         approval_id: id,
                         staff_member_id: insertedStaffMember.id,
-                        employee_code: staffMember.employeeCode,
+                        employee_code: String(staffMember.employeeCode),
                         clothing_file_checked: expense.clothingFileChecked,
                         clothing_amount: expense.clothingAmount,
                         clothing_reason: expense.clothingReason,
@@ -1886,15 +1879,20 @@ export class ApprovalService {
 
       // After processing all staff members, clean up old clothing expenses
       if (updateDto.staffMembers && Array.isArray(updateDto.staffMembers)) {
-        const currentEmployeeCodes = updateDto.staffMembers
-          .map((staff) => staff.employeeCode)
-          .filter((code) => !(typeof code === 'string' && code.includes('-')));
+        const currentEmployeeCodes = updateDto.staffMembers.map(
+          (staff) => staff.employeeCode,
+        );
 
-        // Delete clothing expenses for employee codes that are no longer in the staff members list
-        await trx('approval_clothing_expense')
-          .where('approval_id', id)
-          .whereNotIn('employee_code', currentEmployeeCodes)
-          .delete();
+        // Delete clothing expenses for employee codes that are no longer in the staff members list (bind as string เพื่อกัน ORA-01722 ใน Oracle)
+        if (currentEmployeeCodes.length > 0) {
+          await trx('approval_clothing_expense')
+            .where('approval_id', id)
+            .whereNotIn(
+              'employee_code',
+              currentEmployeeCodes.map((c) => String(c)),
+            )
+            .delete();
+        }
       }
 
       // Process other expenses
@@ -2434,7 +2432,7 @@ export class ApprovalService {
     for (const employeeCode of result.map((r) => r.employeeCode)) {
       const existingClothingExpenses = await this.knexService
         .knex('approval_clothing_expense')
-        .where('employee_code', employeeCode)
+        .where('employee_code', String(employeeCode))
         .orderBy('created_at', 'desc');
 
       if (existingClothingExpenses.length > 0) {
@@ -2468,18 +2466,18 @@ export class ApprovalService {
             
             if (today < nextClaimDate) {
               this.updateEligibility(
-                result, 
-                employeeCode, 
-                false, 
+                result,
+                employeeCode,
+                false,
                 `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr} ครั้งต่อไปที่เบิกได้ ${nextClaimDateStr}`,
               );
               continue; // ข้ามไปพนักงานถัดไป
             }
           } else {
             this.updateEligibility(
-              result, 
-              employeeCode, 
-              false, 
+              result,
+              employeeCode,
+              false,
               `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr}`,
             );
             continue; // ข้ามไปพนักงานถัดไป
@@ -2668,9 +2666,9 @@ export class ApprovalService {
         
         if (exemptedInfo.isExempted) {
           this.updateEligibility(
-            result, 
-            employeeCode, 
-            false, 
+            result,
+            employeeCode,
+            false,
             `เป็นประเทศที่ไม่สามารถเบิกได้ (${exemptedInfo.countryName})`,
           );
           continue;
@@ -2679,7 +2677,7 @@ export class ApprovalService {
       
       const existingClothingExpenses = await this.knexService
         .knex('approval_clothing_expense')
-        .where('employee_code', employeeCode)
+        .where('employee_code', String(employeeCode))
         .orderBy('created_at', 'desc');
 
 
@@ -2725,9 +2723,9 @@ export class ApprovalService {
             
             if (today < nextClaimDate) {
               this.updateEligibility(
-                result, 
-                employeeCode, 
-                false, 
+                result,
+                employeeCode,
+                false,
                 `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr} ครั้งต่อไปที่เบิกได้ ${nextClaimDateStr}`,
               );
               continue;
@@ -2737,9 +2735,9 @@ export class ApprovalService {
             }
           } else {
             this.updateEligibility(
-              result, 
-              employeeCode, 
-              false, 
+              result,
+              employeeCode,
+              false,
               `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr}`,
             );
             continue;
@@ -2748,7 +2746,7 @@ export class ApprovalService {
         // ถ้าไม่เจอ temporary record แต่เจอ record ที่มี next_claim_date (แม้ไม่มี approval_id)
         else if (latestRecordWithNextClaimDate) {
           const expense = latestRecordWithNextClaimDate;
-          const lastClaimDateStr = expense.work_start_date 
+          const lastClaimDateStr = expense.work_start_date
             ? expense.work_start_date
             : undefined;
           const nextClaimDate = new Date(expense.next_claim_date);
@@ -2757,9 +2755,9 @@ export class ApprovalService {
           
           if (today < nextClaimDate) {
             this.updateEligibility(
-              result, 
-              employeeCode, 
-              false, 
+              result,
+              employeeCode,
+              false,
               `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr} ครั้งต่อไปที่เบิกได้ ${nextClaimDateStr}`,
             );
             continue;
@@ -4132,18 +4130,11 @@ export class ApprovalService {
             staffMember.clothingExpenses &&
             staffMember.clothingExpenses.length > 0
           ) {
-            if (
-              typeof staffMember.employeeCode === 'string' &&
-              staffMember.employeeCode.includes('-')
-            ) {
-              continue;
-            }
-
             for (const expense of staffMember.clothingExpenses) {
               await trx('approval_clothing_expense').insert({
                 approval_id: newApproval.id,
                 staff_member_id: newStaffMember.id,
-                employee_code: staffMember.employeeCode,
+                employee_code: String(staffMember.employeeCode),
                 clothing_file_checked: expense.clothingFileChecked,
                 clothing_amount: expense.clothingAmount,
                 clothing_reason: expense.clothingReason,
