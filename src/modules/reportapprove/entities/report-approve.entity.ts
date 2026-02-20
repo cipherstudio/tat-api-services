@@ -17,7 +17,10 @@ export class ReportApprove {
   documentNumber: string;
 
   @ApiProperty({ example: 'TRAV001', required: false })
-  lastSelectedTravelerCode?: string;
+  selectedTravelerCodeStep1?: string;
+
+  @ApiProperty({ example: 'TRAV002', required: false })
+  selectedTravelerCodeStep2?: string;
 
   @ApiProperty({ example: 1 })
   status: number;

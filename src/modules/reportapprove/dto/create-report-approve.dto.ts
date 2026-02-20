@@ -30,7 +30,12 @@ export class CreateReportApproveDto {
   @ApiProperty({ example: 'TRAV001', required: false })
   @IsOptional()
   @IsString()
-  lastSelectedTravelerCode?: string;
+  selectedTravelerCodeStep1?: string;
+
+  @ApiProperty({ example: 'TRAV002', required: false })
+  @IsOptional()
+  @IsString()
+  selectedTravelerCodeStep2?: string;
 
   @ApiProperty({
     example: 1,
