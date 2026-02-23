@@ -31,6 +31,7 @@ export class NotificationService {
     // Convert metadata object to JSON string for Oracle DB compatibility
     const metadataString = metadata ? JSON.stringify(metadata) : null;
 
+    const now = new Date();
     const notification = await this.notificationRepository.create({
       employeeCode,
       title,
@@ -40,6 +41,8 @@ export class NotificationService {
       entityId,
       metadata: metadataString,
       isRead: false,
+      createdAt: now,
+      updatedAt: now,
     });
 
     // Parse metadata back to object for consistency

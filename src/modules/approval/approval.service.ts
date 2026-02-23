@@ -1556,8 +1556,10 @@ export class ApprovalService {
         await trx('approval_entertainment_expense')
           .where('approval_id', id)
           .delete();
-        const isRejected = approval.currentStatus === 'ไม่อนุมัติ';
-        if (!isRejected) {
+        const keepContinuous =
+          approval.currentStatus === 'ไม่อนุมัติ' ||
+          approval.currentStatus === 'รออนุมัติ';
+        if (!keepContinuous) {
           await trx('approval_continuous').where('approval_id', id).delete();
         }
         await trx('approval_clothing_expense').where('approval_id', id).delete();
@@ -1969,23 +1971,55 @@ export class ApprovalService {
         if (!approvalContinuousStatusId) {
           throw new NotFoundException('Approval continuous status not found');
         }
-        const [insertedContinuousApproval] = await trx('approval_continuous')
-          .insert({
-            approval_id: id,
-            employee_code: updateDto.staffEmployeeCode,
-            approval_continuous_status_id: approvalContinuousStatusId.id,
-            created_by: employeeCode,
-            //updated_by: userId,
-            signer_name: updateDto.signerName,
-            signer_date: updateDto.signerDate,
-            document_ending: updateDto.documentEnding,
-            document_ending_wording: updateDto.documentEndingWording,
-            use_file_signature: updateDto.useFileSignature,
-            signature_attachment_id: updateDto.signatureAttachmentId,
-            use_system_signature: updateDto.useSystemSignature,
-            comments: updateDto.documentEndingWording,
-          })
-          .returning('id');
+        const now = new Date();
+
+        const latestContinuous = await trx('approval_continuous')
+          .where('approval_id', id)
+          .orderBy('id', 'desc')
+          .first();
+
+        if (
+          latestContinuous &&
+          latestContinuous.created_by === employeeCode
+        ) {
+          await trx('approval_continuous')
+            .where('id', latestContinuous.id)
+            .update({
+              employee_code: updateDto.staffEmployeeCode,
+              approval_continuous_status_id: approvalContinuousStatusId.id,
+              signer_name: updateDto.signerName,
+              signer_date: updateDto.signerDate,
+              document_ending: updateDto.documentEnding,
+              document_ending_wording: updateDto.documentEndingWording,
+              use_file_signature: updateDto.useFileSignature,
+              signature_attachment_id: updateDto.signatureAttachmentId,
+              use_system_signature: updateDto.useSystemSignature,
+              comments: updateDto.documentEndingWording,
+              updated_at: now,
+            });
+        } else {
+          const [insertedContinuousApproval] = await trx(
+            'approval_continuous',
+          )
+            .insert({
+              approval_id: id,
+              employee_code: updateDto.staffEmployeeCode,
+              approval_continuous_status_id: approvalContinuousStatusId.id,
+              created_by: employeeCode,
+              //updated_by: userId,
+              signer_name: updateDto.signerName,
+              signer_date: updateDto.signerDate,
+              document_ending: updateDto.documentEnding,
+              document_ending_wording: updateDto.documentEndingWording,
+              use_file_signature: updateDto.useFileSignature,
+              signature_attachment_id: updateDto.signatureAttachmentId,
+              use_system_signature: updateDto.useSystemSignature,
+              comments: updateDto.documentEndingWording,
+              created_at: now,
+              updated_at: now,
+            })
+            .returning('id');
+        }
 
         await this.createApprovalNextApproverNotification(
           id,
@@ -3589,6 +3623,7 @@ export class ApprovalService {
             });
 
           // insert approval_continuous // ส่งกลับไปผู้สร้าง
+          const nowApproved = new Date();
           await trx('approval_continuous').insert({
             approval_id: existingContinuous.approval_id,
             employee_code: approval.employee_code,
@@ -3600,6 +3635,8 @@ export class ApprovalService {
             comments: updateDto.comments,
             approval_continuous_status_id: approvalContinuousStatusId.id,
             created_by: employeeCode,
+            created_at: nowApproved,
+            updated_at: nowApproved,
           });
 
           // Create notification for approval completion
@@ -3611,6 +3648,7 @@ export class ApprovalService {
           );
         } else {
           // insert approval_continuous // employee คนถัดไป
+          const nowNext = new Date();
           await trx('approval_continuous').insert({
             approval_id: existingContinuous.approval_id,
             employee_code: updateDto.employeeCode,
@@ -3622,6 +3660,8 @@ export class ApprovalService {
             comments: updateDto.comments,
             approval_continuous_status_id: approvalContinuousStatusId.id,
             created_by: employeeCode,
+            created_at: nowNext,
+            updated_at: nowNext,
           });
 
           // Create notification for next approver
@@ -3676,6 +3716,7 @@ export class ApprovalService {
           });
 
         // insert approval_continuous // ส่งกลับไปผู้สร้าง
+        const nowRejected = new Date();
         await trx('approval_continuous').insert({
           approval_id: existingContinuous.approval_id,
           employee_code: approval.employee_code,
@@ -3687,6 +3728,8 @@ export class ApprovalService {
           comments: updateDto.comments,
           approval_continuous_status_id: approvalContinuousStatusId.id,
           created_by: employeeCode,
+          created_at: nowRejected,
+          updated_at: nowRejected,
         });
 
         // Create notification for rejection
