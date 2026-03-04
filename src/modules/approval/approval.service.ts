@@ -655,6 +655,36 @@ export class ApprovalService {
       allAttachments = await Promise.all(allAttachmentPromises);
     }
 
+    // Build approvalRefHasExpense map for items with approval_ref (for "รายการขออนุมัติที่ถูกปฏิเสธ" modal)
+    const approvalRefHasExpenseMap = new Map<number, boolean>();
+    const refIds = [
+      ...new Set(
+        approvals
+          .map((a) => a.approvalRef)
+          .filter((ref): ref is number => ref != null),
+      ),
+    ];
+    if (refIds.length > 0) {
+      const refRows = await this.knexService
+        .knex('approval')
+        .whereIn('id', refIds)
+        .select(
+          'id',
+          'form3_total_outbound as form3TotalOutbound',
+          'form3_total_inbound as form3TotalInbound',
+          'form4_total_amount as form4TotalAmount',
+          'form5_total_amount as form5TotalAmount',
+        );
+      for (const row of refRows) {
+        const hasExpense =
+          (row.form3TotalOutbound != null && Number(row.form3TotalOutbound) !== 0) ||
+          (row.form3TotalInbound != null && Number(row.form3TotalInbound) !== 0) ||
+          (row.form4TotalAmount != null && Number(row.form4TotalAmount) !== 0) ||
+          (row.form5TotalAmount != null && Number(row.form5TotalAmount) !== 0);
+        approvalRefHasExpenseMap.set(row.id, hasExpense);
+      }
+    }
+
     // Create a map of date ranges by approval ID
     const dateRangeMap = new Map();
     dateRanges.forEach((dateRangeArray) => {
@@ -687,6 +717,10 @@ export class ApprovalService {
           : undefined;
       return {
         ...approval,
+        ...(approval.approvalRef != null && {
+          approvalRefHasExpense:
+            approvalRefHasExpenseMap.get(approval.approvalRef) ?? false,
+        }),
         checklistDocumentAttachment,
         approvalDateRanges: dateRangeMap.get(approval.id) || [],
         attachments: allAtts,
