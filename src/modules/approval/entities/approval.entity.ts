@@ -107,6 +107,11 @@ export interface Approval {
   attachmentId?: number;
 
   /**
+   * Checklist document attachment ID (ไฟล์แนบ checklist)
+   */
+  checklistDocumentAttachmentId?: number | null;
+
+  /**
    * Form 3 total outbound amount
    */
   form3TotalOutbound?: number;
@@ -343,6 +348,7 @@ export const approvalColumnMap = {
   document_to: 'documentTo',
   document_title: 'documentTitle',
   attachment_id: 'attachmentId',
+  checklist_document_attachment_id: 'checklistDocumentAttachmentId',
   form3_total_outbound: 'form3TotalOutbound',
   form3_total_inbound: 'form3TotalInbound',
   form3_total_amount: 'form3TotalAmount',
@@ -402,6 +408,7 @@ export const approvalReverseColumnMap = {
   documentTo: 'document_to',
   documentTitle: 'document_title',
   attachmentId: 'attachment_id',
+  checklistDocumentAttachmentId: 'checklist_document_attachment_id',
   form3TotalOutbound: 'form3_total_outbound',
   form3TotalInbound: 'form3_total_inbound',
   form3TotalAmount: 'form3_total_amount',

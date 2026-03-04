@@ -420,7 +420,21 @@ export class ApprovalDetailResponseDto implements Approval {
   attachmentId?: number;
 
   @ApiProperty({
-    description: 'ไฟล์เอกสารแนบ',
+    description: 'รหัสไฟล์แนบ checklist (เอกสาร checklist)',
+    required: false,
+    example: 1,
+    nullable: true
+  })
+  checklistDocumentAttachmentId?: number | null;
+
+  @ApiProperty({
+    description: 'ข้อมูลไฟล์แนบ checklist (สำหรับแสดงชื่อ/ลิงก์ดาวน์โหลด)',
+    required: false,
+    example: { fileId: 1, fileName: 'checklist.pdf', path: 'uploads/checklist.pdf' }
+  })
+  checklistDocumentAttachment?: { fileId: number; fileName?: string; path?: string };
+
+  @ApiProperty({
     type: [AttachmentResponseDto],
     required: false,
     example: [

@@ -435,6 +435,11 @@ export class ApprovalService {
       'approval.signature_attachment_id',
       'sf.id',
     );
+    query = query.leftJoin(
+      'files as cf',
+      'approval.checklist_document_attachment_id',
+      'cf.id',
+    );
 
     // Get approvals with pagination
     const [countResult, approvals] = await Promise.all([
@@ -462,6 +467,7 @@ export class ApprovalService {
           'approval.document_to as documentTo',
           'approval.document_title as documentTitle',
           'approval.attachment_id as attachmentId',
+          'approval.checklist_document_attachment_id as checklistDocumentAttachmentId',
           'approval.form3_total_outbound as form3TotalOutbound',
           'approval.form3_total_inbound as form3TotalInbound',
           'approval.form3_total_amount as form3TotalAmount',
@@ -500,6 +506,8 @@ export class ApprovalService {
           'f.path as attachmentFilePath',
           'sf.original_name as signatureAttachmentFileName',
           'sf.path as signatureAttachmentFilePath',
+          'cf.original_name as checklistDocumentAttachmentFileName',
+          'cf.path as checklistDocumentAttachmentFilePath',
         )
         .orderBy(dbOrderBy, orderDir.toLowerCase() as 'asc' | 'desc')
         .orderBy('approval.created_at', 'desc')
@@ -669,8 +677,17 @@ export class ApprovalService {
         allAttachments[index] && allAttachments[index].length > 0
           ? allAttachments[index]
           : [];
+      const checklistDocumentAttachment =
+        approval.checklistDocumentAttachmentId != null
+          ? {
+              fileId: approval.checklistDocumentAttachmentId,
+              fileName: approval.checklistDocumentAttachmentFileName,
+              path: approval.checklistDocumentAttachmentFilePath,
+            }
+          : undefined;
       return {
         ...approval,
+        checklistDocumentAttachment,
         approvalDateRanges: dateRangeMap.get(approval.id) || [],
         attachments: allAtts,
         clothingExpenses:
@@ -785,6 +802,7 @@ export class ApprovalService {
         'approval.document_to as documentTo',
         'approval.document_title as documentTitle',
         'approval.attachment_id as attachmentId',
+        'approval.checklist_document_attachment_id as checklistDocumentAttachmentId',
         'approval.form3_total_outbound as form3TotalOutbound',
         'approval.form3_total_inbound as form3TotalInbound',
         'approval.form3_total_amount as form3TotalAmount',
@@ -1342,12 +1360,28 @@ export class ApprovalService {
         .first();
     }
 
+    // โหลดข้อมูลไฟล์ checklist ถ้ามี
+    let checklistDocumentAttachment: { fileId: number; fileName?: string; path?: string } | undefined;
+    if (approval.checklistDocumentAttachmentId) {
+      try {
+        const file = await this.filesService.findById(approval.checklistDocumentAttachmentId);
+        checklistDocumentAttachment = {
+          fileId: file.id,
+          fileName: file.originalName,
+          path: file.path,
+        };
+      } catch {
+        checklistDocumentAttachment = undefined;
+      }
+    }
+
     // Combine all the data
     const response: ApprovalDetailResponseDto = {
       ...approvalDto,
       documentAttachments: approvalDocuments,
       signatureAttachments: approvalSignatures,
       attachments: allAttachments,
+      checklistDocumentAttachment,
       statusHistory,
       //currentStatus: statusHistory[0]?.status || 'ฉบับร่าง',
       travelDateRanges,
@@ -1386,7 +1420,7 @@ export class ApprovalService {
 
     try {
       // Update approval record
-      await trx('approval').where('id', id).update({
+      const approvalUpdatePayload: Record<string, any> = {
         approval_ref: updateDto.approvalRef,
         record_type: updateDto.recordType,
         name: updateDto.name,
@@ -1429,7 +1463,28 @@ export class ApprovalService {
         signature_attachment_id: updateDto.signatureAttachmentId,
         use_system_signature: updateDto.useSystemSignature,
         updated_at: new Date(),
-      });
+      };
+      if (updateDto.checklistDocumentAttachmentId !== undefined) {
+        approvalUpdatePayload.checklist_document_attachment_id =
+          updateDto.checklistDocumentAttachmentId;
+      }
+      await trx('approval').where('id', id).update(approvalUpdatePayload);
+
+      // Sync checklist ไป approval_attachments (ให้แสดงในรายการไฟล์แนบ)
+      if (updateDto.checklistDocumentAttachmentId !== undefined) {
+        await trx('approval_attachments')
+          .where({ entity_type: 'approval_checklist_document', entity_id: id })
+          .delete();
+        if (updateDto.checklistDocumentAttachmentId != null) {
+          await trx('approval_attachments').insert({
+            entity_type: 'approval_checklist_document',
+            entity_id: id,
+            file_id: updateDto.checklistDocumentAttachmentId,
+            created_at: new Date(),
+            updated_at: new Date(),
+          });
+        }
+      }
 
       // Get the updated approval record
       const updatedApprovalRecord = await trx('approval')
@@ -3496,6 +3551,31 @@ export class ApprovalService {
     const trx = await this.knexService.knex.transaction();
 
     try {
+      // อัปเดต checklist ของ approval (ให้ผู้อนุมัติลบ/แนบใหม่ได้)
+      if (updateDto.checklistDocumentAttachmentId !== undefined) {
+        await trx('approval')
+          .where('id', existingContinuous.approval_id)
+          .update({
+            checklist_document_attachment_id: updateDto.checklistDocumentAttachmentId,
+            updated_at: new Date(),
+          });
+        await trx('approval_attachments')
+          .where({
+            entity_type: 'approval_checklist_document',
+            entity_id: existingContinuous.approval_id,
+          })
+          .delete();
+        if (updateDto.checklistDocumentAttachmentId != null) {
+          await trx('approval_attachments').insert({
+            entity_type: 'approval_checklist_document',
+            entity_id: existingContinuous.approval_id,
+            file_id: updateDto.checklistDocumentAttachmentId,
+            created_at: new Date(),
+            updated_at: new Date(),
+          });
+        }
+      }
+
       // get approval_continuous_status id
       const approvalContinuousStatusId = await this.knexService
         .knex('approval_continuous_status')
@@ -4956,13 +5036,14 @@ export class ApprovalService {
     if (type) {
       const validTypes = [
         'approval_document',
-        'approval_signature', 
+        'approval_signature',
         'approval_budgets',
         'approval_clothing_expense',
         'approval_continuous_signature',
-        'approval_accommodation_transport_expense'
+        'approval_accommodation_transport_expense',
+        'approval_checklist_document',
       ];
-      
+
       if (!validTypes.includes(type)) {
         throw new BadRequestException(`Invalid attachment type. Valid types are: ${validTypes.join(', ')}`);
       }
@@ -4995,6 +5076,10 @@ export class ApprovalService {
       'approval_accommodation_transport_expense',
       id,
     );
+    const checklistDocumentAttachments = await this.attachmentService.getAttachments(
+      'approval_checklist_document',
+      id,
+    );
 
     const allAttachments = [
       ...approvalDocuments,
@@ -5003,6 +5088,7 @@ export class ApprovalService {
       ...clothingExpenseAttachments,
       ...continuousSignatureAttachments,
       ...accommodationTransportExpenseAttachments,
+      ...checklistDocumentAttachments,
     ];
 
     return allAttachments;

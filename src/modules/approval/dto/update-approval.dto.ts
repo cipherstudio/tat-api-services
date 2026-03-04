@@ -8,6 +8,7 @@ import {
   IsBoolean,
   IsDateString,
   IsObject,
+  ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
@@ -470,6 +471,17 @@ export class UpdateApprovalDto {
   @IsOptional()
   @IsNumber()
   attachmentId?: number;
+
+  @ApiProperty({
+    description: 'รหัสไฟล์แนบ checklist (เอกสาร checklist)',
+    required: false,
+    example: 1,
+    nullable: true,
+  })
+  @IsOptional()
+  @ValidateIf((o) => o.checklistDocumentAttachmentId != null)
+  @IsNumber()
+  checklistDocumentAttachmentId?: number | null;
 
   @ApiProperty({
     description: 'ไฟล์เอกสารแนบ',

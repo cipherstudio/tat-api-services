@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, IsBoolean, IsNumber, IsDateString } from 'class-validator';
+import { IsOptional, IsString, IsBoolean, IsNumber, IsDateString, ValidateIf } from 'class-validator';
 
 export class UpdateApprovalContinuousDto {
   @ApiProperty({
@@ -91,4 +91,15 @@ export class UpdateApprovalContinuousDto {
   @IsOptional()
   @IsString()
   statusCode?: string;
+
+  @ApiProperty({
+    description: 'รหัสไฟล์แนบ checklist (เอกสาร checklist)',
+    required: false,
+    example: 1,
+    nullable: true,
+  })
+  @IsOptional()
+  @ValidateIf((o) => o.checklistDocumentAttachmentId != null)
+  @IsNumber()
+  checklistDocumentAttachmentId?: number | null;
 } 
