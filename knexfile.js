@@ -17,8 +17,8 @@ module.exports = {
       requestTimeout: 30000,
       poolTimeout: 10000, // ลดจาก 30000 เป็น 10000 เพื่อ fail fast
       // Enable connection pooling
-      poolMin: 2,
-      poolMax: 10,
+      poolMin: 4,
+      poolMax: 30,
       poolIncrement: 1,
       poolPingInterval: 60,
       // Retry configuration
@@ -27,8 +27,8 @@ module.exports = {
     },
     // Connection pool configuration
     pool: {
-      min: 2,
-      max: 10,
+      min: 4,
+      max: 30,
       acquireTimeoutMillis: 10000, // ลดจาก 30000 เป็น 10000 เพื่อ fail fast
       createTimeoutMillis: 10000, // ลดจาก 30000 เป็น 10000 เพื่อ fail fast
       destroyTimeoutMillis: 5000,
