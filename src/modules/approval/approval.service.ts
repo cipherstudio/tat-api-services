@@ -2393,22 +2393,20 @@ export class ApprovalService {
       throw new NotFoundException(`Approval with ID ${id} not found`);
     }
 
-    // Start a transaction
-    const trx = await this.knexService.knex.transaction();
-
-    // get approval status label id
     const approvalStatusLabelId = await this.knexService
       .knex('approval_status_labels')
       .where('status_code', updateStatusDto.status)
       .select('id')
       .first();
 
-    // if approvalStatusLabelId not found, throw error
     if (!approvalStatusLabelId) {
       throw new NotFoundException(
         `Approval status label with status code ${updateStatusDto.status} not found`,
       );
     }
+
+    // Start a transaction
+    const trx = await this.knexService.knex.transaction();
 
     try {
       // Insert new status record

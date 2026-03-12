@@ -97,6 +97,14 @@ export class KnexService implements OnModuleInit, OnModuleDestroy {
     this.startConnectionHealthCheck();
   }
 
+  private async recreatePool(): Promise<void> {
+    const client = this._knexInstance.client as any;
+    if (client.pool) {
+      await client.destroy();
+      client.initializePool(client.config);
+    }
+  }
+
   /**
    * Check database connection health
    */
@@ -114,13 +122,10 @@ export class KnexService implements OnModuleInit, OnModuleDestroy {
           'Connection reset detected in health check, cleaning up pool...',
         );
         try {
-          // Force destroy all connections in pool to trigger reconnection
-          if (this._knexInstance.client.pool) {
-            await this._knexInstance.client.pool.destroyAllNow();
-            console.log(
-              'Pool cleaned up, connections will be recreated on next use',
-            );
-          }
+          await this.recreatePool();
+          console.log(
+            'Pool cleaned up, connections will be recreated on next use',
+          );
         } catch (cleanupError) {
           console.error('Error during pool cleanup:', cleanupError);
         }
@@ -153,14 +158,11 @@ export class KnexService implements OnModuleInit, OnModuleDestroy {
             'Database connection unhealthy for too long, forcing pool cleanup...',
           );
           try {
-            // Force cleanup all connections
-            if (this._knexInstance.client.pool) {
-              await this._knexInstance.client.pool.destroyAllNow();
-              unhealthyCount = 0; // Reset counter after cleanup
-              console.log(
-                'Pool cleanup completed, monitoring will continue...',
-              );
-            }
+            await this.recreatePool();
+            unhealthyCount = 0; // Reset counter after cleanup
+            console.log(
+              'Pool cleanup completed, monitoring will continue...',
+            );
           } catch (error) {
             console.error('Error during forced pool cleanup:', error);
           }

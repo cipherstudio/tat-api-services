@@ -17,8 +17,8 @@ module.exports = {
       requestTimeout: 30000,
       poolTimeout: 10000, // ลดจาก 30000 เป็น 10000 เพื่อ fail fast
       // Enable connection pooling
-      poolMin: 2,
-      poolMax: 10,
+      poolMin: 4,
+      poolMax: 30,
       poolIncrement: 1,
       poolPingInterval: 60,
       // Retry configuration
@@ -27,14 +27,18 @@ module.exports = {
     },
     // Connection pool configuration
     pool: {
-      min: 2,
-      max: 10,
-      acquireTimeoutMillis: 10000, // ลดจาก 30000 เป็น 10000 เพื่อ fail fast
-      createTimeoutMillis: 10000, // ลดจาก 30000 เป็น 10000 เพื่อ fail fast
+      min: 4,
+      max: 30,
+      acquireTimeoutMillis: 10000,
+      createTimeoutMillis: 10000,
       destroyTimeoutMillis: 5000,
       idleTimeoutMillis: 30000,
       reapIntervalMillis: 1000,
       createRetryIntervalMillis: 200,
+      afterCreate: function (conn, done) {
+        conn.callTimeout = 20000;
+        done(null, conn);
+      },
     },
     migrations: {
       directory: './knex/migrations',
