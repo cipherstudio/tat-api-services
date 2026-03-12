@@ -45,6 +45,7 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
           'ace.employee_code',
           'omt.PMT_CODE',
         )
+        .leftJoin('approval_staff_members as asm', 'ace.staff_member_id', 'asm.id')
         .leftJoin('approval as a', 'ace.approval_id', 'a.id');
 
       // Apply filters
@@ -68,6 +69,7 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
         'omt.PMT_CODE as employee_pmt_code',
         'omt.PMT_NAME_T as employee_name_th',
         'omt.PMT_NAME_E as employee_name_en',
+        'asm.name as staff_member_name',
         'omt.PMT_POS_WK as employee_position',
         'omt.PMT_CUR_FAC as employee_faculty',
         'omt.PMT_EMAIL_ADDR as employee_email',
@@ -80,6 +82,14 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
       .offset(offset);
 
     for (const item of data) {
+      if (item.employee_name_th == null && item.staff_member_name != null) {
+        item.employee_name_th = item.staff_member_name;
+      }
+      if (item.employee_name_en == null && item.staff_member_name != null) {
+        item.employee_name_en = item.staff_member_name;
+      }
+      delete item.staff_member_name;
+
       const clothingAmounts = await this.knex('approval_clothing_expense')
         .select('clothing_amount')
         .where('approval_id', item.approval_id);
@@ -149,7 +159,8 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
             .orWhere('omt.PMT_NAME_E', 'like', `%${searchTerm_clean}%`)
             .orWhere('ace.employee_code', 'like', `%${searchTerm_clean}%`)
             .orWhere('omt.PMT_CODE', 'like', `%${searchTerm_clean}%`)
-            .orWhere('ace.increment_id', 'like', `%${searchTerm_clean}%`);
+            .orWhere('ace.increment_id', 'like', `%${searchTerm_clean}%`)
+            .orWhere(this.knex.raw('"asm"."name" LIKE ?', [`%${searchTerm_clean}%`]));
       });
     }
   }
@@ -180,12 +191,14 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
         'ace.employee_code',
         'omt.PMT_CODE',
       )
+      .leftJoin('approval_staff_members as asm', 'ace.staff_member_id', 'asm.id')
       .leftJoin('approval as a', 'ace.approval_id', 'a.id')
       .select([
         'ace.*',
         'omt.PMT_CODE as employee_pmt_code',
         'omt.PMT_NAME_T as employee_name_th',
         'omt.PMT_NAME_E as employee_name_en',
+        'asm.name as staff_member_name',
         'omt.PMT_POS_WK as employee_position',
         'omt.PMT_CUR_FAC as employee_faculty',
         'omt.PMT_EMAIL_ADDR as employee_email',
@@ -197,6 +210,14 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
       .first();
 
     if (result) {
+      if (result.employee_name_th == null && result.staff_member_name != null) {
+        result.employee_name_th = result.staff_member_name;
+      }
+      if (result.employee_name_en == null && result.staff_member_name != null) {
+        result.employee_name_en = result.staff_member_name;
+      }
+      delete result.staff_member_name;
+
       const clothingAmounts = await this.knex('approval_clothing_expense')
         .select('clothing_amount')
         .where('approval_id', result.approval_id);
