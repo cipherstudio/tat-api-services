@@ -1,7 +1,7 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { KnexService } from '../../database/knex-service/knex.service';
-import { Knex } from 'knex';
+import { MssqlService } from '../../database/mssql-service/mssql.service';
 
 @Injectable()
 export class CronService {
@@ -9,7 +9,7 @@ export class CronService {
 
   constructor(
     private readonly knexService: KnexService,
-    @Inject('MSSQL_CONNECTION') private readonly mssqlConnection: Knex,
+    private readonly mssqlService: MssqlService,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
@@ -62,7 +62,7 @@ export class CronService {
           `[Update Existing] Querying MSSQL for Employee ${employeeCodeStr} (Expense ID: ${expense.id})`,
         );
 
-        const mssqlData = await this.mssqlConnection
+        const mssqlData = await this.mssqlService.knex
           .select('*')
           .from('ViewDutyFormCommands')
           .where('EmployeeId', employeeCodeStr)
@@ -114,7 +114,7 @@ export class CronService {
     this.logger.log('[Create New] Starting to create new records from MSSQL');
 
     try {
-      const mssqlRecords = await this.mssqlConnection
+      const mssqlRecords = await this.mssqlService.knex
         .select('*')
         .from('ViewDutyFormCommands')
         .whereNotNull('DutyReportTime');
