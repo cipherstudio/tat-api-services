@@ -56,6 +56,18 @@ export class LdapService {
     const userPrincipalName = email;
 
     return new Promise((resolve, reject) => {
+      // ปิด LDAP connection ทุก path (ป้องกัน connection leak)
+      // Reject ทันที แล้วค่อย unbind ในพื้นหลัง — ถ้ารอ callback ของ unbind
+      // บางครั้ง (เช่น connection ถูก server ปิดแล้ว) callback อาจไม่ถูกเรียก ทำให้ request ค้างได้ 000
+      const safeReject = (error: any) => {
+        reject(error);
+        setImmediate(() => {
+          client.unbind((unbindErr) => {
+            if (unbindErr) console.warn('LDAP unbind error:', unbindErr);
+          });
+        });
+      };
+
       // เพิ่ม retry mechanism
       const attemptLdapBind = (attempt: number = 1) => {
         console.log(`LDAP bind attempt ${attempt}/${LDAP_RETRY_ATTEMPTS}`);
@@ -65,7 +77,7 @@ export class LdapService {
 
           if (err) {
             if (err.name === 'InvalidCredentialsError') {
-              return reject(
+              return safeReject(
                 new UnauthorizedException('Invalid username or password.'),
               );
             } else if (
@@ -79,14 +91,14 @@ export class LdapService {
                 }, LDAP_RETRY_DELAY);
                 return;
               } else {
-                return reject(
+                return safeReject(
                   new InternalServerErrorException(
                     'Cannot contact LDAP server after multiple attempts. Please check VPN or server settings.',
                   ),
                 );
               }
             } else {
-              return reject(
+              return safeReject(
                 new InternalServerErrorException(
                   `LDAP bind error: ${err.message}`,
                 ),
@@ -119,7 +131,7 @@ export class LdapService {
           client.search(this.BASE_DN, opts, (searchErr, res) => {
             if (searchErr) {
               console.log('Search error:', searchErr);
-              return reject(
+              return safeReject(
                 new InternalServerErrorException(
                   `Search error: ${searchErr.message}`,
                 ),
@@ -158,13 +170,13 @@ export class LdapService {
             res.on('error', (searchError) => {
               console.log('Search stream error:', searchError);
               if (searchError.message.includes('No such object')) {
-                return reject(
+                return safeReject(
                   new InternalServerErrorException(
                     'Base DN not found (No such object).',
                   ),
                 );
               }
-              return reject(
+              return safeReject(
                 new InternalServerErrorException(
                   `LDAP search error: ${searchError.message}`,
                 ),
