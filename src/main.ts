@@ -4,7 +4,7 @@ import { AppModule } from './app.module';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { ConfigService } from '@nestjs/config';
 import { setupSwagger } from './config/swagger.config';
-import { runMigrationsAndSeedsWithTransaction } from './database/migration-utils';
+import { runMigrationsWithTransaction } from './database/migration-utils';
 import { HttpExceptionFilter } from './middleware/http-exception.filter';
 
 async function bootstrap() {
@@ -56,13 +56,12 @@ async function bootstrap() {
     // Don't exit immediately, let the app try to recover
   });
 
-  // TODO: Uncomment this when we want to run migrations and seeds
   try {
-    console.log('Running database migrations and seeds...');
-    await runMigrationsAndSeedsWithTransaction();
+    console.log('Running database migrations');
+    await runMigrationsWithTransaction();
   } catch (error) {
-    console.error('Error running migrations or seeds:', error);
-    // Don't exit - we can still start the app even if migrations or seeds fail
+    console.error('Error running migrations:', error);
+    // Don't exit - we can still start the app even if migrations fail
   }
 
   const app = await NestFactory.create(AppModule);
