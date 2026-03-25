@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Knex } from 'knex';
 import { ApprovalAttachmentRepository } from '../repositories/approval-attachment.repository';
 import { FilesService } from '../../files/files.service';
 import { CreateAttachmentDto, AttachmentResponseDto } from '../dto/approval-attachment.dto';
@@ -31,7 +32,6 @@ export class ApprovalAttachmentService {
             updatedAt: attachment.updatedAt,
           } as AttachmentResponseDto;
         } catch (error) {
-          // ถ้าไฟล์ไม่พบ ให้ข้าม
           return null;
         }
       })
@@ -40,15 +40,22 @@ export class ApprovalAttachmentService {
     return attachmentsWithFiles.filter((attachment) => attachment !== null);
   }
 
-  async updateAttachments(entityType: string, entityId: number, attachments: CreateAttachmentDto[]): Promise<void> {
-    const oldAttachments = await this.attachmentRepository.findByEntity(entityType, entityId);
+  /**
+   * Sync attachment records within a transaction and return file IDs
+   * that should be deleted afterwards (outside the transaction).
+   */
+  async syncAttachments(
+    entityType: string,
+    entityId: number,
+    attachments: CreateAttachmentDto[],
+    trx?: Knex.Transaction,
+  ): Promise<number[]> {
+    const oldAttachments = await this.attachmentRepository.findByEntity(entityType, entityId, trx);
     const oldFileIds = oldAttachments.map(att => att.fileId);
-    
     const newFileIds = attachments.map(att => att.fileId);
-    
     const filesToDelete = oldFileIds.filter(oldId => !newFileIds.includes(oldId));
-    
-    await this.attachmentRepository.deleteByEntity(entityType, entityId);
+
+    await this.attachmentRepository.deleteByEntity(entityType, entityId, trx);
 
     if (attachments.length > 0) {
       const attachmentData: Partial<ApprovalAttachment>[] = attachments.map((attachment) => ({
@@ -56,18 +63,30 @@ export class ApprovalAttachmentService {
         entityId,
         fileId: attachment.fileId,
       }));
-
-      await this.attachmentRepository.createMany(attachmentData);
+      await this.attachmentRepository.createMany(attachmentData, trx);
     }
-    
-    for (const fileId of filesToDelete) {
+
+    return filesToDelete;
+  }
+
+  /**
+   * Delete file records and physical files. Intended to be called
+   * after a transaction has been committed so that file deletion
+   * does not hold DB locks inside the transaction scope.
+   */
+  async deleteFilesInBackground(fileIds: number[]): Promise<void> {
+    for (const fileId of fileIds) {
       try {
         await this.filesService.remove(fileId);
-        console.log(`Successfully deleted unused attachment file: ${fileId}`);
       } catch (error) {
-        console.warn(`Warning: Failed to delete unused attachment file ${fileId}:`, error.message);
+        console.warn(`Warning: Failed to delete file ${fileId}:`, error.message);
       }
     }
+  }
+
+  async updateAttachments(entityType: string, entityId: number, attachments: CreateAttachmentDto[]): Promise<void> {
+    const filesToDelete = await this.syncAttachments(entityType, entityId, attachments);
+    await this.deleteFilesInBackground(filesToDelete);
   }
 
   async deleteAttachments(entityType: string, entityId: number): Promise<void> {
@@ -75,29 +94,13 @@ export class ApprovalAttachmentService {
     const oldFileIds = oldAttachments.map(att => att.fileId);
     
     await this.attachmentRepository.deleteByEntity(entityType, entityId);
-    
-    for (const fileId of oldFileIds) {
-      try {
-        await this.filesService.remove(fileId);
-        console.log(`Successfully deleted attachment file: ${fileId}`);
-      } catch (error) {
-        console.warn(`Warning: Failed to delete attachment file ${fileId}:`, error.message);
-      }
-    }
+    await this.deleteFilesInBackground(oldFileIds);
   }
 
   async deleteSpecificAttachments(entityType: string, entityId: number, fileIds: number[]): Promise<void> {
     if (fileIds.length > 0) {
       await this.attachmentRepository.deleteByEntityAndFiles(entityType, entityId, fileIds);
-      
-      for (const fileId of fileIds) {
-        try {
-          await this.filesService.remove(fileId);
-          console.log(`Successfully deleted specific attachment file: ${fileId}`);
-        } catch (error) {
-          console.warn(`Warning: Failed to delete specific attachment file ${fileId}:`, error.message);
-        }
-      }
+      await this.deleteFilesInBackground(fileIds);
     }
   }
 } 

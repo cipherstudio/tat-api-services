@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Knex } from 'knex';
 import { KnexService } from '../../../database/knex-service/knex.service';
 import { ApprovalAttachment, approvalAttachmentColumnMap, approvalAttachmentReverseColumnMap } from '../entities/approval-attachment.entity';
 
@@ -8,27 +9,31 @@ export class ApprovalAttachmentRepository {
 
   constructor(private knexService: KnexService) {}
 
-  async findByEntity(entityType: string, entityId: number): Promise<ApprovalAttachment[]> {
-    const results = await this.knexService.knex(this.tableName)
+  private queryBuilder(trx?: Knex.Transaction) {
+    return (trx ?? this.knexService.knex)(this.tableName);
+  }
+
+  async findByEntity(entityType: string, entityId: number, trx?: Knex.Transaction): Promise<ApprovalAttachment[]> {
+    const results = await this.queryBuilder(trx)
       .where({ entity_type: entityType, entity_id: entityId })
       .orderBy('created_at', 'asc');
     
     return results.map(this.mapToEntity);
   }
 
-  async createMany(attachments: Partial<ApprovalAttachment>[]): Promise<void> {
+  async createMany(attachments: Partial<ApprovalAttachment>[], trx?: Knex.Transaction): Promise<void> {
     const dbData = attachments.map(this.mapToDatabase);
-    await this.knexService.knex(this.tableName).insert(dbData);
+    await this.queryBuilder(trx).insert(dbData);
   }
 
-  async deleteByEntity(entityType: string, entityId: number): Promise<void> {
-    await this.knexService.knex(this.tableName)
+  async deleteByEntity(entityType: string, entityId: number, trx?: Knex.Transaction): Promise<void> {
+    await this.queryBuilder(trx)
       .where({ entity_type: entityType, entity_id: entityId })
       .delete();
   }
 
-  async deleteByEntityAndFiles(entityType: string, entityId: number, fileIds: number[]): Promise<void> {
-    await this.knexService.knex(this.tableName)
+  async deleteByEntityAndFiles(entityType: string, entityId: number, fileIds: number[], trx?: Knex.Transaction): Promise<void> {
+    await this.queryBuilder(trx)
       .where({ entity_type: entityType, entity_id: entityId })
       .whereIn('file_id', fileIds)
       .delete();

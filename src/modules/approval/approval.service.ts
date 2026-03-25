@@ -2160,34 +2160,36 @@ export class ApprovalService {
         await trx('approval').where('id', id).update(updateData);
       }
 
-      // Process main approval attachments (documents)
+      const pendingFileDeletes: number[] = [];
+
       if (
         updateDto.documentAttachments &&
         updateDto.documentAttachments.length > 0
       ) {
-        await this.attachmentService.updateAttachments(
+        const ids = await this.attachmentService.syncAttachments(
           'approval_document',
           id,
           updateDto.documentAttachments,
+          trx,
         );
+        pendingFileDeletes.push(...ids);
       }
 
-      // Process main approval signature attachments
+      // Process main approval signature attachments — inside transaction
       if (
         updateDto.signatureAttachments &&
         updateDto.signatureAttachments.length > 0
       ) {
-        await this.attachmentService.updateAttachments(
+        const ids = await this.attachmentService.syncAttachments(
           'approval_signature',
           id,
           updateDto.signatureAttachments,
+          trx,
         );
+        pendingFileDeletes.push(...ids);
       }
 
-      // Commit the transaction
-      await trx.commit();
-
-      // Process budget attachments after transaction commit
+      // Process budget attachments — inside transaction
       if (updateDto.budgets && Array.isArray(updateDto.budgets)) {
         for (const budget of updateDto.budgets) {
           if (
@@ -2196,16 +2198,18 @@ export class ApprovalService {
             budget.attachments &&
             budget.attachments.length > 0
           ) {
-            await this.attachmentService.updateAttachments(
+            const ids = await this.attachmentService.syncAttachments(
               'approval_budgets',
               id,
               budget.attachments,
+              trx,
             );
+            pendingFileDeletes.push(...ids);
           }
         }
       }
 
-      // Process clothing expense attachments after transaction commit
+      // Process clothing expense attachments — inside transaction
       if (updateDto.staffMembers && Array.isArray(updateDto.staffMembers)) {
         for (const staffMember of updateDto.staffMembers) {
           if (
@@ -2219,19 +2223,20 @@ export class ApprovalService {
                 expense.attachments &&
                 expense.attachments.length > 0
               ) {
-                // ใช้ approval ID แทน clothing expense ID เพื่อให้ entityId ไม่เปลี่ยน
-                await this.attachmentService.updateAttachments(
+                const ids = await this.attachmentService.syncAttachments(
                   'approval_clothing_expense',
                   id,
                   expense.attachments,
+                  trx,
                 );
+                pendingFileDeletes.push(...ids);
               }
             }
           }
         }
       }
 
-      // Process accommodation transport expense attachments after transaction commit
+      // Process accommodation transport expense attachments — inside transaction
       if (updateDto.staffMembers && Array.isArray(updateDto.staffMembers)) {
         for (const staffMember of updateDto.staffMembers) {
           if (staffMember.workLocations && Array.isArray(staffMember.workLocations)) {
@@ -2239,12 +2244,13 @@ export class ApprovalService {
               if (workLocation.accommodationTransportExpenses && Array.isArray(workLocation.accommodationTransportExpenses)) {
                 for (const transportExpense of workLocation.accommodationTransportExpenses) {
                   if (transportExpense.files && Array.isArray(transportExpense.files) && transportExpense.files.length > 0) {
-                    // ใช้ approval ID แทน transport expense ID เพื่อให้ entityId ไม่เปลี่ยน
-                    await this.attachmentService.updateAttachments(
+                    const ids = await this.attachmentService.syncAttachments(
                       'approval_accommodation_transport_expense',
                       id,
                       transportExpense.files,
+                      trx,
                     );
+                    pendingFileDeletes.push(...ids);
                   }
                 }
               }
@@ -2253,50 +2259,44 @@ export class ApprovalService {
         }
       }
 
-      // Process continuous approval signature attachments after transaction commit
+      // Process continuous approval signature attachments — inside transaction
       if (
         updateDto.signatureAttachments &&
         updateDto.signatureAttachments.length > 0
       ) {
-        // ใช้ approval ID แทน continuous approval ID เพื่อให้ entityId ไม่เปลี่ยน
-        await this.attachmentService.updateAttachments(
+        const ids = await this.attachmentService.syncAttachments(
           'approval_continuous_signature',
           id,
           updateDto.signatureAttachments,
+          trx,
         );
+        pendingFileDeletes.push(...ids);
       }
 
-      // Clean up old files after successful update
-      // Delete old attachment file if it's different from the new one
+      // Collect old file IDs for cleanup after commit
       if (
         oldAttachmentId &&
         updateDto.attachmentId &&
         oldAttachmentId !== updateDto.attachmentId
       ) {
-        try {
-          await this.filesService.remove(oldAttachmentId);
-        } catch (error) {
-          console.warn(
-            `Warning: Failed to delete old attachment file ${oldAttachmentId}:`,
-            error.message,
-          );
-        }
+        pendingFileDeletes.push(oldAttachmentId);
       }
-
-      // Delete old signature attachment file if it's different from the new one
       if (
         oldSignatureAttachmentId &&
         updateDto.signatureAttachmentId &&
         oldSignatureAttachmentId !== updateDto.signatureAttachmentId
       ) {
-        try {
-          await this.filesService.remove(oldSignatureAttachmentId);
-        } catch (error) {
-          console.warn(
-            `Warning: Failed to delete old signature attachment file ${oldSignatureAttachmentId}:`,
-            error.message,
-          );
-        }
+        pendingFileDeletes.push(oldSignatureAttachmentId);
+      }
+
+      // Commit the transaction — releases all DB locks
+      await trx.commit();
+
+      // Delete orphaned files after commit (fire-and-forget to avoid holding connections)
+      if (pendingFileDeletes.length > 0) {
+        this.attachmentService.deleteFilesInBackground(pendingFileDeletes).catch((err) => {
+          console.warn('Background file cleanup error:', err.message);
+        });
       }
 
       // Invalidate the cache
