@@ -1913,16 +1913,6 @@ export class ApprovalService {
                     if (workStartDate) {
                       nextClaimDate = this.calculateNextClaimDate(workStartDate);
                     }
-                  } else if (updateDto.travelType === 'international') {
-                    reportingDateForDb =
-                      expense.reportingDate ??
-                      existingExpense?.reporting_date ??
-                      null;
-                    if (reportingDateForDb) {
-                      nextClaimDate = this.calculateNextClaimDate(
-                        reportingDateForDb,
-                      );
-                    }
                   }
 
                   let clothingExpenseId;
@@ -2742,20 +2732,25 @@ export class ApprovalService {
           : null;
 
       if (effectiveNext && todayStr < effectiveNext) {
-        const intlHint = barrierFromInternational
-          ? `รอบจากประวัติประจำ (${barrierFromInternational})`
-          : null;
-        const tempHint = tempNextStr
-          ? `รอบเบิกชั่วคราวจากประวัติเดิม (${tempNextStr})`
-          : null;
-        const hint = [intlHint, tempHint].filter(Boolean).join(' / ');
+        let lastClaimDateStr: string | undefined;
+        if (
+          barrierFromInternational === effectiveNext &&
+          latestIntlExpense
+        ) {
+          lastClaimDateStr = latestIntlExpense.work_start_date
+            ? String(latestIntlExpense.work_start_date)
+            : undefined;
+        } else if (tempNextStr === effectiveNext) {
+          const ws =
+            latestTemporaryRecord?.expense.work_start_date ??
+            latestRecordWithNextClaimDate?.work_start_date;
+          lastClaimDateStr = ws != null ? String(ws) : undefined;
+        }
         this.updateEligibility(
           result,
           employeeCode,
           false,
-          hint
-            ? `ครั้งต่อไปที่เบิกชั่วคราวได้ ${effectiveNext} — ${hint}`
-            : `ครั้งต่อไปที่เบิกชั่วคราวได้ ${effectiveNext}`,
+          `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr} ครั้งต่อไปที่เบิกได้ ${effectiveNext}`,
         );
         continue;
       }
