@@ -1876,30 +1876,52 @@ export class ApprovalService {
                     })
                     .first();
 
-                  // get first destination country
-                  const destinationCountry = updateDto.tripEntries.find(
-                    (trip) => trip.destinationTable === 'countries',
-                  )?.destination;
-
-                  // get work end date
-                  let workEndDate = null;
-                  if (['temporary-international', 'training-international', 'temporary-both'].includes(updateDto.travelType)) {
-                    workEndDate = updateDto.workEndDate;
-                  }
+                  const destinationCountryFromWork =
+                    this.getCheckedWorkLocationDestinationCountries(
+                      staffMember.workLocations,
+                    );
+                  const destinationCountry =
+                    destinationCountryFromWork ??
+                    updateDto.tripEntries.find(
+                      (trip) => trip.destinationTable === 'countries',
+                    )?.destination ??
+                    null;
 
                   let nextClaimDate = null;
                   let workStartDate = null;
+                  let workEndDate = null;
+                  const isTemporaryTravel = [
+                    'temporary-international',
+                    'training-international',
+                    'temporary-both',
+                  ].includes(updateDto.travelType);
+
                   if (updateDto.travelType === 'international') {
-                    workStartDate = updateDto.travelDateRanges[0].start_date;
-                    if (existingExpense?.reporting_date) {
-                      nextClaimDate = this.calculateNextClaimDate(existingExpense.reporting_date);
-                    }
-                  } else if (
-                    ['temporary-international', 'training-international', 'temporary-both'].includes(updateDto.travelType)
-                  ) {
-                    workStartDate = updateDto.workStartDate;
+                    const { start: tripStart } =
+                      this.getFirstTravelDateRangeFromDto(updateDto.travelDateRanges);
+                    workStartDate = tripStart;
+                  } else if (isTemporaryTravel) {
+                    const { start, end } =
+                      this.getCheckedWorkLocationDateRange(staffMember.workLocations);
+                    workStartDate = start ?? updateDto.workStartDate ?? null;
+                    workEndDate = end ?? updateDto.workEndDate ?? null;
+                  }
+
+                  let reportingDateForDb: string | null = null;
+                  if (isTemporaryTravel) {
+                    reportingDateForDb = workEndDate ?? null;
                     if (workStartDate) {
                       nextClaimDate = this.calculateNextClaimDate(workStartDate);
+                    }
+                  } else if (updateDto.travelType === 'international') {
+                    reportingDateForDb =
+                      expense.reportingDate ??
+                      existingExpense?.reporting_date ??
+                      null;
+                    if (reportingDateForDb) {
+                      nextClaimDate = this.calculateNextClaimDate(
+                        reportingDateForDb,
+                      );
                     }
                   }
 
@@ -1914,7 +1936,7 @@ export class ApprovalService {
                         clothing_file_checked: expense.clothingFileChecked,
                         clothing_amount: expense.clothingAmount,
                         clothing_reason: expense.clothingReason,
-                        reporting_date: null,
+                        reporting_date: reportingDateForDb,
                         next_claim_date: nextClaimDate,
                         work_start_date: workStartDate,
                         work_end_date: workEndDate,
@@ -1935,7 +1957,7 @@ export class ApprovalService {
                         clothing_file_checked: expense.clothingFileChecked,
                         clothing_amount: expense.clothingAmount,
                         clothing_reason: expense.clothingReason,
-                        reporting_date: null,
+                        reporting_date: reportingDateForDb,
                         next_claim_date: nextClaimDate,
                         work_start_date: workStartDate,
                         work_end_date: workEndDate,
@@ -2546,8 +2568,9 @@ export class ApprovalService {
     return result;
   }
 
+  /** เบิกประจำ (international): เช็คเฉพาะประวัติใบประจำ ไม่ปนกับชั่วคราว และไม่แยกกลุ่มประเทศ A/B/C */
   private async processInternationalEligibility(
-    checkEligibilityDto: CheckClothingExpenseEligibilityDto,
+    _checkEligibilityDto: CheckClothingExpenseEligibilityDto,
     result: ClothingExpenseEligibilityResponseDto[],
   ): Promise<void> {
     for (const employeeCode of result.map((r) => r.employeeCode)) {
@@ -2556,235 +2579,78 @@ export class ApprovalService {
         .where('employee_code', String(employeeCode))
         .orderBy('created_at', 'desc');
 
-      if (existingClothingExpenses.length > 0) {
-        
-        let latestInternationalRecord = null;
-        
-        for (const expense of existingClothingExpenses) {
-          const approval = await this.knexService
-            .knex('approval')
-            .where('id', expense.approval_id)
-            .select('travel_type')
-            .first();
-            
-          if (approval?.travel_type === 'international') {
-            latestInternationalRecord = { expense, approval };
-            break;
-          }
-        }
-        
-        if (latestInternationalRecord) {
-          const expense = latestInternationalRecord.expense;
-          const lastClaimDateStr = expense.work_start_date 
-            ? expense.work_start_date
-            : undefined;
-          
-          if (expense.next_claim_date) {
-            // มี next_claim_date → เช็คว่าถึงเวลาหรือยัง
-            const nextClaimDate = new Date(expense.next_claim_date);
-            const nextClaimDateStr = nextClaimDate.toISOString().split('T')[0];
-            const today = new Date();
-            
-            if (today < nextClaimDate) {
-              this.updateEligibility(
-                result,
-                employeeCode,
-                false,
-                `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr} ครั้งต่อไปที่เบิกได้ ${nextClaimDateStr}`,
-              );
-              continue; // ข้ามไปพนักงานถัดไป
-            }
-          } else {
-            this.updateEligibility(
-              result,
-              employeeCode,
-              false,
-              `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr}`,
-            );
-            continue; // ข้ามไปพนักงานถัดไป
-          }
-        }
+      let latestInternational: (typeof existingClothingExpenses)[0] | null =
+        null;
 
-      // เช็คประเภทประเทศ (A/B/C) จากข้อมูลการเบิกครั้งก่อน
-      const latestExpense = existingClothingExpenses[0];
-      
-      // หา กลุ่มประเทศค่าเครื่องแต่งกายจากใบเก่า
-      let oldDestinationGroup;
-      if (latestExpense.destination_country) {
-        // ลองหาใน countries ก่อนด้วยชื่อประเทศ
-        const oldCountry = await this.knexService
-          .knex('countries')
-          .where('name_th', latestExpense.destination_country)
+      for (const expense of existingClothingExpenses) {
+        if (!expense.approval_id) continue;
+        const approval = await this.knexService
+          .knex('approval')
+          .where('id', expense.approval_id)
+          .select('travel_type')
           .first();
-        if (oldCountry) {
-          // หา group จาก country
-          oldDestinationGroup = await this.knexService
-            .knex('attire_destination_group_countries as adgc')
-            .join('attire_destination_groups as adg', 'adgc.destination_group_id', 'adg.id')
-            .where('adgc.country_id', oldCountry.id)
-            .where('adg.assignment_type', 'PERMANENT')
-            .select('adg.*')
-            .first();
-
-          // ถ้าไม่เจอ group → ให้ถือว่าเป็น PERM_A
-          if (!oldDestinationGroup) {
-            oldDestinationGroup = await this.knexService
-              .knex('attire_destination_groups')
-              .where('group_code', 'PERM_A')
-              .where('assignment_type', 'PERMANENT')
-              .first();
-          }
-        } else {
-          // ลองหาใน office_international ด้วยชื่อ office
-          const oldOffice = await this.knexService
-            .knex('office_international')
-            .where('office_international.name', latestExpense.destination_country)
-            .join('countries', 'office_international.country_id', 'countries.id')
-            .select('countries.*')
-            .first();
-          if (oldOffice) {
-            // หา group จาก country ของ office
-            oldDestinationGroup = await this.knexService
-              .knex('attire_destination_group_countries as adgc')
-              .join('attire_destination_groups as adg', 'adgc.destination_group_id', 'adg.id')
-              .where('adgc.country_id', oldOffice.id)
-              .where('adg.assignment_type', 'PERMANENT')
-              .select('adg.*')
-              .first();
-
-            // ถ้าไม่เจอ group → ให้ถือว่าเป็น PERM_A
-            if (!oldDestinationGroup) {
-              oldDestinationGroup = await this.knexService
-                .knex('attire_destination_groups')
-                .where('group_code', 'PERM_A')
-                .where('assignment_type', 'PERMANENT')
-                .first();
-            }
-          }
+        if (approval?.travel_type === 'international') {
+          latestInternational = expense;
+          break;
         }
       }
-      // หา กลุ่มประเทศค่าเครื่องแต่งกายของ current destination employee
-      const destination = checkEligibilityDto.employees.find(
-        (emp) => emp.employeeCode === employeeCode,
-      );
-      let currentDestinationGroup;
-      if (destination.destinationTable === 'countries') {
-        const currentCountry = await this.knexService
-          .knex('countries')
-          .where('id', destination.destinationId)
-          .first();
-        if (currentCountry) {
-          currentDestinationGroup = await this.knexService
-            .knex('attire_destination_group_countries as adgc')
-            .join('attire_destination_groups as adg', 'adgc.destination_group_id', 'adg.id')
-            .where('adgc.country_id', currentCountry.id)
-            .where('adg.assignment_type', 'PERMANENT')
-            .select('adg.*')
-            .first();
 
-          // ถ้าไม่เจอ group → ให้ถือว่าเป็น PERM_A
-          if (!currentDestinationGroup) {
-            currentDestinationGroup = await this.knexService
-              .knex('attire_destination_groups')
-              .where('group_code', 'PERM_A')
-              .where('assignment_type', 'PERMANENT')
-              .first();
-          }
-        }
-      } else if (destination.destinationTable === 'tatOffices') {
-        const currentOffice = await this.knexService
-          .knex('office_international')
-          .where('office_international.id', destination.destinationId)
-          .join('countries', 'office_international.country_id', 'countries.id')
-          .select('countries.*')
-          .first();
-        if (currentOffice) {
-          currentDestinationGroup = await this.knexService
-            .knex('attire_destination_group_countries as adgc')
-            .join('attire_destination_groups as adg', 'adgc.destination_group_id', 'adg.id')
-            .where('adgc.country_id', currentOffice.id)
-            .where('adg.assignment_type', 'PERMANENT')
-            .select('adg.*')
-            .first();
-
-          // ถ้าไม่เจอ group → ให้ถือว่าเป็น PERM_A
-          if (!currentDestinationGroup) {
-            currentDestinationGroup = await this.knexService
-              .knex('attire_destination_groups')
-              .where('group_code', 'PERM_A')
-              .where('assignment_type', 'PERMANENT')
-              .first();
-          }
-        }
+      if (!latestInternational) {
+        this.updateEligibility(result, employeeCode, true);
+        continue;
       }
-      if (currentDestinationGroup && oldDestinationGroup) {
-        const lastClaimDateStr = latestExpense.work_start_date 
-          ? latestExpense.work_start_date
-          : undefined;
-        const nextClaimDateStr = latestExpense.next_claim_date
-          ? new Date(latestExpense.next_claim_date).toISOString().split('T')[0]
-          : undefined;
-          
-        // ถ้าเป็นกลุ่มประเทศค่าเครื่องแต่งกายของ ใบเก่า และ ใบใหม่ ไม่เหมือนกัน, set isEligible true
-        if (currentDestinationGroup.group_code !== oldDestinationGroup.group_code) {
-          this.updateEligibility(result, employeeCode, true);
-          continue; // ข้ามไปพนักงานถัดไป
-        } else {
-          // ถ้ากลุ่มเหมือนกัน → เช็ค 2 ปี
-          const isOverTwoYears = this.isOverTwoYears(
-            latestExpense.created_at,
-            checkEligibilityDto.workStartDate,
+
+      const expense = latestInternational;
+      const lastClaimDateStr = expense.work_start_date
+        ? expense.work_start_date
+        : undefined;
+
+      if (expense.next_claim_date) {
+        const nextClaimDate = new Date(expense.next_claim_date);
+        const nextClaimDateStr = nextClaimDate.toISOString().split('T')[0];
+        const today = new Date();
+        if (today < nextClaimDate) {
+          this.updateEligibility(
+            result,
+            employeeCode,
+            false,
+            `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr} ครั้งต่อไปที่เบิกได้ ${nextClaimDateStr}`,
           );
-          if (isOverTwoYears) {
-            this.updateEligibility(result, employeeCode, true);
-          } else {
-            const reason = nextClaimDateStr
-              ? `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr} ครั้งต่อไปที่เบิกได้ ${nextClaimDateStr}`
-              : `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr}`;
-            this.updateEligibility(result, employeeCode, false, reason);
-          }
-          continue; // ข้ามไปพนักงานถัดไป
+        } else {
+          this.updateEligibility(result, employeeCode, true);
         }
+      } else {
+        this.updateEligibility(
+          result,
+          employeeCode,
+          false,
+          `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr}`,
+        );
       }
-      }
-
-      // ถ้าไม่มีข้อมูลการเบิกหรือถึงวันที่เบิกได้แล้ว → เช็ค PS_PW_JOB
-      // const pwJob = await this.getPwJob(employeeCode);
-
-      // // ถ้าไม่เจอข้อมูลการเบิกล่าสุด, set isEligible true
-      // if (!pwJob) {
-      //   this.updateEligibility(result, employeeCode, true);
-      // } else {
-      //   await this.processPwJobForInternational(
-      //     pwJob,
-      //     checkEligibilityDto,
-      //     result,
-      //     employeeCode,
-      //   );
-      // }
-
-      // ถ้าไม่มีข้อมูลการเบิก → set isEligible true
-      this.updateEligibility(result, employeeCode, true);
     }
   }
 
+  /**
+   * ชั่วคราว: ยกเว้นประเทศ / บล็อกเฉพาะเมื่อมี next_claim_date (ประจำหรือชั่วคราว) แล้วยังไม่ถึงวันนั้น
+   * — ไม่มี next_claim ฝั่งประจำหรือชั่วคราวก็ไม่บล็อกจากรอบนั้น; ไม่ใช้ reporting_date
+   */
   private async processTemporaryInternationalEligibility(
-    checkEligibilityDto: CheckClothingExpenseEligibilityDto,
+    _checkEligibilityDto: CheckClothingExpenseEligibilityDto,
     result: ClothingExpenseEligibilityResponseDto[],
   ): Promise<void> {
-    
+    const todayStr = new Date().toISOString().split('T')[0];
+
     for (const employeeCode of result.map((r) => r.employeeCode)) {
-      
-      const destination = checkEligibilityDto.employees.find(
+      const destination = _checkEligibilityDto.employees.find(
         (emp) => emp.employeeCode === employeeCode,
       );
-      
+
       if (destination) {
         const exemptedInfo = await this.getCountryExemptedInfo(
           destination.destinationTable,
           destination.destinationId,
         );
-        
+
         if (exemptedInfo.isExempted) {
           this.updateEligibility(
             result,
@@ -2795,125 +2661,106 @@ export class ApprovalService {
           continue;
         }
       }
-      
+
       const existingClothingExpenses = await this.knexService
         .knex('approval_clothing_expense')
         .where('employee_code', String(employeeCode))
         .orderBy('created_at', 'desc');
 
+      let latestIntlExpense: (typeof existingClothingExpenses)[0] | null = null;
+      for (const expense of existingClothingExpenses) {
+        if (!expense.approval_id) continue;
+        const approval = await this.knexService
+          .knex('approval')
+          .where('id', expense.approval_id)
+          .select('travel_type')
+          .first();
+        if (approval?.travel_type === 'international') {
+          latestIntlExpense = expense;
+          break;
+        }
+      }
 
-      if (existingClothingExpenses.length > 0) {
-        
-        let latestTemporaryRecord = null;
-        let latestRecordWithNextClaimDate = null;
-        
-        for (const expense of existingClothingExpenses) {
-          // ถ้ามี approval_id ให้เช็ค travel_type
-          if (expense.approval_id) {
-            const approval = await this.knexService
-              .knex('approval')
-              .where('id', expense.approval_id)
-              .select('travel_type')
-              .first();
-              
-              
-            if (['temporary-international', 'training-international', 'temporary-both'].includes(approval?.travel_type)) {
-              latestTemporaryRecord = { expense, approval };
-              break;
-            }
-          } else {
-            // ถ้าไม่มี approval_id แต่มี next_claim_date ให้เก็บไว้เช็ค
-            if (expense.next_claim_date && !latestRecordWithNextClaimDate) {
-              latestRecordWithNextClaimDate = expense;
-            }
+      let barrierFromInternational: string | null = null;
+      if (latestIntlExpense) {
+        barrierFromInternational = this.toDateOnlyString(
+          latestIntlExpense.next_claim_date,
+        );
+      }
+
+      let latestTemporaryRecord: {
+        expense: (typeof existingClothingExpenses)[0];
+        approval: { travel_type?: string };
+      } | null = null;
+      let latestRecordWithNextClaimDate: (typeof existingClothingExpenses)[0] | null =
+        null;
+
+      for (const expense of existingClothingExpenses) {
+        if (expense.approval_id) {
+          const approval = await this.knexService
+            .knex('approval')
+            .where('id', expense.approval_id)
+            .select('travel_type')
+            .first();
+
+          if (
+            [
+              'temporary-international',
+              'training-international',
+              'temporary-both',
+            ].includes(approval?.travel_type)
+          ) {
+            latestTemporaryRecord = { expense, approval };
+            break;
           }
+        } else if (expense.next_claim_date && !latestRecordWithNextClaimDate) {
+          latestRecordWithNextClaimDate = expense;
         }
-        
-        // ถ้าเจอ temporary record ที่มี approval_id
-        if (latestTemporaryRecord) {
-          const expense = latestTemporaryRecord.expense;
-          const lastClaimDateStr = expense.work_start_date 
-            ? expense.work_start_date
-            : undefined;
-          
-          if (expense.next_claim_date) {
-            const nextClaimDate = new Date(expense.next_claim_date);
-            const nextClaimDateStr = nextClaimDate.toISOString().split('T')[0];
-            const today = new Date();
-            
-            
-            if (today < nextClaimDate) {
-              this.updateEligibility(
-                result,
-                employeeCode,
-                false,
-                `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr} ครั้งต่อไปที่เบิกได้ ${nextClaimDateStr}`,
-              );
-              continue;
-            } else {
-              this.updateEligibility(result, employeeCode, true);
-              continue;
-            }
-          } else {
-            this.updateEligibility(
-              result,
-              employeeCode,
-              false,
-              `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr}`,
-            );
-            continue;
-          }
-        } 
-        // ถ้าไม่เจอ temporary record แต่เจอ record ที่มี next_claim_date (แม้ไม่มี approval_id)
-        else if (latestRecordWithNextClaimDate) {
-          const expense = latestRecordWithNextClaimDate;
-          const lastClaimDateStr = expense.work_start_date
-            ? expense.work_start_date
-            : undefined;
-          const nextClaimDate = new Date(expense.next_claim_date);
-          const nextClaimDateStr = nextClaimDate.toISOString().split('T')[0];
-          const today = new Date();
-          
-          if (today < nextClaimDate) {
-            this.updateEligibility(
-              result,
-              employeeCode,
-              false,
-              `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr} ครั้งต่อไปที่เบิกได้ ${nextClaimDateStr}`,
-            );
-            continue;
-          } else {
-            this.updateEligibility(result, employeeCode, true);
-            continue;
-          }
-        } 
-        // ถ้าไม่เจอ temporary record และไม่มี next_claim_date
-        else {
-          this.updateEligibility(result, employeeCode, true);
-          continue;
-        }
-      } else {
-        this.updateEligibility(result, employeeCode, true);
+      }
+
+      let tempNextStr: string | null = null;
+
+      if (latestTemporaryRecord?.expense.next_claim_date) {
+        tempNextStr = this.toDateOnlyString(
+          latestTemporaryRecord.expense.next_claim_date,
+        );
+      } else if (
+        !latestTemporaryRecord &&
+        latestRecordWithNextClaimDate?.next_claim_date
+      ) {
+        tempNextStr = this.toDateOnlyString(
+          latestRecordWithNextClaimDate.next_claim_date,
+        );
+      }
+
+      const barriers: string[] = [];
+      if (barrierFromInternational) barriers.push(barrierFromInternational);
+      if (tempNextStr) barriers.push(tempNextStr);
+      const effectiveNext =
+        barriers.length > 0
+          ? barriers.reduce((a, b) => (a > b ? a : b))
+          : null;
+
+      if (effectiveNext && todayStr < effectiveNext) {
+        const intlHint = barrierFromInternational
+          ? `รอบจากประวัติประจำ (${barrierFromInternational})`
+          : null;
+        const tempHint = tempNextStr
+          ? `รอบเบิกชั่วคราวจากประวัติเดิม (${tempNextStr})`
+          : null;
+        const hint = [intlHint, tempHint].filter(Boolean).join(' / ');
+        this.updateEligibility(
+          result,
+          employeeCode,
+          false,
+          hint
+            ? `ครั้งต่อไปที่เบิกชั่วคราวได้ ${effectiveNext} — ${hint}`
+            : `ครั้งต่อไปที่เบิกชั่วคราวได้ ${effectiveNext}`,
+        );
         continue;
       }
 
-      // ถ้าไม่มีข้อมูลการเบิกหรือถึงวันที่เบิกได้แล้ว → เช็ค PS_PW_JOB
-      // this.logger.log(`[Temporary International] Querying PS_PW_JOB for employee ${employeeCode}`);
-      // const pwJob = await this.getPwJob(employeeCode);
-
-      // // ถ้าไม่เจอข้อมูลการเบิกล่าสุด, set isEligible true
-      // if (!pwJob) {
-      //   this.logger.log(`[Temporary International] No PS_PW_JOB found for employee ${employeeCode}, setting isEligible = true`);
-      //   this.updateEligibility(result, employeeCode, true);
-      // } else {
-      //   this.logger.log(`[Temporary International] Found PS_PW_JOB: ${JSON.stringify(pwJob)}`);
-      //   await this.processPwJobForTemporaryInternational(
-      //     pwJob,
-      //     checkEligibilityDto,
-      //     result,
-      //     employeeCode,
-      //   );
-      // }
+      this.updateEligibility(result, employeeCode, true);
     }
   }
 
@@ -3153,18 +3000,6 @@ export class ApprovalService {
   //   this.updateEligibility(result, employeeCode, isOverTwoYears);
   // }
 
-  private isOverTwoYears(effdt: string, workStartDate: string): boolean {
-    const effdtDate = new Date(effdt);
-    const workStartDateObj = new Date(workStartDate);
-    
-    // คำนวณความแตกต่างระหว่างวันที่ (ไม่ใช้ Math.abs())
-    const diffTime = workStartDateObj.getTime() - effdtDate.getTime();
-    const diffDays = diffTime / (1000 * 60 * 60 * 24);
-    const diffYears = diffDays / 365;
-    
-    return diffYears > 2;
-  }
-
   private updateEligibility(
     result: ClothingExpenseEligibilityResponseDto[],
     employeeCode: number,
@@ -3183,15 +3018,115 @@ export class ApprovalService {
     }
   }
 
+  private getFirstTravelDateRangeFromDto(
+    travelDateRanges?: Array<{ start_date?: string; end_date?: string }>,
+  ): { start: string | null; end: string | null } {
+    const first = travelDateRanges?.[0];
+    if (!first) {
+      return { start: null, end: null };
+    }
+    return {
+      start: first.start_date ?? null,
+      end: first.end_date ?? null,
+    };
+  }
+
+  private getCheckedWorkLocationDateRange(
+    workLocations?: Array<{
+      checked?: number | boolean;
+      tripDateRanges?: Array<{ start_date?: string; end_date?: string }>;
+    }>,
+  ): { start: string | null; end: string | null } {
+    if (!workLocations?.length) {
+      return { start: null, end: null };
+    }
+
+    let minStart: string | null = null;
+    let maxEnd: string | null = null;
+
+    for (const wl of workLocations) {
+      if (!wl.checked) continue;
+      for (const range of wl.tripDateRanges ?? []) {
+        if (range.start_date && (!minStart || range.start_date < minStart)) {
+          minStart = range.start_date;
+        }
+        if (range.end_date && (!maxEnd || range.end_date > maxEnd)) {
+          maxEnd = range.end_date;
+        }
+      }
+    }
+
+    return { start: minStart, end: maxEnd };
+  }
+
+  private getCheckedWorkLocationDestinationCountries(
+    workLocations?: Array<{
+      checked?: number | boolean;
+      destination?: string;
+      destinationTable?: string;
+    }>,
+  ): string | null {
+    if (!workLocations?.length) {
+      return null;
+    }
+    const seen = new Set<string>();
+    const parts: string[] = [];
+    for (const wl of workLocations) {
+      if (!wl.checked) continue;
+      if (wl.destinationTable !== 'countries') continue;
+      const name = wl.destination?.trim();
+      if (!name) continue;
+      if (seen.has(name)) continue;
+      seen.add(name);
+      parts.push(name);
+    }
+    return parts.length > 0 ? parts.join(', ') : null;
+  }
+
   private calculateNextClaimDate(reportingDate: string): string {
-    //  next_claim_date = (reportingDate + 2 ปี + 1 วัน )
-    const reportingDateObj = new Date(reportingDate);
-    const nextClaimDate = new Date(
-      reportingDateObj.getTime() +
-        2 * 365 * 24 * 60 * 60 * 1000 +
-        24 * 60 * 60 * 1000,
-    );
-    return nextClaimDate.toISOString().split('T')[0];
+    const s = String(reportingDate).trim();
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+    let baseUtc: Date;
+    if (m) {
+      baseUtc = new Date(
+        Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])),
+      );
+    } else {
+      const d = new Date(s);
+      if (Number.isNaN(d.getTime())) {
+        const reportingDateObj = new Date(reportingDate);
+        const nextClaimDate = new Date(
+          reportingDateObj.getTime() +
+            2 * 365 * 24 * 60 * 60 * 1000 +
+            24 * 60 * 60 * 1000,
+        );
+        return nextClaimDate.toISOString().split('T')[0];
+      }
+      baseUtc = new Date(
+        Date.UTC(
+          d.getUTCFullYear(),
+          d.getUTCMonth(),
+          d.getUTCDate(),
+        ),
+      );
+    }
+    const next = new Date(baseUtc.getTime());
+    next.setUTCFullYear(next.getUTCFullYear() + 2);
+    next.setUTCDate(next.getUTCDate() + 1);
+    return next.toISOString().split('T')[0];
+  }
+
+  private toDateOnlyString(
+    value: string | Date | null | undefined,
+  ): string | null {
+    if (value == null) return null;
+    if (value instanceof Date) {
+      if (Number.isNaN(value.getTime())) return null;
+      return value.toISOString().split('T')[0];
+    }
+    const s = String(value).trim();
+    const m = /^(\d{4}-\d{2}-\d{2})/.exec(s);
+    return m ? m[1] : null;
   }
 
   // Approval Status Label methods
@@ -4286,6 +4221,10 @@ export class ApprovalService {
             staffMember.clothingExpenses.length > 0
           ) {
             for (const expense of staffMember.clothingExpenses) {
+              const copiedDestinationCountry =
+                this.getCheckedWorkLocationDestinationCountries(
+                  staffMember.workLocations,
+                ) ?? expense.destinationCountry;
               await trx('approval_clothing_expense').insert({
                 approval_id: newApproval.id,
                 staff_member_id: newStaffMember.id,
@@ -4297,7 +4236,7 @@ export class ApprovalService {
                 next_claim_date: expense.nextClaimDate,
                 work_end_date: expense.workEndDate,
                 increment_id: newApproval.increment_id,
-                destination_country: expense.destinationCountry,
+                destination_country: copiedDestinationCountry,
                 attachment_id: expense.attachmentId,
                 created_at: new Date(),
                 updated_at: new Date(),

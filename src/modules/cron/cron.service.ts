@@ -197,14 +197,37 @@ export class CronService {
     }
   }
 
+  /** +2 ปีตามปฏิทิน (UTC) แล้ว +1 วัน — ให้ตรงกับ approval.service calculateNextClaimDate */
   private calculateNextClaimDate(reportingDate: string): string {
-    //  next_claim_date = (reportingDate + 2 ปี + 1 วัน )
-    const reportingDateObj = new Date(reportingDate);
-    const nextClaimDate = new Date(
-      reportingDateObj.getTime() +
-        2 * 365 * 24 * 60 * 60 * 1000 +
-        24 * 60 * 60 * 1000,
-    );
-    return nextClaimDate.toISOString().split('T')[0];
+    const s = String(reportingDate).trim();
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+    let baseUtc: Date;
+    if (m) {
+      baseUtc = new Date(
+        Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])),
+      );
+    } else {
+      const d = new Date(s);
+      if (Number.isNaN(d.getTime())) {
+        const reportingDateObj = new Date(reportingDate);
+        const nextClaimDate = new Date(
+          reportingDateObj.getTime() +
+            2 * 365 * 24 * 60 * 60 * 1000 +
+            24 * 60 * 60 * 1000,
+        );
+        return nextClaimDate.toISOString().split('T')[0];
+      }
+      baseUtc = new Date(
+        Date.UTC(
+          d.getUTCFullYear(),
+          d.getUTCMonth(),
+          d.getUTCDate(),
+        ),
+      );
+    }
+    const next = new Date(baseUtc.getTime());
+    next.setUTCFullYear(next.getUTCFullYear() + 2);
+    next.setUTCDate(next.getUTCDate() + 1);
+    return next.toISOString().split('T')[0];
   }
 }
