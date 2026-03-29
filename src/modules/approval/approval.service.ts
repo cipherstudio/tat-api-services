@@ -2620,10 +2620,6 @@ export class ApprovalService {
     }
   }
 
-  /**
-   * ชั่วคราว: ยกเว้นประเทศ / บล็อกเฉพาะเมื่อมี next_claim_date (ประจำหรือชั่วคราว) แล้วยังไม่ถึงวันนั้น
-   * — ไม่มี next_claim ฝั่งประจำหรือชั่วคราวก็ไม่บล็อกจากรอบนั้น; ไม่ใช้ reporting_date
-   */
   private async processTemporaryInternationalEligibility(
     _checkEligibilityDto: CheckClothingExpenseEligibilityDto,
     result: ClothingExpenseEligibilityResponseDto[],
@@ -2657,95 +2653,23 @@ export class ApprovalService {
         .where('employee_code', String(employeeCode))
         .orderBy('created_at', 'desc');
 
-      let latestIntlExpense: (typeof existingClothingExpenses)[0] | null = null;
-      for (const expense of existingClothingExpenses) {
-        if (!expense.approval_id) continue;
-        const approval = await this.knexService
-          .knex('approval')
-          .where('id', expense.approval_id)
-          .select('travel_type')
-          .first();
-        if (approval?.travel_type === 'international') {
-          latestIntlExpense = expense;
-          break;
-        }
-      }
-
-      let barrierFromInternational: string | null = null;
-      if (latestIntlExpense) {
-        barrierFromInternational = this.toDateOnlyString(
-          latestIntlExpense.next_claim_date,
-        );
-      }
-
-      let latestTemporaryRecord: {
-        expense: (typeof existingClothingExpenses)[0];
-        approval: { travel_type?: string };
-      } | null = null;
-      let latestRecordWithNextClaimDate: (typeof existingClothingExpenses)[0] | null =
-        null;
+      let effectiveNext: string | null = null;
+      let blockingExpense: (typeof existingClothingExpenses)[0] | null = null;
 
       for (const expense of existingClothingExpenses) {
-        if (expense.approval_id) {
-          const approval = await this.knexService
-            .knex('approval')
-            .where('id', expense.approval_id)
-            .select('travel_type')
-            .first();
-
-          if (
-            [
-              'temporary-international',
-              'training-international',
-              'temporary-both',
-            ].includes(approval?.travel_type)
-          ) {
-            latestTemporaryRecord = { expense, approval };
-            break;
-          }
-        } else if (expense.next_claim_date && !latestRecordWithNextClaimDate) {
-          latestRecordWithNextClaimDate = expense;
+        const d = this.toDateOnlyString(expense.next_claim_date);
+        if (!d) continue;
+        if (!effectiveNext || d > effectiveNext) {
+          effectiveNext = d;
+          blockingExpense = expense;
         }
       }
-
-      let tempNextStr: string | null = null;
-
-      if (latestTemporaryRecord?.expense.next_claim_date) {
-        tempNextStr = this.toDateOnlyString(
-          latestTemporaryRecord.expense.next_claim_date,
-        );
-      } else if (
-        !latestTemporaryRecord &&
-        latestRecordWithNextClaimDate?.next_claim_date
-      ) {
-        tempNextStr = this.toDateOnlyString(
-          latestRecordWithNextClaimDate.next_claim_date,
-        );
-      }
-
-      const barriers: string[] = [];
-      if (barrierFromInternational) barriers.push(barrierFromInternational);
-      if (tempNextStr) barriers.push(tempNextStr);
-      const effectiveNext =
-        barriers.length > 0
-          ? barriers.reduce((a, b) => (a > b ? a : b))
-          : null;
 
       if (effectiveNext && todayStr < effectiveNext) {
-        let lastClaimDateStr: string | undefined;
-        if (
-          barrierFromInternational === effectiveNext &&
-          latestIntlExpense
-        ) {
-          lastClaimDateStr = latestIntlExpense.work_start_date
-            ? String(latestIntlExpense.work_start_date)
+        const lastClaimDateStr =
+          blockingExpense?.work_start_date != null
+            ? String(blockingExpense.work_start_date)
             : undefined;
-        } else if (tempNextStr === effectiveNext) {
-          const ws =
-            latestTemporaryRecord?.expense.work_start_date ??
-            latestRecordWithNextClaimDate?.work_start_date;
-          lastClaimDateStr = ws != null ? String(ws) : undefined;
-        }
         this.updateEligibility(
           result,
           employeeCode,

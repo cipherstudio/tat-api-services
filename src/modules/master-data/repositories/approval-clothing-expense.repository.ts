@@ -153,14 +153,15 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
   private applySearchTerm(query: any, searchTerm?: string) {
     if (searchTerm && searchTerm.trim() !== '') {
       const searchTerm_clean = searchTerm.trim();
-      
-      query.where(function() {
+      const knex = this.knex;
+
+      query.where(function () {
         this.where('omt.PMT_NAME_T', 'like', `%${searchTerm_clean}%`)
             .orWhere('omt.PMT_NAME_E', 'like', `%${searchTerm_clean}%`)
             .orWhere('ace.employee_code', 'like', `%${searchTerm_clean}%`)
             .orWhere('omt.PMT_CODE', 'like', `%${searchTerm_clean}%`)
             .orWhere('ace.increment_id', 'like', `%${searchTerm_clean}%`)
-            .orWhere(this.knex.raw('"asm"."name" LIKE ?', [`%${searchTerm_clean}%`]));
+            .orWhere(knex.raw('"asm"."name" LIKE ?', [`%${searchTerm_clean}%`]));
       });
     }
   }

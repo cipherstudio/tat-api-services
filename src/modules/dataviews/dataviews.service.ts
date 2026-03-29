@@ -84,14 +84,24 @@ export class DataviewsService {
     return this.employeeRepository.findAll();
   }
 
-  async findEmployeeByCode(code: string): Promise<Employee | undefined> {
-    return this.employeeRepository.findByCode(code);
+  async findEmployeeByCode(code: string): Promise<any | undefined> {
+    const [employee, deputies] = await Promise.all([
+      this.employeeRepository.findByCode(code),
+      this.abDeputyRepository.findByPmtCode(code),
+    ]);
+    if (!employee) return undefined;
+    return { ...employee, deputies };
   }
 
   async findEmployeeByCodeWithPosition4ot(
     code: string,
   ): Promise<any | undefined> {
-    return this.employeeRepository.findByCodeWithPosition4ot(code);
+    const [employee, deputies] = await Promise.all([
+      this.employeeRepository.findByCodeWithPosition4ot(code),
+      this.abDeputyRepository.findByPmtCode(code),
+    ]);
+    if (!employee) return undefined;
+    return { ...employee, deputies };
   }
 
   async checkEmployeeIsAdmin(pmtCode: string): Promise<boolean> {

@@ -11,6 +11,17 @@ export class AbDeputyRepository extends KnexBaseRepository<AbDeputy> {
     super(knexService, 'AB_DEPUTY');
   }
 
+  async findByPmtCode(pmtCode: string): Promise<AbDeputy[]> {
+    const trimmed = (pmtCode ?? '').trim();
+    if (!trimmed) return [];
+
+    const rows = await this.knex(this.tableName)
+      .whereRaw('RTRIM("PMT_CODE") = ?', [trimmed])
+      .orderBy('GDP_DEPUTY_PRIORITY', 'asc');
+
+    return Promise.all(rows.map((r) => toCamelCase<AbDeputy>(r)));
+  }
+
   async findWithQuery(query: QueryAbDeputyDto): Promise<{
     data: AbDeputy[];
     meta: { total: number; limit: number; offset: number };
