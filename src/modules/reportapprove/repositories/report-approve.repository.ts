@@ -13,6 +13,13 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
     super(knexService, 'report_approve');
   }
 
+  /** Oracle: SELECT DISTINCT กับ CLOB ได้ ORA-00932 — cast เป็น VARCHAR2(4000) */
+  private castTextForDistinct(table: string, column: string, alias: string) {
+    return this.knex.raw(
+      `CAST("${table}"."${column}" AS VARCHAR2(4000)) as "${alias}"`,
+    );
+  }
+
   async findWithPaginationAndSearch(
     page: number = 1,
     limit: number = 10,
@@ -141,7 +148,7 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
           this.knex.raw('RTRIM("OP_MASTER_T"."PMT_CODE")'),
         );
       })
-      .select(
+      .distinct(
         // Report Approve columns
         'report_approve.id',
         'report_approve.title',
@@ -199,15 +206,36 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_traveller.updated_at as traveller_updated_at',
         'report_traveller.traveller_code as traveller_code',
         'report_traveller.traveler_id as traveller_traveler_id',
+        // report_daily_travel_detail — ข้อความเป็น CLOB; DISTINCT ต้อง CAST
         'report_daily_travel_detail.detail_id as daily_travel_detail_id',
         'report_daily_travel_detail.form_id as daily_travel_detail_form_id',
-        'report_daily_travel_detail.departure_place as daily_travel_detail_departure_place',
+        this.castTextForDistinct(
+          'report_daily_travel_detail',
+          'departure_place',
+          'daily_travel_detail_departure_place',
+        ),
         'report_daily_travel_detail.departure_date as daily_travel_detail_departure_date',
-        'report_daily_travel_detail.departure_time as daily_travel_detail_departure_time',
-        'report_daily_travel_detail.return_place as daily_travel_detail_return_place',
+        this.castTextForDistinct(
+          'report_daily_travel_detail',
+          'departure_time',
+          'daily_travel_detail_departure_time',
+        ),
+        this.castTextForDistinct(
+          'report_daily_travel_detail',
+          'return_place',
+          'daily_travel_detail_return_place',
+        ),
         'report_daily_travel_detail.return_date as daily_travel_detail_return_date',
-        'report_daily_travel_detail.return_time as daily_travel_detail_return_time',
-        'report_daily_travel_detail.travel_details as daily_travel_detail_travel_details',
+        this.castTextForDistinct(
+          'report_daily_travel_detail',
+          'return_time',
+          'daily_travel_detail_return_time',
+        ),
+        this.castTextForDistinct(
+          'report_daily_travel_detail',
+          'travel_details',
+          'daily_travel_detail_travel_details',
+        ),
         // report_holiday_wage_detail columns
         'report_holiday_wage_detail.holiday_id as holiday_wage_detail_id',
         'report_holiday_wage_detail.form_id as holiday_wage_detail_form_id',
