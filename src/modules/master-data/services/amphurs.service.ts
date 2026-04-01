@@ -6,6 +6,7 @@ import { UpdateAmphursDto } from '../dto/update-amphurs.dto';
 import { AmphursQueryDto } from '../dto/amphurs-query.dto';
 import { PaginatedResult } from '@common/interfaces/pagination.interface';
 import { RedisCacheService } from '../../cache/redis-cache.service';
+import { KnexService } from '../../../database/knex-service/knex.service';
 
 @Injectable()
 export class AmphursService {
@@ -15,6 +16,7 @@ export class AmphursService {
   constructor(
     private readonly amphursRepository: AmphursRepository,
     private readonly cacheService: RedisCacheService,
+    private readonly knexService: KnexService,
   ) {}
 
   async create(createAmphursDto: CreateAmphursDto): Promise<Amphurs> {
@@ -161,14 +163,17 @@ export class AmphursService {
   }
 
   async remove(id: number): Promise<void> {
-    const result = await this.amphursRepository.delete(id);
-    if (!result) {
+    const existing = await this.amphursRepository.findById(id);
+    if (!existing) {
       throw new NotFoundException(`Amphurs with ID ${id} not found`);
     }
 
-    // Remove from cache
+    await this.knexService.transaction(async (trx) => {
+      await trx('expenses_bangkok_to_place').where({ amphur_id: id }).del();
+      await trx('amphurs').where({ id }).del();
+    });
+
     await this.cacheService.del(this.cacheService.generateKey(this.CACHE_PREFIX, id));
-    // Invalidate the list cache
     await this.cacheService.del(this.cacheService.generateListKey(this.CACHE_PREFIX));
   }
 } 

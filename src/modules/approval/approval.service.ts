@@ -1909,7 +1909,6 @@ export class ApprovalService {
 
                   let reportingDateForDb: string | null = null;
                   if (isTemporaryTravel) {
-                    reportingDateForDb = workEndDate ?? null;
                     if (workStartDate) {
                       nextClaimDate = this.calculateNextClaimDate(workStartDate);
                     }
@@ -2558,65 +2557,60 @@ export class ApprovalService {
     return result;
   }
 
-  /** เบิกประจำ (international): เช็คเฉพาะประวัติใบประจำ ไม่ปนกับชั่วคราว และไม่แยกกลุ่มประเทศ A/B/C */
   private async processInternationalEligibility(
-    _checkEligibilityDto: CheckClothingExpenseEligibilityDto,
+    checkEligibilityDto: CheckClothingExpenseEligibilityDto,
     result: ClothingExpenseEligibilityResponseDto[],
   ): Promise<void> {
     for (const employeeCode of result.map((r) => r.employeeCode)) {
-      const existingClothingExpenses = await this.knexService
-        .knex('approval_clothing_expense')
-        .where('employee_code', String(employeeCode))
-        .orderBy('created_at', 'desc');
+      const destination = checkEligibilityDto.employees.find(
+        (emp) => String(emp.employeeCode) === String(employeeCode),
+      );
 
-      let latestInternational: (typeof existingClothingExpenses)[0] | null =
-        null;
-
-      for (const expense of existingClothingExpenses) {
-        if (!expense.approval_id) continue;
-        const approval = await this.knexService
-          .knex('approval')
-          .where('id', expense.approval_id)
-          .select('travel_type')
-          .first();
-        if (approval?.travel_type === 'international') {
-          latestInternational = expense;
-          break;
-        }
-      }
-
-      if (!latestInternational) {
-        this.updateEligibility(result, employeeCode, true);
-        continue;
-      }
-
-      const expense = latestInternational;
-      const lastClaimDateStr = expense.work_start_date
-        ? expense.work_start_date
-        : undefined;
-
-      if (expense.next_claim_date) {
-        const nextClaimDate = new Date(expense.next_claim_date);
-        const nextClaimDateStr = nextClaimDate.toISOString().split('T')[0];
-        const today = new Date();
-        if (today < nextClaimDate) {
-          this.updateEligibility(
-            result,
-            employeeCode,
-            false,
-            `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr} ครั้งต่อไปที่เบิกได้ ${nextClaimDateStr}`,
-          );
-        } else {
-          this.updateEligibility(result, employeeCode, true);
-        }
-      } else {
+      if (!destination) {
         this.updateEligibility(
           result,
           employeeCode,
           false,
-          `วันที่ทำการเบิกครั้งล่าสุด ${lastClaimDateStr}`,
+          'ไม่พบข้อมูลปลายทางของพนักงาน',
         );
+        continue;
       }
+
+      const resolved = await this.resolveDestinationCountry(
+        destination.destinationTable,
+        destination.destinationId,
+      );
+
+      if (resolved.countryId == null) {
+        this.updateEligibility(
+          result,
+          employeeCode,
+          false,
+          'ไม่พบข้อมูลประเทศจากปลายทางที่ระบุ',
+        );
+        continue;
+      }
+
+      const permanentExempt = await this.getCountryAttireExemptInfo(
+        destination.destinationTable,
+        destination.destinationId,
+        'permanent',
+      );
+
+      if (permanentExempt.isExempted) {
+        const namePart = permanentExempt.countryName
+          ? ` (${permanentExempt.countryName})`
+          : '';
+        this.updateEligibility(
+          result,
+          employeeCode,
+          false,
+          `เป็นประเทศที่ไม่สามารถเบิกได้${namePart}`,
+        );
+        continue;
+      }
+
+      this.updateEligibility(result, employeeCode, true);
     }
   }
 
@@ -2691,54 +2685,84 @@ export class ApprovalService {
     return info.isExempted;
   }
 
-  private async getCountryExemptedInfo(
+  private async resolveDestinationCountry(
     destinationTable: string,
     destinationId: number,
-  ): Promise<{ isExempted: boolean; countryName?: string }> {
-    let countryId: number | null = null;
-    let countryName: string | undefined = undefined;
-
+  ): Promise<{ countryId: number | null; countryName?: string }> {
     if (destinationTable === 'countries') {
-      countryId = destinationId;
       const country = await this.knexService
         .knex('countries')
         .where('id', destinationId)
-        .select('name_th')
+        .select('id', 'name_th')
         .first();
       if (country) {
-        countryName = country.name_th;
+        return { countryId: country.id, countryName: country.name_th };
       }
-    } else if (destinationTable === 'tatOffices') {
-      // หา country_id จาก office_international
+      return { countryId: null };
+    }
+    if (destinationTable === 'tatOffices') {
       const office = await this.knexService
         .knex('office_international')
         .where('office_international.id', destinationId)
         .join('countries', 'office_international.country_id', 'countries.id')
         .select('countries.id as country_id', 'countries.name_th')
         .first();
-      
       if (office) {
-        countryId = office.country_id;
-        countryName = office.name_th;
+        return {
+          countryId: office.country_id,
+          countryName: office.name_th,
+        };
       }
+      return { countryId: null };
+    }
+    return { countryId: null };
+  }
+
+  /**
+   * ชั่วคราว: TEMP_EXEMPTED + TEMPORARY
+   * ประจำ: PERM_EXEMPTED + PERMANENT (ถ้ายังไม่มีกลุ่มใน DB = ไม่มีประเทศถูก block)
+   */
+  private async getCountryAttireExemptInfo(
+    destinationTable: string,
+    destinationId: number,
+    mode: 'temporary' | 'permanent',
+  ): Promise<{ isExempted: boolean; countryName?: string }> {
+    const resolved = await this.resolveDestinationCountry(
+      destinationTable,
+      destinationId,
+    );
+    if (resolved.countryId == null) {
+      return { isExempted: false, countryName: resolved.countryName };
     }
 
-    if (!countryId) {
-      return { isExempted: false };
-    }
+    const groupCode =
+      mode === 'temporary' ? 'TEMP_EXEMPTED' : 'PERM_EXEMPTED';
+    const assignmentType =
+      mode === 'temporary' ? 'TEMPORARY' : 'PERMANENT';
 
     const exemptedGroup = await this.knexService
       .knex('attire_destination_group_countries as adgc')
       .join('attire_destination_groups as adg', 'adgc.destination_group_id', 'adg.id')
-      .where('adgc.country_id', countryId)
-      .where('adg.group_code', 'TEMP_EXEMPTED')
-      .where('adg.assignment_type', 'TEMPORARY')
+      .where('adgc.country_id', resolved.countryId)
+      .where('adg.group_code', groupCode)
+      .where('adg.assignment_type', assignmentType)
       .first();
 
     return {
       isExempted: !!exemptedGroup,
-      countryName,
+      countryName: resolved.countryName,
     };
+  }
+
+  private async getCountryExemptedInfo(
+    destinationTable: string,
+    destinationId: number,
+  ): Promise<{ isExempted: boolean; countryName?: string }> {
+    return this.getCountryAttireExemptInfo(
+      destinationTable,
+      destinationId,
+      'temporary',
+    );
   }
 
   // private async getPwJob(employeeCode: string | number) {
