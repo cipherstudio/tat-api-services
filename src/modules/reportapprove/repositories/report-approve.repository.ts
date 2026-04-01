@@ -141,7 +141,7 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
           this.knex.raw('RTRIM("OP_MASTER_T"."PMT_CODE")'),
         );
       })
-      .distinct(
+      .select(
         // Report Approve columns
         'report_approve.id',
         'report_approve.title',
@@ -199,7 +199,6 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_traveller.updated_at as traveller_updated_at',
         'report_traveller.traveller_code as traveller_code',
         'report_traveller.traveler_id as traveller_traveler_id',
-        // report_daily_travel_detail columns
         'report_daily_travel_detail.detail_id as daily_travel_detail_id',
         'report_daily_travel_detail.form_id as daily_travel_detail_form_id',
         'report_daily_travel_detail.departure_place as daily_travel_detail_departure_place',

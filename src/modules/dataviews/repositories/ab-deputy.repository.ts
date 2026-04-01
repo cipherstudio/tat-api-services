@@ -9,6 +9,16 @@ function pickRow(row: Record<string, any>, key: string): any {
   return row[key] ?? row[key.toLowerCase()];
 }
 
+const ORACLE_IN_MAX_IN_LIST = 1000;
+
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    out.push(arr.slice(i, i + size));
+  }
+  return out;
+}
+
 @Injectable()
 export class AbDeputyRepository extends KnexBaseRepository<AbDeputy> {
   constructor(knexService: KnexService) {
@@ -144,10 +154,20 @@ export class AbDeputyRepository extends KnexBaseRepository<AbDeputy> {
     const map = new Map<string, AbDeputy[]>();
     if (unique.length === 0) return map;
 
-    const placeholders = unique.map(() => '?').join(', ');
+    const chunks = chunkArray(unique, ORACLE_IN_MAX_IN_LIST);
     const rows = await this.baseEnrichedQuery()
       .select(this.selectEnrichedColumns())
-      .whereRaw(`RTRIM("ad"."PMT_CODE") IN (${placeholders})`, unique)
+      .where(function () {
+        chunks.forEach((chunk, i) => {
+          const placeholders = chunk.map(() => '?').join(', ');
+          const sql = `RTRIM("ad"."PMT_CODE") IN (${placeholders})`;
+          if (i === 0) {
+            this.whereRaw(sql, chunk);
+          } else {
+            this.orWhereRaw(sql, chunk);
+          }
+        });
+      })
       .orderBy('ad.PMT_CODE', 'asc')
       .orderBy('ad.GDP_DEPUTY_PRIORITY', 'asc');
 
