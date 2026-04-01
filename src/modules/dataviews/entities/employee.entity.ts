@@ -1,3 +1,5 @@
+import type { EmployeeDeputyPublic } from './ab-deputy.entity';
+
 export interface Employee {
   code: string;
   name: string;
@@ -114,7 +116,7 @@ export const employeeReverseColumnMap = {
 };
 
 export type EmployeePaginate = {
-  data: Employee[];
+  data: (Employee & { deputies?: EmployeeDeputyPublic[] })[];
   meta: {
     total: number;
     limit: number;

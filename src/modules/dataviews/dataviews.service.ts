@@ -4,7 +4,11 @@ import { DataviewsRepository } from './repositories/dataviews.repository';
 import { Employee, EmployeePaginate } from './entities/employee.entity';
 import { EmployeeRepository } from './repositories/employee.repository';
 import { QueryEmployeeDto } from './dto/query-employee.dto';
-import { AbDeputyPaginate } from './entities/ab-deputy.entity';
+import {
+  AbDeputy,
+  AbDeputyPaginate,
+  EmployeeDeputyPublic,
+} from './entities/ab-deputy.entity';
 import { AbDeputyRepository } from './repositories/ab-deputy.repository';
 import { QueryAbDeputyDto } from './dto/query-ab-deputy.dto';
 import { AbHoliday, AbHolidayPaginate } from './entities/ab-holiday.entity';
@@ -80,6 +84,36 @@ export class DataviewsService {
     private readonly vTxTattrasRepository: VTxTattrasRepository,
   ) {}
 
+  private mapDeputiesForEmployeeResponse(
+    deputies: AbDeputy[],
+  ): EmployeeDeputyPublic[] {
+    return deputies.map((d) => {
+      const out: EmployeeDeputyPublic = {};
+      if (d.deputyOrganize) {
+        const o = d.deputyOrganize;
+        out.deputyOrganize = {
+          pogCode: o.pogCode,
+          pogDesc: o.pogDesc,
+          pogAbbreviation: o.pogAbbreviation,
+          pogDescE: o.pogDescE,
+          pogType: o.pogType,
+          pogPosname: o.pogPosname,
+        };
+      }
+      if (d.deputyExecutive) {
+        const x = d.deputyExecutive;
+        out.deputyExecutive = {
+          ppeCode: x.ppeCode,
+          ppeDescT: x.ppeDescT,
+          ppeDescE: x.ppeDescE,
+          ppeWeight: x.ppeWeight,
+          ppePosLev: x.ppePosLev,
+        };
+      }
+      return out;
+    });
+  }
+
   async findAllEmployees(): Promise<Employee[]> {
     return this.employeeRepository.findAll();
   }
@@ -90,7 +124,10 @@ export class DataviewsService {
       this.abDeputyRepository.findByPmtCode(code),
     ]);
     if (!employee) return undefined;
-    return { ...employee, deputies };
+    return {
+      ...employee,
+      deputies: this.mapDeputiesForEmployeeResponse(deputies),
+    };
   }
 
   async findEmployeeByCodeWithPosition4ot(
@@ -101,7 +138,10 @@ export class DataviewsService {
       this.abDeputyRepository.findByPmtCode(code),
     ]);
     if (!employee) return undefined;
-    return { ...employee, deputies };
+    return {
+      ...employee,
+      deputies: this.mapDeputiesForEmployeeResponse(deputies),
+    };
   }
 
   async checkEmployeeIsAdmin(pmtCode: string): Promise<boolean> {
@@ -111,7 +151,24 @@ export class DataviewsService {
   async findEmployeesWithQuery(
     query: QueryEmployeeDto,
   ): Promise<EmployeePaginate> {
-    return this.employeeRepository.findWithQueryWithPosition4ot(query);
+    const paginated =
+      await this.employeeRepository.findWithQueryWithPosition4ot(query);
+    const pmtCodes = paginated.data
+      .map((e: Employee & Record<string, unknown>) =>
+        String(e.pmtCode ?? e.code ?? '').trim(),
+      )
+      .filter((c) => c.length > 0);
+    const deputiesByPmt =
+      await this.abDeputyRepository.findByPmtCodesGrouped(pmtCodes);
+    const data = paginated.data.map((e: Employee & Record<string, unknown>) => {
+      const code = String(e.pmtCode ?? e.code ?? '').trim();
+      const deputies = deputiesByPmt.get(code) ?? [];
+      return {
+        ...e,
+        deputies: this.mapDeputiesForEmployeeResponse(deputies),
+      };
+    });
+    return { ...paginated, data };
   }
 
   async findAbDeputiesWithQuery(

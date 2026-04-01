@@ -1,3 +1,25 @@
+/** หน่วยงานจาก OP_ORGANIZE_R (join กับ GPD_DEPUTY_POG_CODE) */
+export interface AbDeputyOrganizeRef {
+  pogCode?: string;
+  pogDesc?: string;
+  pogAbbreviation?: string;
+  pogDescE?: string;
+  pogTitle?: string;
+  pogType?: string;
+  pogPosname?: string;
+  pogCurrency?: string;
+}
+
+/** ตำแหน่งผู้บริหารจาก OP_POS_EXECUTIVE_R (join กับ GDP_DEPUTY_POSITION_EX = PPE_CODE) */
+export interface AbDeputyExecutiveRef {
+  ppeCode?: string;
+  ppeDescT?: string;
+  ppeDescE?: string;
+  ppeWeight?: string;
+  ppePosLev?: string;
+}
+
+/** ข้อมูลเต็มจาก AB_DEPUTY + join (ใช้กับ GET ab-deputies / repository) */
 export interface AbDeputy {
   gdpId: number;
   pmtCode: number;
@@ -14,7 +36,31 @@ export interface AbDeputy {
   gdpDeputyStatus: number;
   pogCode: string;
   pogDesc: string;
+  isExecutive?: string;
+  deputyOrganize?: AbDeputyOrganizeRef;
+  deputyExecutive?: AbDeputyExecutiveRef;
 }
+
+/**
+ * รูปแบบที่ส่งคู่ employee API เท่านั้น (เฉพาะข้อมูลจาก join ตามฟิลด์ที่กำหนด)
+ */
+export type EmployeeDeputyPublic = {
+  deputyOrganize?: {
+    pogCode?: string;
+    pogDesc?: string;
+    pogAbbreviation?: string;
+    pogDescE?: string;
+    pogType?: string;
+    pogPosname?: string;
+  };
+  deputyExecutive?: {
+    ppeCode?: string;
+    ppeDescT?: string;
+    ppeDescE?: string;
+    ppeWeight?: string;
+    ppePosLev?: string;
+  };
+};
 
 export const abDeputyColumnMap = {
   gdpId: 'GDP_ID',
@@ -32,6 +78,7 @@ export const abDeputyColumnMap = {
   gdpDeputyStatus: 'GDP_DEPUTY_STATUS',
   pogCode: 'POG_CODE',
   pogDesc: 'POG_DESC',
+  isExecutive: 'IS_EXECUTIVE',
 };
 
 export const abDeputyReverseColumnMap = {
@@ -50,6 +97,7 @@ export const abDeputyReverseColumnMap = {
   gdpDeputyStatus: 'GDP_DEPUTY_STATUS',
   pogCode: 'POG_CODE',
   pogDesc: 'POG_DESC',
+  isExecutive: 'IS_EXECUTIVE',
 };
 
 export type AbDeputyPaginate = {
@@ -60,4 +108,3 @@ export type AbDeputyPaginate = {
     offset: number;
   };
 };
- 
