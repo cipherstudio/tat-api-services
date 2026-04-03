@@ -1,7 +1,11 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ReportCertificateRepository } from '../repositories/report-certificate.repository';
 import { ReportCertificateExpenseRepository } from '../repositories/report-certificate-expense.repository';
-import { CreateCertificateReportDto, CreateCertificateExpenseDto } from '../dto/create-certificate-report.dto';
+import {
+  CreateCertificateReportDto,
+  CreateCertificateExpenseDto,
+  CreateCertificateExchangeRateDto,
+} from '../dto/create-certificate-report.dto';
 import { UpdateCertificateReportDto } from '../dto/update-certificate-report.dto';
 import { CertificateReportQueryDto } from '../dto/certificate-report-query.dto';
 import { ReportCertificate } from '../entities/report-certificate.entity';
@@ -13,6 +17,48 @@ export class CertificateReportService {
     private readonly certificateRepository: ReportCertificateRepository,
     private readonly expenseRepository: ReportCertificateExpenseRepository,
   ) {}
+
+  private mapExpenseInsertRow(
+    expense: CreateCertificateExpenseDto,
+    reportId: number,
+    index: number,
+  ): Record<string, unknown> {
+    return {
+      report_certificate_id: reportId,
+      detail: expense.detail,
+      expense_date: new Date(expense.expense_date),
+      amount: expense.amount,
+      display_order: expense.display_order ?? index + 1,
+      local_amount: expense.local_amount ?? null,
+      currency_label: expense.currency_label ?? null,
+      currency_code_en: expense.currency_code_en ?? null,
+      exchange_rate: expense.exchange_rate ?? null,
+    };
+  }
+
+  private async replaceExchangeRates(
+    reportId: number,
+    rows: CreateCertificateExchangeRateDto[] | undefined,
+  ): Promise<void> {
+    const knex = this.certificateRepository.knex;
+    await knex('report_certificate_exchange_rates')
+      .where('report_certificate_id', reportId)
+      .delete();
+    if (!rows?.length) return;
+    const now = new Date();
+    await knex('report_certificate_exchange_rates').insert(
+      rows.map((r, i) => ({
+        report_certificate_id: reportId,
+        country: r.country ?? null,
+        currency_label: r.currency_label ?? null,
+        currency_code_en: r.currency_code_en ?? null,
+        exchange_rate: r.exchange_rate ?? null,
+        display_order: r.display_order ?? i + 1,
+        created_at: now,
+        updated_at: now,
+      })),
+    );
+  }
 
   async findAll(query: CertificateReportQueryDto, employeeCode?: string): Promise<any> {
     let queryBuilder = this.certificateRepository.knex('report_certificate')
@@ -132,22 +178,51 @@ export class CertificateReportService {
 
     const results = await queryBuilder;
 
-    // Add expense_details for each certificate
-    let resultsWithExpenseDetails = await Promise.all(
-      results.map(async (certificate) => {
-        const expenses = await this.expenseRepository.findByReportId(certificate.id);
-        
-        // Format expense_details
-        const expenseDetails = expenses
-          .map(expense => `${expense.detail}(${expense.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`)
-          .join(', ');
-        
-        return {
-          ...certificate,
-          expense_details: expenseDetails || null
-        };
-      })
-    );
+    const ids = results.map((r) => r.id);
+    const expensesByReport = new Map<number, ReportCertificateExpense[]>();
+    const ratesByReport = new Map<number, Record<string, unknown>[]>();
+    if (ids.length > 0) {
+      const allExpenses = await this.expenseRepository
+        .knex('report_certificate_expenses')
+        .whereIn('report_certificate_id', ids)
+        .orderBy('display_order', 'asc')
+        .orderBy('id', 'asc');
+      const allRates = await this.certificateRepository
+        .knex('report_certificate_exchange_rates')
+        .whereIn('report_certificate_id', ids)
+        .orderBy('display_order', 'asc')
+        .orderBy('id', 'asc');
+      for (const e of allExpenses) {
+        const rid = e.report_certificate_id as number;
+        if (!expensesByReport.has(rid)) expensesByReport.set(rid, []);
+        expensesByReport.get(rid)!.push(e as ReportCertificateExpense);
+      }
+      for (const r of allRates) {
+        const rid = r.report_certificate_id as number;
+        if (!ratesByReport.has(rid)) ratesByReport.set(rid, []);
+        ratesByReport.get(rid)!.push(r);
+      }
+    }
+
+    let resultsWithExpenseDetails = results.map((certificate) => {
+      const expenses = expensesByReport.get(certificate.id) ?? [];
+      const exchange_rates = ratesByReport.get(certificate.id) ?? [];
+      const expenseDetails = expenses
+        .map(
+          (expense) =>
+            `${expense.detail}(${Number(expense.amount).toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })})`,
+        )
+        .join(', ');
+      return {
+        ...certificate,
+        expenses,
+        exchange_rates,
+        expense_details: expenseDetails || null,
+      };
+    });
 
     // Apply expense_details_search filter if provided
     if (query.expense_details_search) {
@@ -190,35 +265,43 @@ export class CertificateReportService {
     return certificate;
   }
 
-  async create(dto: CreateCertificateReportDto, createdBy: string): Promise<ReportCertificate> {
-    const { expenses, ...certificateData } = dto;
+  async create(dto: CreateCertificateReportDto, createdBy: string): Promise<any> {
+    const { expenses, exchange_rates, ...certificateRest } = dto;
 
-    // Create certificate
-    const [certificateId] = await this.certificateRepository.knex('report_certificate')
+    const [certificateId] = await this.certificateRepository
+      .knex('report_certificate')
       .insert({
-        ...certificateData,
+        ...certificateRest,
+        has_exchange_rate: dto.has_exchange_rate ?? false,
         created_by: createdBy,
         updated_by: createdBy,
       })
       .returning('id');
 
-    // Get created certificate
-    const certificate = await this.certificateRepository.findOne({ id: certificateId.id });
+    const ins = certificateId as { id?: number } | number;
+    const newId =
+      typeof ins === 'object' && ins !== null && 'id' in ins
+        ? (ins as { id: number }).id
+        : Number(ins);
+    const certificate = await this.certificateRepository.findOne({ id: newId });
+    if (!certificate) {
+      throw new NotFoundException('Certificate report not found');
+    }
 
-    // Create expenses if provided
-    if (expenses && expenses.length > 0) {
-      const expenseData = expenses.map((expense, index) => ({
-        ...expense,
-        report_certificate_id: certificate.id,
-        display_order: expense.display_order || index + 1,
-        expense_date: new Date(expense.expense_date),
-      }));
-
-      await this.expenseRepository.knex('report_certificate_expenses')
+    if (expenses?.length) {
+      const expenseData = expenses.map((e, i) =>
+        this.mapExpenseInsertRow(e, certificate.id, i),
+      );
+      await this.expenseRepository
+        .knex('report_certificate_expenses')
         .insert(expenseData);
     }
 
-    return certificate;
+    if (exchange_rates !== undefined) {
+      await this.replaceExchangeRates(certificate.id, exchange_rates);
+    }
+
+    return this.certificateRepository.findWithExpenses(certificate.id);
   }
 
   async update(id: number, dto: UpdateCertificateReportDto, updatedBy: string, employeeCode?: string): Promise<ReportCertificate> {
@@ -232,40 +315,43 @@ export class CertificateReportService {
       throw new NotFoundException('Certificate report not found');
     }
 
-    const { expenses, ...certificateData } = dto;
+    const { expenses, exchange_rates, ...certificateData } = dto;
 
-    // Update certificate
-    await this.certificateRepository.knex('report_certificate')
-      .where('id', id)
-      .update({
-        ...certificateData,
-        updated_by: updatedBy,
-        updated_at: new Date(),
-      });
+    const cleanUpdate = Object.fromEntries(
+      Object.entries(certificateData).filter(([, v]) => v !== undefined),
+    ) as Record<string, unknown>;
 
-    // Get updated certificate
-    const updatedCertificate = await this.certificateRepository.findOne({ id });
+    const hasChildUpdates =
+      expenses !== undefined || exchange_rates !== undefined;
 
-    // Update expenses if provided
+    if (Object.keys(cleanUpdate).length > 0 || hasChildUpdates) {
+      await this.certificateRepository
+        .knex('report_certificate')
+        .where('id', id)
+        .update({
+          ...cleanUpdate,
+          updated_by: updatedBy,
+          updated_at: new Date(),
+        });
+    }
+
     if (expenses !== undefined) {
-      // Delete existing expenses
       await this.expenseRepository.deleteByReportId(id);
-
-      // Create new expenses
       if (expenses.length > 0) {
-        const expenseData = expenses.map((expense, index) => ({
-          ...expense,
-          report_certificate_id: id,
-          display_order: expense.display_order || index + 1,
-          expense_date: new Date(expense.expense_date),
-        }));
-
-        await this.expenseRepository.knex('report_certificate_expenses')
+        const expenseData = expenses.map((e, i) =>
+          this.mapExpenseInsertRow(e, id, i),
+        );
+        await this.expenseRepository
+          .knex('report_certificate_expenses')
           .insert(expenseData);
       }
     }
 
-    return updatedCertificate;
+    if (exchange_rates !== undefined) {
+      await this.replaceExchangeRates(id, exchange_rates);
+    }
+
+    return this.certificateRepository.findWithExpenses(id);
   }
 
   async delete(id: number, employeeCode?: string): Promise<void> {
@@ -279,16 +365,17 @@ export class CertificateReportService {
       throw new NotFoundException('Certificate report not found');
     }
 
-    // Soft delete certificate
+    await this.certificateRepository
+      .knex('report_certificate_exchange_rates')
+      .where('report_certificate_id', id)
+      .delete();
+
     await this.certificateRepository.knex('report_certificate')
       .where('id', id)
       .update({
         deleted_at: new Date(),
         updated_at: new Date(),
       });
-
-    // Delete related expenses
-    // await this.expenseRepository.deleteByReportId(id);
   }
 
   async getExpensesByReportId(id: number, employeeCode?: string): Promise<ReportCertificateExpense[]> {

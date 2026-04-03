@@ -5,6 +5,12 @@ import { KnexService } from '../../../database/knex-service/knex.service';
 import { toCamelCase } from '../../../common/utils/case-mapping';
 import { QueryOpMasterTDto } from '../dto/query-op-master-t.dto';
 
+function normalizePersonName(name: string): string {
+  return String(name ?? '')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
 @Injectable()
 export class OpMasterTRepository extends KnexBaseRepository<OpMasterT> {
   constructor(knexService: KnexService) {
@@ -20,7 +26,6 @@ export class OpMasterTRepository extends KnexBaseRepository<OpMasterT> {
     if (query.limit !== undefined) builder = builder.limit(query.limit);
     if (query.offset !== undefined) builder = builder.offset(query.offset);
 
-    // นับจำนวนทั้งหมด (ไม่ใส่ limit/offset)
     const countQuery = this.knex(this.tableName).where(conditions);
     const countResult = await countQuery.count('* as count').first();
     const total = Number(countResult?.count || 0);
@@ -37,5 +42,35 @@ export class OpMasterTRepository extends KnexBaseRepository<OpMasterT> {
         offset: query.offset ?? 0,
       },
     };
+  }
+
+  async findFirstByPmtNameTMatch(nameT: string): Promise<OpMasterT | null> {
+    const normalized = normalizePersonName(nameT);
+    if (!normalized) return null;
+
+    const cols = [
+      'PMT_CODE',
+      'PMT_NAME_T',
+      'PMT_NAME_E',
+      'PMT_LEVEL_CODE',
+    ] as const;
+
+    let row = await this.knex(this.tableName)
+      .select([...cols])
+      .whereRaw(
+        `TRIM(REGEXP_REPLACE(RTRIM("PMT_NAME_T"), '[[:space:]]+', ' ')) = ?`,
+        [normalized],
+      )
+      .first();
+
+    if (!row) {
+      row = await this.knex(this.tableName)
+        .select([...cols])
+        .whereRaw('RTRIM("PMT_NAME_T") = ?', [normalized])
+        .first();
+    }
+
+    if (!row) return null;
+    return toCamelCase<OpMasterT>(row);
   }
 }

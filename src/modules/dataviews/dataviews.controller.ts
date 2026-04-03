@@ -23,6 +23,7 @@ import { QueryVTxOtDto } from './dto/query-v-tx-ot.dto';
 import { QueryPsPwJobDto } from './dto/query-ps-pw-job.dto';
 import { QueryOpLevelSalRDto } from './dto/query-op-level-sal-r.dto';
 import { QueryVTxTattrasDto } from './dto/query-v-tx-tattras.dto';
+import { QueryViewDependentBenefDto } from './dto/query-view-dependent-benef.dto';
 import {
   ApiOperation,
   ApiQuery,
@@ -45,6 +46,10 @@ import { VTxOtPaginate } from './entities/v-tx-ot.entity';
 import { PsPwJobPaginate } from './entities/ps-pw-job.entity';
 import { OpLevelSalRPaginate } from './repositories/op-level-sal-r.repository';
 import { VTxTattrasPaginate } from './entities/v-tx-tattras.entity';
+import {
+  ViewDependentBenef,
+  ViewDependentBenefPaginate,
+} from './entities/view-dependent-benef.entity';
 
 @ApiTags('dataviews')
 @Controller('dataviews')
@@ -246,6 +251,64 @@ export class DataviewsController {
     @Query() query: QueryOpChildrenTDto,
   ): Promise<OpChildrenTPaginate> {
     return this.dataviewsService.findOpChildrenTWithQuery(query);
+  }
+
+  @Version('1')
+  @Get('view-dependent-benef/employee/:employeeCode')
+  @ApiOperation({
+    summary: 'ดึงข้อมูลครอบครัวพนักงานจาก VIEW_DEPENDENT_BENEF ตามรหัสพนักงาน',
+    description:
+      'กรองด้วย DEP_EMPLOYEECODE (RTRIM) ตรงกับ employeeCode ใน path',
+  })
+  @ApiParam({
+    name: 'employeeCode',
+    description: 'รหัสพนักงาน (DEP_EMPLOYEECODE)',
+    required: true,
+  })
+  findViewDependentBenefByEmployeeCode(
+    @Param('employeeCode') employeeCode: string,
+  ): Promise<ViewDependentBenef[]> {
+    return this.dataviewsService.findViewDependentBenefByEmployeeCode(
+      employeeCode,
+    );
+  }
+
+  @Version('1')
+  @Get('view-dependent-benef')
+  @ApiOperation({
+    summary: 'ค้นหาข้อมูล VIEW_DEPENDENT_BENEF (ครอบครัวพนักงาน)',
+    description:
+      'รองรับ depEmployeeCode, depRelation, depNationCardId และ limit, offset',
+  })
+  @ApiQuery({
+    name: 'depEmployeeCode',
+    required: false,
+    description: 'DEP_EMPLOYEECODE',
+  })
+  @ApiQuery({ name: 'depRelation', required: false, description: 'DEP_RELATION' })
+  @ApiQuery({
+    name: 'depNationCardId',
+    required: false,
+    description: 'DEP_NATIONCARDID',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'จำนวนรายการต่อหน้า',
+    type: Number,
+    example: 10,
+  })
+  @ApiQuery({
+    name: 'offset',
+    required: false,
+    description: 'ข้ามกี่รายการ',
+    type: Number,
+    example: 0,
+  })
+  findViewDependentBenefWithQuery(
+    @Query() query: QueryViewDependentBenefDto,
+  ): Promise<ViewDependentBenefPaginate> {
+    return this.dataviewsService.findViewDependentBenefWithQuery(query);
   }
 
   @Version('1')

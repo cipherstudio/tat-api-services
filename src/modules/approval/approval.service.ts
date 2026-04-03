@@ -17,6 +17,7 @@ import { ApprovalDetailResponseDto } from './dto/approval-detail-response.dto';
 import { UpdateClothingExpenseDatesDto } from './dto/update-clothing-expense-dates.dto';
 import { CheckClothingExpenseEligibilityDto } from './dto/check-clothing-expense-eligibility.dto';
 import { ClothingExpenseEligibilityResponseDto } from './dto/clothing-expense-eligibility-response.dto';
+import { PwJobInternationalOrganizeCheckResponseDto } from './dto/pw-job-international-organize-check-response.dto';
 import {
   ApprovalStatisticsResponseDto,
   TravelTypeBreakdownDto,
@@ -2612,6 +2613,78 @@ export class ApprovalService {
 
       this.updateEligibility(result, employeeCode, true);
     }
+  }
+
+  async checkPwJobInternationalOrganize(
+    employeeCodeInput: string,
+  ): Promise<PwJobInternationalOrganizeCheckResponseDto> {
+    const employeeCodeInputNorm = String(employeeCodeInput ?? '').trim();
+    const emplidUsedForQuery =
+      this.cleanEmplidForPwJobQuery(employeeCodeInputNorm);
+
+    const base: PwJobInternationalOrganizeCheckResponseDto = {
+      employeeCodeInput: employeeCodeInputNorm,
+      emplidUsedForQuery: emplidUsedForQuery ?? '',
+      hasInternationalOrganize: false,
+    };
+
+    if (!emplidUsedForQuery) {
+      return base;
+    }
+
+    const knex = this.knexService.knex;
+    const rows = await knex('PS_PW_JOB')
+      .whereRaw('RTRIM("EMPLID") = ?', [emplidUsedForQuery])
+      .whereRaw('RTRIM("ACTION") = ?', ['XFR'])
+      .whereRaw('RTRIM("ACTION_REASON") = ?', ['008'])
+      .select('DEPTID')
+      .orderBy('EFFDT', 'desc');
+
+    if (!rows.length) {
+      return { ...base, emplidUsedForQuery, pwJobRowCount: 0 };
+    }
+
+    const seenDept = new Set<string>();
+    for (const row of rows) {
+      const raw = row.DEPTID;
+      const d =
+        raw != null && String(raw).trim() !== '' ? String(raw).trim() : '';
+      if (!d || seenDept.has(d)) continue;
+      seenDept.add(d);
+
+      const organize = await knex('OP_ORGANIZE_R')
+        .whereRaw('RTRIM("POG_CODE") = ?', [d])
+        .select('POG_TYPE')
+        .first();
+
+      if (
+        organize != null &&
+        Number((organize as { POG_TYPE?: unknown }).POG_TYPE) === 3
+      ) {
+        return {
+          ...base,
+          emplidUsedForQuery,
+          hasInternationalOrganize: true,
+          pwJobRowCount: rows.length,
+        };
+      }
+    }
+
+    return {
+      ...base,
+      emplidUsedForQuery,
+      hasInternationalOrganize: false,
+      pwJobRowCount: rows.length,
+    };
+  }
+
+  private cleanEmplidForPwJobQuery(employeeCode: string): string | null {
+    let s = String(employeeCode ?? '').trim();
+    if (!s) return null;
+    if (s.includes('-')) {
+      s = s.replace(/\D/g, '');
+    }
+    return s.length > 0 ? s : null;
   }
 
   private async processTemporaryInternationalEligibility(

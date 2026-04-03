@@ -34,6 +34,7 @@ import { ApprovalDetailResponseDto } from './dto/approval-detail-response.dto';
 import { UpdateClothingExpenseDatesDto } from './dto/update-clothing-expense-dates.dto';
 import { CheckClothingExpenseEligibilityDto } from './dto/check-clothing-expense-eligibility.dto';
 import { ClothingExpenseEligibilityResponseDto } from './dto/clothing-expense-eligibility-response.dto';
+import { PwJobInternationalOrganizeCheckResponseDto } from './dto/pw-job-international-organize-check-response.dto';
 import { ApprovalStatusLabelResponseDto } from './entities/approval-status-label.entity';
 import { UpdateApprovalContinuousDto } from './dto/update-approval-continuous.dto';
 import { ApprovalStatisticsResponseDto } from './dto/approval-statistics-response.dto';
@@ -528,6 +529,22 @@ export class ApprovalController {
     return this.approvalService.checkClothingExpenseEligibility(
       checkEligibilityDto,
     );
+  }
+
+  @Get('pw-job/international-organize-check/:employeeCode')
+  @ApiOperation({
+    summary:
+      'เช็ค PS_PW_JOB (XFR/008) กับ OP_ORGANIZE_R ว่ามี DEPTID ที่ POG_TYPE=3 หรือไม่',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Success',
+    type: PwJobInternationalOrganizeCheckResponseDto,
+  })
+  checkPwJobInternationalOrganize(
+    @Param('employeeCode') employeeCode: string,
+  ): Promise<PwJobInternationalOrganizeCheckResponseDto> {
+    return this.approvalService.checkPwJobInternationalOrganize(employeeCode);
   }
 
   @Post('approvals-continuous/:id')

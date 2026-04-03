@@ -56,6 +56,16 @@ import { QueryOpLevelSalRDto } from './dto/query-op-level-sal-r.dto';
 import { VTxTattrasPaginate } from './entities/v-tx-tattras.entity';
 import { VTxTattrasRepository } from './repositories/v-tx-tattras.repository';
 import { QueryVTxTattrasDto } from './dto/query-v-tx-tattras.dto';
+import {
+  ViewDependentBenef,
+  ViewDependentBenefPaginate,
+  ViewDependentBenefSpouseTatStaff,
+} from './entities/view-dependent-benef.entity';
+import { OpMasterT } from './entities/op-master-t.entity';
+import { ViewDependentBenefRepository } from './repositories/view-dependent-benef.repository';
+import { QueryViewDependentBenefDto } from './dto/query-view-dependent-benef.dto';
+
+const SPOUSE_DEP_RELATION_CODES = new Set(['SP']);
 
 @Injectable()
 export class DataviewsService {
@@ -82,6 +92,7 @@ export class DataviewsService {
     private readonly psPwJobRepository: PsPwJobRepository,
     private readonly opLevelSalRRepository: OpLevelSalRRepository,
     private readonly vTxTattrasRepository: VTxTattrasRepository,
+    private readonly viewDependentBenefRepository: ViewDependentBenefRepository,
   ) {}
 
   private mapDeputiesForEmployeeResponse(
@@ -257,5 +268,92 @@ export class DataviewsService {
     query: QueryVTxTattrasDto,
   ): Promise<VTxTattrasPaginate> {
     return this.vTxTattrasRepository.findWithQuery(query);
+  }
+
+  async findViewDependentBenefWithQuery(
+    query: QueryViewDependentBenefDto,
+  ): Promise<ViewDependentBenefPaginate> {
+    const page = await this.viewDependentBenefRepository.findWithQuery(query);
+    return {
+      ...page,
+      data: await this.enrichViewDependentBenefList(page.data),
+    };
+  }
+
+  async findViewDependentBenefByEmployeeCode(
+    employeeCode: string,
+  ): Promise<ViewDependentBenef[]> {
+    const rows =
+      await this.viewDependentBenefRepository.findByEmployeeCode(employeeCode);
+    return this.enrichViewDependentBenefList(rows);
+  }
+
+  private isSpouseDepRelation(depRelation?: string): boolean {
+    const k = String(depRelation ?? '').trim().toUpperCase();
+    return SPOUSE_DEP_RELATION_CODES.has(k);
+  }
+
+  private buildSpouseNameCandidates(row: ViewDependentBenef): string[] {
+    const out: string[] = [];
+    const add = (s: string) => {
+      const n = String(s ?? '')
+        .trim()
+        .replace(/\s+/g, ' ');
+      if (n.length > 0 && !out.includes(n)) out.push(n);
+    };
+    add(String(row.depEmployeeHrname ?? ''));
+    add(
+      [row.depHornorificname, row.depFirstname, row.depLastname]
+        .map((x) => String(x ?? '').trim())
+        .filter((x) => x.length > 0)
+        .join(' '),
+    );
+    add(
+      [row.depFirstname, row.depLastname]
+        .map((x) => String(x ?? '').trim())
+        .filter((x) => x.length > 0)
+        .join(' '),
+    );
+    return out;
+  }
+
+  private async enrichSingleDependentBenef(
+    row: ViewDependentBenef,
+  ): Promise<ViewDependentBenef> {
+    if (!this.isSpouseDepRelation(row.depRelation)) {
+      return row;
+    }
+    let master: OpMasterT | null = null;
+    for (const name of this.buildSpouseNameCandidates(row)) {
+      master = await this.opMasterTRepository.findFirstByPmtNameTMatch(name);
+      if (master) break;
+    }
+    if (!master) {
+      return row;
+    }
+    const levelRaw =
+      master.pmtLevelCode != null ? String(master.pmtLevelCode).trim() : '';
+    const spouseTatStaff: ViewDependentBenefSpouseTatStaff =
+      levelRaw.length > 0
+        ? {
+            staffType: 'employee',
+            pmtCode: master.pmtCode,
+            pmtNameT: master.pmtNameT,
+            pmtNameE: master.pmtNameE,
+            pmtLevelCode: levelRaw,
+          }
+        : {
+            staffType: 'contractor',
+            pmtCode: master.pmtCode,
+            pmtNameT: master.pmtNameT,
+            pmtNameE: master.pmtNameE,
+          };
+    return { ...row, spouseTatStaff };
+  }
+
+  private async enrichViewDependentBenefList(
+    rows: ViewDependentBenef[],
+  ): Promise<ViewDependentBenef[]> {
+    return Promise.all(rows.map((r) => this.enrichSingleDependentBenef(r)));
   }
 }

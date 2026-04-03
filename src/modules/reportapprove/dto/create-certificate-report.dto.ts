@@ -1,5 +1,23 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsNumber, IsDateString, Min, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  IsDateString,
+  Min,
+  MaxLength,
+  IsBoolean,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
+import { Type, Transform } from 'class-transformer';
+
+function toOptionalNumber(v: unknown): number | undefined {
+  if (v === undefined || v === null || v === '') return undefined;
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  const n = Number(String(v).trim().replace(/,/g, ''));
+  return Number.isFinite(n) ? n : undefined;
+}
 
 export class CreateCertificateExpenseDto {
   @ApiProperty({ description: 'รายละเอียดค่าใช้จ่าย' })
@@ -15,7 +33,63 @@ export class CreateCertificateExpenseDto {
   @Min(0)
   amount: number;
 
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @Transform(({ value }) => toOptionalNumber(value))
+  @IsNumber()
+  @Min(0)
+  local_amount?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  currency_label?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  currency_code_en?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @Transform(({ value }) => toOptionalNumber(value))
+  @IsNumber()
+  exchange_rate?: number;
+
   @ApiProperty({ description: 'ลำดับการแสดงผล', required: false })
+  @IsOptional()
+  @IsNumber()
+  display_order?: number;
+}
+
+export class CreateCertificateExchangeRateDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  country?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  currency_label?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  currency_code_en?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @Transform(({ value }) => toOptionalNumber(value))
+  @IsNumber()
+  exchange_rate?: number;
+
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsNumber()
   display_order?: number;
@@ -87,7 +161,22 @@ export class CreateCertificateReportDto {
 
   @ApiProperty({ description: 'รายการค่าใช้จ่าย', type: [CreateCertificateExpenseDto], required: false })
   @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateCertificateExpenseDto)
   expenses?: CreateCertificateExpenseDto[];
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsBoolean()
+  has_exchange_rate?: boolean;
+
+  @ApiProperty({ type: [CreateCertificateExchangeRateDto], required: false })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateCertificateExchangeRateDto)
+  exchange_rates?: CreateCertificateExchangeRateDto[];
 
   // Payment order fields
   @ApiProperty({ description: 'มีเลขที่คำสั่งจ่ายที่ 1', required: false })

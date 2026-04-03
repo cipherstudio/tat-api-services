@@ -40,9 +40,15 @@ export class ReportCertificateRepository extends KnexBaseRepository<ReportCertif
       .orderBy('display_order', 'asc')
       .orderBy('id', 'asc');
 
+    const exchange_rates = await this.knex('report_certificate_exchange_rates')
+      .where('report_certificate_id', id)
+      .orderBy('display_order', 'asc')
+      .orderBy('id', 'asc');
+
     return {
       ...certificate,
       expenses,
+      exchange_rates,
     };
   }
 

@@ -1,4 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { ReportCertificateExchangeRate } from './report-certificate-exchange-rate.entity';
+import { ReportCertificateExpense } from './report-certificate-expense.entity';
 
 export class ReportCertificate {
   @ApiProperty({ description: 'รหัสใบรับรอง' })
@@ -79,5 +81,14 @@ export class ReportCertificate {
 
   @ApiProperty({ description: 'รายละเอียดค่าใช้จ่ายรวม', required: false })
   expense_details?: string;
+
+  @ApiProperty({ required: false })
+  has_exchange_rate?: boolean;
+
+  @ApiProperty({ type: [ReportCertificateExchangeRate], required: false })
+  exchange_rates?: ReportCertificateExchangeRate[];
+
+  @ApiProperty({ type: [ReportCertificateExpense], required: false })
+  expenses?: ReportCertificateExpense[];
 }
 

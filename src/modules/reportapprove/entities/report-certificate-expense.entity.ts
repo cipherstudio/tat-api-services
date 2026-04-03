@@ -19,6 +19,18 @@ export class ReportCertificateExpense {
   @ApiProperty({ description: 'ลำดับการแสดงผล' })
   display_order: number;
 
+  @ApiProperty({ required: false })
+  local_amount?: number;
+
+  @ApiProperty({ required: false })
+  currency_label?: string;
+
+  @ApiProperty({ required: false })
+  currency_code_en?: string;
+
+  @ApiProperty({ required: false })
+  exchange_rate?: number;
+
   @ApiProperty({ description: 'สร้างเมื่อ' })
   created_at: Date;
 
