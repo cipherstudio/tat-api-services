@@ -11,6 +11,9 @@ function pickRow(row: Record<string, any>, key: string): any {
 
 const ORACLE_IN_MAX_IN_LIST = 1000;
 
+/** GDP_DEPUTY_STATUS: 0 = ทำงาน, 1 = สิ้นสุดการทำงาน, 2 = ยกเลิก */
+const AB_DEPUTY_STATUS_ACTIVE = 0;
+
 function chunkArray<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < arr.length; i += size) {
@@ -139,6 +142,7 @@ export class AbDeputyRepository extends KnexBaseRepository<AbDeputy> {
 
     const rows = await this.baseEnrichedQuery()
       .select(this.selectEnrichedColumns())
+      .where('ad.GDP_DEPUTY_STATUS', AB_DEPUTY_STATUS_ACTIVE)
       .whereRaw('RTRIM("ad"."PMT_CODE") = ?', [trimmed])
       .orderBy('ad.GDP_DEPUTY_PRIORITY', 'asc');
 
@@ -157,6 +161,7 @@ export class AbDeputyRepository extends KnexBaseRepository<AbDeputy> {
     const chunks = chunkArray(unique, ORACLE_IN_MAX_IN_LIST);
     const rows = await this.baseEnrichedQuery()
       .select(this.selectEnrichedColumns())
+      .where('ad.GDP_DEPUTY_STATUS', AB_DEPUTY_STATUS_ACTIVE)
       .where(function () {
         chunks.forEach((chunk, i) => {
           const placeholders = chunk.map(() => '?').join(', ');

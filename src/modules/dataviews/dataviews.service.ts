@@ -9,6 +9,7 @@ import {
   AbDeputyPaginate,
   EmployeeDeputyPublic,
 } from './entities/ab-deputy.entity';
+import { buildEmployeeDeputyPublic } from './utils/employee-deputy-public.mapper';
 import { AbDeputyRepository } from './repositories/ab-deputy.repository';
 import { QueryAbDeputyDto } from './dto/query-ab-deputy.dto';
 import { AbHoliday, AbHolidayPaginate } from './entities/ab-holiday.entity';
@@ -98,31 +99,12 @@ export class DataviewsService {
   private mapDeputiesForEmployeeResponse(
     deputies: AbDeputy[],
   ): EmployeeDeputyPublic[] {
-    return deputies.map((d) => {
-      const out: EmployeeDeputyPublic = {};
-      if (d.deputyOrganize) {
-        const o = d.deputyOrganize;
-        out.deputyOrganize = {
-          pogCode: o.pogCode,
-          pogDesc: o.pogDesc,
-          pogAbbreviation: o.pogAbbreviation,
-          pogDescE: o.pogDescE,
-          pogType: o.pogType,
-          pogPosname: o.pogPosname,
-        };
-      }
-      if (d.deputyExecutive) {
-        const x = d.deputyExecutive;
-        out.deputyExecutive = {
-          ppeCode: x.ppeCode,
-          ppeDescT: x.ppeDescT,
-          ppeDescE: x.ppeDescE,
-          ppeWeight: x.ppeWeight,
-          ppePosLev: x.ppePosLev,
-        };
-      }
-      return out;
-    });
+    return deputies.map((d) =>
+      buildEmployeeDeputyPublic({
+        deputyOrganize: d.deputyOrganize,
+        deputyExecutive: d.deputyExecutive,
+      }),
+    );
   }
 
   async findAllEmployees(): Promise<Employee[]> {

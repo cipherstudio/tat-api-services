@@ -12,6 +12,7 @@ import { ApprovalAccommodationHolidayExpenseDto } from './approval-accommodation
 import { ApprovalEntertainmentExpenseDto } from './approval-entertainment-expense.dto';
 import { ApprovalClothingExpenseDto } from './approval-clothing-expense.dto';
 import { AttachmentResponseDto } from './approval-attachment.dto';
+import { SpouseCompanionDto } from './spouse-companion.dto';
 
 export class ApprovalStatusHistoryDto {
   @ApiProperty({ description: 'Status ID' })
@@ -234,6 +235,13 @@ export class StaffMemberDto {
     ]
   })
   clothingExpenses?: ApprovalClothingExpenseDto[];
+
+  @ApiProperty({
+    description: 'ข้อมูลเสริมคู่สมรส (ต่างประเทศ / คำสั่งลาติดตาม)',
+    type: SpouseCompanionDto,
+    required: false,
+  })
+  spouseCompanion?: SpouseCompanionDto;
 }
 
 export class ApprovalTripEntryDto {

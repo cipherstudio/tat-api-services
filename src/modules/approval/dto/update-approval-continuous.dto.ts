@@ -93,6 +93,25 @@ export class UpdateApprovalContinuousDto {
   statusCode?: string;
 
   @ApiProperty({
+    description:
+      'ข้อความตำแหน่งเต็มของผู้รับอนุมัติ (เช่น รักษาการแทน...) เมื่อดึงจาก HR ไม่ครบ',
+    required: false,
+    example: 'รองผู้ว่าการ... รักษาการแทน ...',
+  })
+  @IsOptional()
+  @IsString()
+  approverPositionText?: string;
+
+  @ApiProperty({
+    description:
+      'ข้อความตำแหน่งเต็มของผู้สร้างแถว (เช่น รักษาการแทน...) เมื่อดึงจาก HR ไม่ครบ',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  createdByPositionText?: string;
+
+  @ApiProperty({
     description: 'รหัสไฟล์แนบ checklist (เอกสาร checklist)',
     required: false,
     example: 1,

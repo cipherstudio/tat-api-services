@@ -1,3 +1,5 @@
+import type { EmployeeDeputyPublic } from './ab-deputy.entity';
+
 export interface Employee {
   pmtCode: string;
   pmtNameT: string;
@@ -5,6 +7,15 @@ export interface Employee {
   pmtPosNo: string;
   pmtLevelCode: string;
   positionName: string;
+  organizationPogCode?: string;
+  isDeputy?: boolean;
+  gpdDeputyPogCode?: string;
+  gdpDeputyPriority?: number;
+  originalPogCode?: string;
+  originalPogDesc?: string;
+  originalPositionName?: string;
+  /** รูปเดียวกับหนึ่งรายการใน `deputies[]` ของ employee API (ไม่ใช่ array) */
+  deputy?: EmployeeDeputyPublic;
 }
 
 export interface Section {

@@ -35,6 +35,7 @@ import { UpdateClothingExpenseDatesDto } from './dto/update-clothing-expense-dat
 import { CheckClothingExpenseEligibilityDto } from './dto/check-clothing-expense-eligibility.dto';
 import { ClothingExpenseEligibilityResponseDto } from './dto/clothing-expense-eligibility-response.dto';
 import { PwJobInternationalOrganizeCheckResponseDto } from './dto/pw-job-international-organize-check-response.dto';
+import { PwJobSpouseAccompanyLeaveCheckResponseDto } from './dto/pw-job-spouse-accompany-leave-check-response.dto';
 import { ApprovalStatusLabelResponseDto } from './entities/approval-status-label.entity';
 import { UpdateApprovalContinuousDto } from './dto/update-approval-continuous.dto';
 import { ApprovalStatisticsResponseDto } from './dto/approval-statistics-response.dto';
@@ -545,6 +546,24 @@ export class ApprovalController {
     @Param('employeeCode') employeeCode: string,
   ): Promise<PwJobInternationalOrganizeCheckResponseDto> {
     return this.approvalService.checkPwJobInternationalOrganize(employeeCode);
+  }
+
+  @Get('pw-job/spouse-accompany-leave-order/:employeeCode')
+  @ApiOperation({
+    summary:
+      'เช็คคำสั่งลาติดตามคู่สมรสจาก PS_PW_JOB (LOA 001 / LOA 003 แถวล่าสุดตาม EFFDT)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Success',
+    type: PwJobSpouseAccompanyLeaveCheckResponseDto,
+  })
+  checkPwJobSpouseAccompanyLeaveOrder(
+    @Param('employeeCode') employeeCode: string,
+  ): Promise<PwJobSpouseAccompanyLeaveCheckResponseDto> {
+    return this.approvalService.checkPwJobSpouseAccompanyLeaveOrder(
+      employeeCode,
+    );
   }
 
   @Post('approvals-continuous/:id')

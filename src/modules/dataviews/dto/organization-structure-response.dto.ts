@@ -1,4 +1,29 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+class DeputyOrganizePublicDto {
+  @ApiPropertyOptional() pogCode?: string;
+  @ApiPropertyOptional() pogDesc?: string;
+  @ApiPropertyOptional() pogAbbreviation?: string;
+  @ApiPropertyOptional() pogDescE?: string;
+  @ApiPropertyOptional() pogType?: string;
+  @ApiPropertyOptional() pogPosname?: string;
+}
+
+class DeputyExecutivePublicDto {
+  @ApiPropertyOptional() ppeCode?: string;
+  @ApiPropertyOptional() ppeDescT?: string;
+  @ApiPropertyOptional() ppeDescE?: string;
+  @ApiPropertyOptional() ppeWeight?: string;
+  @ApiPropertyOptional() ppePosLev?: string;
+}
+
+class EmployeeDeputyPublicDto {
+  @ApiPropertyOptional({ type: () => DeputyOrganizePublicDto })
+  deputyOrganize?: DeputyOrganizePublicDto;
+
+  @ApiPropertyOptional({ type: () => DeputyExecutivePublicDto })
+  deputyExecutive?: DeputyExecutivePublicDto;
+}
 
 export class EmployeeDto {
   @ApiProperty({ description: 'รหัสพนักงาน' })
@@ -18,6 +43,37 @@ export class EmployeeDto {
 
   @ApiProperty({ description: 'ชื่อตำแหน่ง' })
   positionName: string;
+
+  @ApiProperty({
+    description: 'รหัสหน่วยงานที่แสดงใน tree (ใช้แยกกรณีคนเดียวกันหลายหน่วย)',
+    required: false,
+  })
+  organizationPogCode?: string;
+
+  @ApiProperty({ description: 'เป็นรายการรักษาการจาก AB_DEPUTY', required: false })
+  isDeputy?: boolean;
+
+  @ApiProperty({ description: 'GPD_DEPUTY_POG_CODE (หน่วยที่รักษาการแทน)', required: false })
+  gpdDeputyPogCode?: string;
+
+  @ApiProperty({ description: 'GDP_DEPUTY_PRIORITY', required: false })
+  gdpDeputyPriority?: number;
+
+  @ApiProperty({ description: 'หน่วยงานเดิม รหัส (AB_DEPUTY.POG_CODE)', required: false })
+  originalPogCode?: string;
+
+  @ApiProperty({ description: 'หน่วยงานเดิม ชื่อ (AB_DEPUTY.POG_DESC)', required: false })
+  originalPogDesc?: string;
+
+  @ApiProperty({ description: 'ตำแหน่งเดิม (จาก OP_MASTER ฯลฯ)', required: false })
+  originalPositionName?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'ข้อมูลรักษาการแบบเดียวกับหนึ่งรายการใน deputies ของ GET /employees (ไม่ใช่ array)',
+    type: () => EmployeeDeputyPublicDto,
+  })
+  deputy?: EmployeeDeputyPublicDto;
 }
 
 export class SectionDto {

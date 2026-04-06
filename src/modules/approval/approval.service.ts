@@ -18,6 +18,7 @@ import { UpdateClothingExpenseDatesDto } from './dto/update-clothing-expense-dat
 import { CheckClothingExpenseEligibilityDto } from './dto/check-clothing-expense-eligibility.dto';
 import { ClothingExpenseEligibilityResponseDto } from './dto/clothing-expense-eligibility-response.dto';
 import { PwJobInternationalOrganizeCheckResponseDto } from './dto/pw-job-international-organize-check-response.dto';
+import { PwJobSpouseAccompanyLeaveCheckResponseDto } from './dto/pw-job-spouse-accompany-leave-check-response.dto';
 import {
   ApprovalStatisticsResponseDto,
   TravelTypeBreakdownDto,
@@ -95,6 +96,51 @@ export class ApprovalService {
     const currentTime = `${currentHour}${currentMinute}`;
     const sequence = 1;
     return `${sequence.toString().padStart(4, '0')} : ${beYear}${currentMonth}${currentDay} : ${currentTime}`;
+  }
+
+  /** ชื่อตำแหน่งจาก VIEW_POSITION_4OT ตามรหัสพนักงาน (ใช้ snapshot ใน approval_continuous) */
+  private async getPositionNameSnapshotForEmployeeCode(
+    employeeCode: string | null | undefined,
+  ): Promise<string | null> {
+    if (!employeeCode) {
+      return null;
+    }
+    const row = await this.knexService
+      .knex('EMPLOYEE as et')
+      .leftJoin('OP_MASTER_T as omt', 'et.CODE', 'omt.PMT_CODE')
+      .leftJoin('VIEW_POSITION_4OT as vp4ot', (builder) => {
+        builder.on(
+          'vp4ot.POS_POSITIONCODE',
+          '=',
+          this.knexService.knex.raw('RTRIM("omt"."PMT_POS_NO")'),
+        );
+      })
+      .where('et.CODE', employeeCode)
+      .select('vp4ot.POS_POSITIONNAME as positionName')
+      .first();
+    if (!row) {
+      return null;
+    }
+    const raw =
+      (row as { positionName?: string }).positionName ??
+      (row as { POSITIONNAME?: string }).POSITIONNAME;
+    if (raw == null) {
+      return null;
+    }
+    const s = String(raw).trim();
+    return s.length ? s : null;
+  }
+
+  /** ถ้า frontend ส่งข้อความตำแหน่งเต็ม (เช่น รักษาการแทน) ให้ใช้ก่อน ไม่เช่นนั้นดึงจาก HR */
+  private async resolvePositionSnapshot(
+    overrideText: string | null | undefined,
+    employeeCode: string | null | undefined,
+  ): Promise<string | null> {
+    const trimmed = overrideText?.trim();
+    if (trimmed) {
+      return trimmed;
+    }
+    return this.getPositionNameSnapshotForEmployeeCode(employeeCode);
   }
 
   private async getUserPrivilegeLevel(employeeCode: string): Promise<string> {
@@ -1168,6 +1214,39 @@ export class ApprovalService {
           'attachment_id as clothingAttachmentId',
         );
       staffMember.clothingExpenses = clothingExpenses;
+
+      const spouseCompanionRow = await this.knexService
+        .knex('approval_staff_member_spouse_companion')
+        .where('staff_member_id', staffMember.id)
+        .where('approval_id', id)
+        .select(
+          'is_tat_employee as isTatEmployee',
+          'tat_employee_code as tatEmployeeCode',
+          'travel_pattern as travelPattern',
+          'leave_order_no as leaveOrderNo',
+          'leave_order_subject as leaveOrderSubject',
+          'leave_order_effective_date as leaveOrderEffectiveDate',
+          'leave_order_file_id as leaveOrderFileId',
+          'leave_order_file_name as leaveOrderFileName',
+          'follow_travel_date as followTravelDate',
+          'reason',
+        )
+        .first();
+      if (spouseCompanionRow) {
+        staffMember.spouseCompanion = {
+          isTatEmployee: Boolean(spouseCompanionRow.isTatEmployee),
+          tatEmployeeCode: spouseCompanionRow.tatEmployeeCode ?? undefined,
+          travelPattern: spouseCompanionRow.travelPattern ?? undefined,
+          leaveOrderNo: spouseCompanionRow.leaveOrderNo ?? undefined,
+          leaveOrderSubject: spouseCompanionRow.leaveOrderSubject ?? undefined,
+          leaveOrderEffectiveDate:
+            spouseCompanionRow.leaveOrderEffectiveDate ?? undefined,
+          leaveOrderFileId: spouseCompanionRow.leaveOrderFileId ?? undefined,
+          leaveOrderFileName: spouseCompanionRow.leaveOrderFileName ?? undefined,
+          followTravelDate: spouseCompanionRow.followTravelDate ?? undefined,
+          reason: spouseCompanionRow.reason ?? undefined,
+        };
+      }
     }
 
     // Get other expenses
@@ -1231,7 +1310,8 @@ export class ApprovalService {
       .select([
         'ac.id as approvalContinuousId',
         'ac.employee_code as employeeCode', // ผู้รับ
-        'vp4ot.POS_POSITIONNAME as position', // ผู้รับ
+        'ac.approver_position as approverPositionSnapshot',
+        'vp4ot.POS_POSITIONNAME as positionFromHr',
         'et.NAME as signerName', // ผู้รับ
         'ac.signer_date as signerDate',
         'ac.document_ending as documentEnding',
@@ -1246,7 +1326,8 @@ export class ApprovalService {
         // ผู้ส่ง
         'et2.CODE as createdEmployeeCode',
         'et2.NAME as createdName',
-        'vp4ot2.POS_POSITIONNAME as createdPosition',
+        'ac.created_by_position as createdByPositionSnapshot',
+        'vp4ot2.POS_POSITIONNAME as createdPositionFromHr',
 
         'acs.status_code as statusCode',
         'acs.label as statusLabel',
@@ -1261,7 +1342,43 @@ export class ApprovalService {
       .where('rn', 1)
       .select('*');
 
-    const continuousApproval = await finalQuery;
+    const rawContinuousRows = await finalQuery;
+    const continuousApproval = rawContinuousRows.map(
+      (row: Record<string, unknown>) => {
+        const approverPositionSnapshot =
+          row.approverPositionSnapshot ?? row.APPROVERPOSITIONSNAPSHOT;
+        const positionFromHr =
+          row.positionFromHr ?? row.POSITIONFROMHR;
+        const createdByPositionSnapshot =
+          row.createdByPositionSnapshot ?? row.CREATEDBYPOSITIONSNAPSHOT;
+        const createdPositionFromHr =
+          row.createdPositionFromHr ?? row.CREATEDPOSITIONFROMHR;
+        const out: Record<string, unknown> = { ...row };
+        for (const k of [
+          'approverPositionSnapshot',
+          'positionFromHr',
+          'createdByPositionSnapshot',
+          'createdPositionFromHr',
+          'APPROVERPOSITIONSNAPSHOT',
+          'POSITIONFROMHR',
+          'CREATEDBYPOSITIONSNAPSHOT',
+          'CREATEDPOSITIONFROMHR',
+        ]) {
+          delete out[k];
+        }
+        return {
+          ...out,
+          position:
+            (approverPositionSnapshot ?? positionFromHr ?? null) as
+              | string
+              | null,
+          createdPosition:
+            (createdByPositionSnapshot ?? createdPositionFromHr ?? null) as
+              | string
+              | null,
+        };
+      },
+    ) as any[];
 
     // get continuous approval
     // const continuousApproval = await this.knexService
@@ -1426,7 +1543,8 @@ export class ApprovalService {
       otherExpenses,
       conditions,
       budgets,
-      continuousApproval: continuousApproval || [],
+      continuousApproval: (continuousApproval ||
+        []) as ApprovalDetailResponseDto['continuousApproval'],
       approvalRefData: approvalRefData,
     };
 
@@ -1626,6 +1744,9 @@ export class ApprovalService {
           'Processing staff members:',
           JSON.stringify(updateDto.staffMembers, null, 2),
         );
+        await trx('approval_staff_member_spouse_companion')
+          .where('approval_id', id)
+          .delete();
         await trx('approval_staff_members').where('approval_id', id).delete();
         await trx('approval_work_locations').where('approval_id', id).delete();
         await trx('approval_work_locations_date_ranges')
@@ -1671,13 +1792,45 @@ export class ApprovalService {
             })
             .returning('id');
 
+          const newStaffMemberId =
+            typeof insertedStaffMember === 'object' &&
+            insertedStaffMember !== null &&
+            'id' in insertedStaffMember
+              ? (insertedStaffMember as { id: number }).id
+              : Number(insertedStaffMember);
+
+          if (staffMember.spouseCompanion) {
+            const sc = staffMember.spouseCompanion;
+            await trx('approval_staff_member_spouse_companion').insert({
+              approval_id: id,
+              staff_member_id: newStaffMemberId,
+              is_tat_employee:
+                sc.isTatEmployee === true
+                  ? true
+                  : sc.isTatEmployee === false
+                    ? false
+                    : null,
+              tat_employee_code: sc.tatEmployeeCode ?? null,
+              travel_pattern: sc.travelPattern ?? null,
+              leave_order_no: sc.leaveOrderNo ?? null,
+              leave_order_subject: sc.leaveOrderSubject ?? null,
+              leave_order_effective_date: sc.leaveOrderEffectiveDate ?? null,
+              leave_order_file_id: sc.leaveOrderFileId ?? null,
+              leave_order_file_name: sc.leaveOrderFileName ?? null,
+              follow_travel_date: sc.followTravelDate ?? null,
+              reason: sc.reason ?? null,
+              created_at: new Date(),
+              updated_at: new Date(),
+            });
+          }
+
           // Process work locations
           if (Array.isArray(staffMember.workLocations)) {
             for (const workLocation of staffMember.workLocations) {
               const [workLocationId] = await trx('approval_work_locations')
                 .insert({
                   approval_id: id,
-                  staff_member_id: insertedStaffMember.id,
+                  staff_member_id: newStaffMemberId,
                   location: workLocation.location,
                   destination: workLocation.destination,
                   nearby_provinces: workLocation.nearbyProvinces,
@@ -1710,7 +1863,7 @@ export class ApprovalService {
                 for (const expense of workLocation.transportationExpenses) {
                   await trx('approval_transportation_expense').insert({
                     approval_id: id,
-                    staff_member_id: insertedStaffMember.id,
+                    staff_member_id: newStaffMemberId,
                     work_location_id: workLocationId.id,
                     travel_type: expense.travelType,
                     expense_type: expense.expenseType,
@@ -1740,7 +1893,7 @@ export class ApprovalService {
                   )
                     .insert({
                       approval_id: id,
-                      staff_member_id: insertedStaffMember.id,
+                      staff_member_id: newStaffMemberId,
                       work_location_id: workLocationId.id,
                       total_amount: expense.totalAmount,
                       has_meal_out: expense.hasMealOut,
@@ -1854,7 +2007,7 @@ export class ApprovalService {
                 for (const expense of staffMember.entertainmentExpenses) {
                   await trx('approval_entertainment_expense').insert({
                     approval_id: id,
-                    staff_member_id: insertedStaffMember.id,
+                    staff_member_id: newStaffMemberId,
                     entertainment_short_checked:
                       expense.entertainmentShortChecked,
                     entertainment_long_checked:
@@ -1942,7 +2095,7 @@ export class ApprovalService {
                     )
                       .insert({
                         approval_id: id,
-                        staff_member_id: insertedStaffMember.id,
+                        staff_member_id: newStaffMemberId,
                         employee_code: String(staffMember.employeeCode),
                         clothing_file_checked: expense.clothingFileChecked,
                         clothing_amount: expense.clothingAmount,
@@ -2074,6 +2227,15 @@ export class ApprovalService {
         }
         const now = new Date();
 
+        const approverPosition = await this.resolvePositionSnapshot(
+          updateDto.approverPositionText,
+          updateDto.staffEmployeeCode,
+        );
+        const createdByPosition = await this.resolvePositionSnapshot(
+          updateDto.createdByPositionText,
+          employeeCode,
+        );
+
         const latestContinuous = await trx('approval_continuous')
           .where('approval_id', id)
           .orderBy('id', 'desc')
@@ -2096,6 +2258,7 @@ export class ApprovalService {
               signature_attachment_id: updateDto.signatureAttachmentId,
               use_system_signature: updateDto.useSystemSignature,
               comments: updateDto.documentEndingWording,
+              approver_position: approverPosition,
               updated_at: now,
             });
         } else {
@@ -2116,6 +2279,8 @@ export class ApprovalService {
               signature_attachment_id: updateDto.signatureAttachmentId,
               use_system_signature: updateDto.useSystemSignature,
               comments: updateDto.documentEndingWording,
+              approver_position: approverPosition,
+              created_by_position: createdByPosition,
               created_at: now,
               updated_at: now,
             })
@@ -2675,6 +2840,73 @@ export class ApprovalService {
       emplidUsedForQuery,
       hasInternationalOrganize: false,
       pwJobRowCount: rows.length,
+    };
+  }
+
+  async checkPwJobSpouseAccompanyLeaveOrder(
+    employeeCodeInput: string,
+  ): Promise<PwJobSpouseAccompanyLeaveCheckResponseDto> {
+    const employeeCodeInputNorm = String(employeeCodeInput ?? '').trim();
+    const emplidUsedForQuery =
+      this.cleanEmplidForPwJobQuery(employeeCodeInputNorm);
+
+    const base: PwJobSpouseAccompanyLeaveCheckResponseDto = {
+      found: false,
+      employeeCodeInput: employeeCodeInputNorm,
+      emplidUsedForQuery: emplidUsedForQuery ?? '',
+    };
+
+    if (!emplidUsedForQuery) {
+      return base;
+    }
+
+    const row = await this.knexService
+      .knex('PS_PW_JOB')
+      .whereRaw('RTRIM("EMPLID") = ?', [emplidUsedForQuery])
+      .whereRaw('RTRIM("ACTION") = ?', ['LOA'])
+      .whereRaw('RTRIM("ACTION_REASON") IN (?, ?)', ['001', '003'])
+      .select([
+        'EFFDT',
+        'EFFSEQ',
+        'ACTION',
+        'ACTION_REASON',
+        'X_ORDER_NO',
+      ])
+      .orderBy('EFFDT', 'desc')
+      .orderBy('EFFSEQ', 'desc')
+      .first();
+
+    if (!row) {
+      return base;
+    }
+
+    const xOrderNoRaw = String(
+      (row as { X_ORDER_NO?: unknown }).X_ORDER_NO ?? '',
+    ).trim();
+
+    const effdtRaw = (row as { EFFDT?: unknown }).EFFDT;
+    const effdtStr = this.toDateOnlyString(
+      effdtRaw as string | Date | null | undefined,
+    );
+
+    return {
+      ...base,
+      emplidUsedForQuery,
+      found: true,
+      effdt: effdtStr ?? undefined,
+      effectiveDate: effdtStr ?? undefined,
+      effseq:
+        (row as { EFFSEQ?: unknown }).EFFSEQ != null
+          ? Number((row as { EFFSEQ: unknown }).EFFSEQ)
+          : undefined,
+      action: String((row as { ACTION?: unknown }).ACTION ?? '')
+        .trim()
+        || undefined,
+      action_reason: String(
+        (row as { ACTION_REASON?: unknown }).ACTION_REASON ?? '',
+      ).trim()
+        || undefined,
+      xOrderNo: xOrderNoRaw || undefined,
     };
   }
 
@@ -3687,6 +3919,14 @@ export class ApprovalService {
 
           // insert approval_continuous // ส่งกลับไปผู้สร้าง
           const nowApproved = new Date();
+          const approverPosApproved = await this.resolvePositionSnapshot(
+            updateDto.approverPositionText,
+            approval.employee_code,
+          );
+          const createdByPosApproved = await this.resolvePositionSnapshot(
+            updateDto.createdByPositionText,
+            employeeCode,
+          );
           await trx('approval_continuous').insert({
             approval_id: existingContinuous.approval_id,
             employee_code: approval.employee_code,
@@ -3698,6 +3938,8 @@ export class ApprovalService {
             comments: updateDto.comments,
             approval_continuous_status_id: approvalContinuousStatusId.id,
             created_by: employeeCode,
+            approver_position: approverPosApproved,
+            created_by_position: createdByPosApproved,
             created_at: nowApproved,
             updated_at: nowApproved,
           });
@@ -3712,6 +3954,14 @@ export class ApprovalService {
         } else {
           // insert approval_continuous // employee คนถัดไป
           const nowNext = new Date();
+          const approverPosNext = await this.resolvePositionSnapshot(
+            updateDto.approverPositionText,
+            updateDto.employeeCode,
+          );
+          const createdByPosNext = await this.resolvePositionSnapshot(
+            updateDto.createdByPositionText,
+            employeeCode,
+          );
           await trx('approval_continuous').insert({
             approval_id: existingContinuous.approval_id,
             employee_code: updateDto.employeeCode,
@@ -3723,6 +3973,8 @@ export class ApprovalService {
             comments: updateDto.comments,
             approval_continuous_status_id: approvalContinuousStatusId.id,
             created_by: employeeCode,
+            approver_position: approverPosNext,
+            created_by_position: createdByPosNext,
             created_at: nowNext,
             updated_at: nowNext,
           });
@@ -3780,6 +4032,14 @@ export class ApprovalService {
 
         // insert approval_continuous // ส่งกลับไปผู้สร้าง
         const nowRejected = new Date();
+        const approverPosRejected = await this.resolvePositionSnapshot(
+          updateDto.approverPositionText,
+          approval.employee_code,
+        );
+        const createdByPosRejected = await this.resolvePositionSnapshot(
+          updateDto.createdByPositionText,
+          employeeCode,
+        );
         await trx('approval_continuous').insert({
           approval_id: existingContinuous.approval_id,
           employee_code: approval.employee_code,
@@ -3791,6 +4051,8 @@ export class ApprovalService {
           comments: updateDto.comments,
           approval_continuous_status_id: approvalContinuousStatusId.id,
           created_by: employeeCode,
+          approver_position: approverPosRejected,
+          created_by_position: createdByPosRejected,
           created_at: nowRejected,
           updated_at: nowRejected,
         });

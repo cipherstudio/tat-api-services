@@ -24,6 +24,7 @@ import { ApprovalAccommodationTransportExpenseDto } from './approval-accommodati
 import { ApprovalAccommodationHolidayExpenseDto } from './approval-accommodation-holiday-expense.dto';
 import { ApprovalEntertainmentExpenseDto } from './approval-entertainment-expense.dto';
 import { ApprovalClothingExpenseDto } from './approval-clothing-expense.dto';
+import { SpouseCompanionDto } from './spouse-companion.dto';
 
 /**
  * DTO for updating a approval
@@ -267,6 +268,16 @@ export class StaffMemberDto {
   @ValidateNested({ each: true })
   @Type(() => ApprovalClothingExpenseDto)
   clothingExpenses?: ApprovalClothingExpenseDto[];
+
+  @ApiProperty({
+    description: 'ข้อมูลเสริมคู่สมรส (ต่างประเทศ / คำสั่งลาติดตาม)',
+    type: SpouseCompanionDto,
+    required: false,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SpouseCompanionDto)
+  spouseCompanion?: SpouseCompanionDto;
 }
 
 export class UpdateApprovalDto {
@@ -948,4 +959,23 @@ export class UpdateApprovalDto {
   @IsOptional()
   @IsBoolean()
   useSystemSignature?: boolean;
+
+  @ApiProperty({
+    description:
+      'ข้อความตำแหน่งเต็มของผู้รับอนุมัติ (เช่น รักษาการแทน...) เมื่อดึงจาก HR ไม่ครบ — ใช้ snapshot ใน approval_continuous',
+    required: false,
+    example: 'ผู้อำนวยการกอง... รักษาการแทน ...',
+  })
+  @IsOptional()
+  @IsString()
+  approverPositionText?: string;
+
+  @ApiProperty({
+    description:
+      'ข้อความตำแหน่งเต็มของผู้สร้างแถว (เช่น รักษาการแทน...) เมื่อดึงจาก HR ไม่ครบ',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  createdByPositionText?: string;
 }
