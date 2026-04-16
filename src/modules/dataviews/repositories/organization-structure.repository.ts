@@ -460,7 +460,7 @@ export class OrganizationStructureRepository extends KnexBaseRepository<any> {
           pmtNameT: String(emp.pmtNameT ?? ''),
           pmtNameE: String(emp.pmtNameE ?? ''),
           pmtPosNo: String(emp.gdpDeputyPositionEx ?? emp.pmtPosNo ?? ''),
-          pmtLevelCode: String(r.pexRefPpePosLev ?? emp.pmtLevelCode ?? ''),
+          pmtLevelCode: String(emp.pmtLevelCode ?? ''),
           positionName: String(r.pexRefPpeDescT ?? '').trim() || '',
           organizationPogCode: gpdPog,
           isDeputy: true,
