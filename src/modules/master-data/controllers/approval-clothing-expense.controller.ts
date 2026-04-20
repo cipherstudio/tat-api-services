@@ -52,10 +52,16 @@ export class ApprovalClothingExpenseController {
   @ApiQuery({ name: 'work_end_date', required: false, type: String, description: 'Work end date' })
   @ApiQuery({ name: 'staff_member_id', required: false, type: Number, description: 'Staff member ID' })
   @ApiQuery({ name: 'approval_id', required: false, type: Number, description: 'Approval ID' })
-  @ApiQuery({ name: 'employee_code', required: false, type: Number, description: 'Employee code' })
+  @ApiQuery({ name: 'employee_code', required: false, type: String, description: 'Employee code' })
   @ApiQuery({ name: 'increment_id', required: false, type: String, description: 'Increment ID' })
   @ApiQuery({ name: 'destination_country', required: false, type: String, description: 'Destination country' })
-  @ApiQuery({ name: 'is_overdue', required: false, type: Boolean, description: 'Overdue status filter' })
+  @ApiQuery({
+    name: 'is_overdue',
+    required: false,
+    type: Boolean,
+    description:
+      'true: เลย work_start_date และ approval_status_label_id=3 | false: ยังไม่ถึงหรือไม่มี work_start_date (ไม่บังคับ status)',
+  })
   @ApiOkResponse({
     description: 'List of approval clothing expenses with pagination meta',
     schema: {
@@ -107,7 +113,7 @@ export class ApprovalClothingExpenseController {
     @Query('work_end_date') work_end_date?: string,
     @Query('staff_member_id', new ValidationPipe({ transform: true })) staff_member_id?: number,
     @Query('approval_id', new ValidationPipe({ transform: true })) approval_id?: number,
-    @Query('employee_code', new ValidationPipe({ transform: true })) employee_code?: number,
+    @Query('employee_code') employee_code?: string,
     @Query('increment_id') increment_id?: string,
     @Query('destination_country') destination_country?: string,
     @Query('is_overdue', new ValidationPipe({ transform: true })) is_overdue?: boolean,

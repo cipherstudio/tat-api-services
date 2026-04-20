@@ -84,10 +84,11 @@ export class ExpensesOtherRepository extends KnexBaseRepository<ExpensesOther> {
 
     // Apply search term if provided
     if (searchTerm) {
+      const term = `%${searchTerm.toLowerCase()}%`;
       query.where((builder) => {
-        builder.whereRaw('LOWER("name") LIKE ?', [
-          `%${searchTerm.toLowerCase()}%`,
-        ]);
+        builder
+          .whereRaw('LOWER("name") LIKE ?', [term])
+          .orWhereRaw('LOWER("account_expense_code") LIKE ?', [term]);
       });
     }
 

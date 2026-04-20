@@ -194,6 +194,7 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_traveller_form.gran_total',
         'report_traveller_form.request_approve_amount',
         'report_traveller_form.remain_amount',
+        'report_traveller_form.report_submit_to',
         'report_traveller_form.created_at as form_created_at',
         'report_traveller_form.updated_at as form_updated_at',
         // report_traveller columns (join)
@@ -372,6 +373,7 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
             granTotal: row.granTotal,
             requestApproveAmount: row.requestApproveAmount,
             remainAmount: row.remainAmount,
+            reportSubmitTo: row.reportSubmitTo,
             createdAt: row.formCreatedAt,
             updatedAt: row.formUpdatedAt,
             traveller: {
@@ -623,6 +625,7 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_traveller_form.gran_total',
         'report_traveller_form.request_approve_amount',
         'report_traveller_form.remain_amount',
+        'report_traveller_form.report_submit_to',
         'report_traveller_form.created_at as form_created_at',
         'report_traveller_form.updated_at as form_updated_at',
         // report_traveller columns (join)
@@ -778,6 +781,7 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
             granTotal: r.granTotal,
             requestApproveAmount: r.requestApproveAmount,
             remainAmount: r.remainAmount,
+            reportSubmitTo: r.reportSubmitTo,
             createdAt: r.formCreatedAt,
             updatedAt: r.formUpdatedAt,
             traveller: {

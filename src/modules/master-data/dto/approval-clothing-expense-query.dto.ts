@@ -84,11 +84,10 @@ export class ApprovalClothingExpenseQueryDto {
   @IsNumber()
   approval_id?: number;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ required: false, description: 'Employee code (VARCHAR2 in DB; must bind as string for Oracle)' })
   @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  employee_code?: number;
+  @IsString()
+  employee_code?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -100,9 +99,10 @@ export class ApprovalClothingExpenseQueryDto {
   @IsString()
   destination_country?: string;
 
-  @ApiProperty({ 
-    required: false, 
-    description: 'Filter by overdue status. true = overdue (past work_start_date), false = not overdue (before work_start_date), undefined = all records'
+  @ApiProperty({
+    required: false,
+    description:
+      'กรองสถานะเกินกำหนด: true = work_start_date เลยวันนี้แล้ว และใบอนุมัติ approval_status_label_id = 3; false = ยังไม่ถึงวันเริ่มงานหรือไม่ระบุวันเริ่มงาน (ไม่บังคับ status label); ไม่ส่ง = ทั้งหมด',
   })
   @IsOptional()
   @Type(() => Boolean)

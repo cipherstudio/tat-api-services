@@ -1124,6 +1124,7 @@ export class ApprovalService {
             'lodging_total as lodgingTotal',
             'moving_cost_checked as movingCostChecked',
             'moving_cost_rate as movingCostRate',
+            'moving_cost_distance as movingCostDistance',
             // International allowance fields
             'allowance_abroad_flat_checked as allowanceAbroadFlatChecked',
             'allowance_abroad_actual_checked as allowanceAbroadActualChecked',
@@ -1925,6 +1926,7 @@ export class ApprovalService {
                       lodging_total: expense.lodgingTotal,
                       moving_cost_checked: expense.movingCostChecked,
                       moving_cost_rate: expense.movingCostRate,
+                      moving_cost_distance: expense.movingCostDistance,
                       // International allowance fields
                       allowance_abroad_flat_checked:
                         expense.allowanceAbroadFlatChecked,
@@ -2780,6 +2782,143 @@ export class ApprovalService {
     }
   }
 
+  private formatDateThaiBuddhist(isoDay: string | null | undefined): string | null {
+    const d = this.toDateOnlyString(isoDay);
+    if (!d) return null;
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d);
+    if (!m) return null;
+    const y = Number(m[1]);
+    const mo = Number(m[2]);
+    const day = Number(m[3]);
+    if (
+      !Number.isFinite(y) ||
+      !Number.isFinite(mo) ||
+      !Number.isFinite(day) ||
+      mo < 1 ||
+      mo > 12 ||
+      day < 1 ||
+      day > 31
+    ) {
+      return null;
+    }
+    const monthsFull = [
+      'มกราคม',
+      'กุมภาพันธ์',
+      'มีนาคม',
+      'เมษายน',
+      'พฤษภาคม',
+      'มิถุนายน',
+      'กรกฎาคม',
+      'สิงหาคม',
+      'กันยายน',
+      'ตุลาคม',
+      'พฤศจิกายน',
+      'ธันวาคม',
+    ];
+    const be = y + 543;
+    return `${day} ${monthsFull[mo - 1]} ${be}`;
+  }
+
+  private isPermanentInternationalClothingRow(
+    row: Record<string, unknown>,
+  ): boolean {
+    const travel = String(row.approval_travel_type ?? '').trim();
+    if (travel === 'international') {
+      return true;
+    }
+    const aid = row.approval_id;
+    const hasApproval =
+      aid != null && aid !== '' && String(aid).trim() !== '';
+    if (hasApproval) {
+      return false;
+    }
+    const inc = row.increment_id;
+    if (inc == null) return false;
+    return String(inc).trim().length > 0;
+  }
+
+  private getPermanentInternationalBlockReasonForTemporaryFlow(
+    joinedRows: Array<Record<string, unknown>>,
+    todayStr: string,
+  ): string | null {
+    const msgPermanentIncomplete =
+      'ไม่พบข้อมูลวันที่รายงานตัวกลับจากประจำต่างประเทศ กรุณาติดต่องานบรรจุและแต่งตั้ง เพื่อบันทึกข้อมูล';
+
+    const permRows = joinedRows.filter((row) =>
+      this.isPermanentInternationalClothingRow(row),
+    );
+    if (permRows.length === 0) {
+      return null;
+    }
+
+    let permPostingAnchor: string | null = null;
+    for (const row of permRows) {
+      const ws = this.toDateOnlyString(
+        row.work_start_date as string | Date | null | undefined,
+      );
+      if (!ws) continue;
+      if (!permPostingAnchor || ws > permPostingAnchor) {
+        permPostingAnchor = ws;
+      }
+    }
+
+    let effectiveNextPerm: string | null = null;
+    let blockingPerm: Record<string, unknown> | null = null;
+    for (const row of permRows) {
+      const nextD = this.toDateOnlyString(
+        row.next_claim_date as string | Date | null | undefined,
+      );
+      if (!nextD) continue;
+      if (!effectiveNextPerm || nextD > effectiveNextPerm) {
+        effectiveNextPerm = nextD;
+        blockingPerm = row;
+      }
+    }
+
+    if (!effectiveNextPerm) {
+      return msgPermanentIncomplete;
+    }
+
+    if (
+      effectiveNextPerm &&
+      todayStr < effectiveNextPerm &&
+      blockingPerm
+    ) {
+      const reportingD = this.toDateOnlyString(
+        blockingPerm.reporting_date as string | Date | null | undefined,
+      );
+      if (reportingD) {
+        const repTh = this.formatDateThaiBuddhist(reportingD);
+        const nextTh = this.formatDateThaiBuddhist(effectiveNextPerm);
+        if (repTh && nextTh) {
+          return `รายงานตัวกลับจากประจำต่างประเทศ วันที่ ${repTh} ครั้งต่อไปที่เบิกได้ วันที่ ${nextTh}`;
+        }
+      }
+      return msgPermanentIncomplete;
+    }
+
+    if (!permPostingAnchor || todayStr < permPostingAnchor) {
+      return null;
+    }
+
+    let latestReportingPerm: string | null = null;
+    for (const row of permRows) {
+      const r = this.toDateOnlyString(
+        row.reporting_date as string | Date | null | undefined,
+      );
+      if (!r) continue;
+      if (!latestReportingPerm || r > latestReportingPerm) {
+        latestReportingPerm = r;
+      }
+    }
+
+    if (!latestReportingPerm || latestReportingPerm < permPostingAnchor) {
+      return msgPermanentIncomplete;
+    }
+
+    return null;
+  }
+
   async checkPwJobInternationalOrganize(
     employeeCodeInput: string,
   ): Promise<PwJobInternationalOrganizeCheckResponseDto> {
@@ -2948,9 +3087,46 @@ export class ApprovalService {
       }
 
       const existingClothingExpenses = await this.knexService
-        .knex('approval_clothing_expense')
-        .where('employee_code', String(employeeCode))
-        .orderBy('created_at', 'desc');
+        .knex('approval_clothing_expense as ace')
+        .leftJoin('approval as a', 'ace.approval_id', 'a.id')
+        .where('ace.employee_code', String(employeeCode))
+        .orderBy('ace.created_at', 'desc')
+        .select('ace.*', 'a.travel_type as approval_travel_type');
+
+      const msgClothingNextMissing =
+        'ไม่พบข้อมูลวันที่รายงานตัวกลับจากประจำต่างประเทศ กรุณาติดต่องานบรรจุและแต่งตั้ง เพื่อบันทึกข้อมูล';
+
+      if (existingClothingExpenses.length > 0) {
+        const anyRowMissingNextClaim = existingClothingExpenses.some((row) => {
+          const raw = (row as { next_claim_date?: string | Date | null })
+            .next_claim_date;
+          return this.toDateOnlyString(raw) == null;
+        });
+        if (anyRowMissingNextClaim) {
+          this.updateEligibility(
+            result,
+            employeeCode,
+            false,
+            msgClothingNextMissing,
+          );
+          continue;
+        }
+      }
+
+      const permanentBlockReason =
+        this.getPermanentInternationalBlockReasonForTemporaryFlow(
+          existingClothingExpenses as Array<Record<string, unknown>>,
+          todayStr,
+        );
+      if (permanentBlockReason) {
+        this.updateEligibility(
+          result,
+          employeeCode,
+          false,
+          permanentBlockReason,
+        );
+        continue;
+      }
 
       let effectiveNext: string | null = null;
       let blockingExpense: (typeof existingClothingExpenses)[0] | null = null;
@@ -4379,6 +4555,7 @@ export class ApprovalService {
                       lodging_total: expense.lodgingTotal,
                       moving_cost_checked: expense.movingCostChecked,
                       moving_cost_rate: expense.movingCostRate,
+                      moving_cost_distance: expense.movingCostDistance,
                       // International allowance fields
                       allowance_abroad_flat_checked:
                         expense.allowanceAbroadFlatChecked,

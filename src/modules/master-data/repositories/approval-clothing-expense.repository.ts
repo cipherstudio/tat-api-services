@@ -131,10 +131,10 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
   }
 
   private applyOverdueFilter(query: any, isOverdue: boolean) {
-    query.where('a.approval_status_label_id', 3);
     const today = new Date().toISOString().split('T')[0];
 
     if (isOverdue === true) {
+      query.where('a.approval_status_label_id', 3);
       query.where('ace.work_start_date', '<', today);
     } else if (isOverdue === false) {
       query.where(function() {

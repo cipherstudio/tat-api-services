@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsNumber, IsDate } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsDate, MaxLength } from 'class-validator';
 
 export class CreateReportTravellerFormDto {
   // @ApiProperty({ example: 1 })
@@ -26,6 +26,15 @@ export class CreateReportTravellerFormDto {
   @IsOptional()
   @IsString()
   department?: string;
+
+  @ApiProperty({
+    example: 'ผู้บริหาร / หน่วยงานที่รายงาน',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reportSubmitTo?: string;
 
   @ApiProperty({ example: '2024-07-03' })
   @IsOptional()

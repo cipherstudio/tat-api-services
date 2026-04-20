@@ -379,6 +379,15 @@ export class ApprovalAccommodationExpenseDto {
   movingCostRate?: number;
 
   @ApiProperty({
+    description: 'Distance (km) used for moving cost',
+    example: 245,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  movingCostDistance?: number;
+
+  @ApiProperty({
     description: 'Transport expenses for this accommodation',
     type: [ApprovalAccommodationTransportExpenseDto],
     required: false,

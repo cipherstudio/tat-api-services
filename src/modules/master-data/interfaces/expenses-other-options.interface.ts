@@ -23,6 +23,7 @@ export interface ExpensesOtherFilterOptions extends BaseFilterOptions {
    * })
    */
   name?: string;
+  accountExpenseCode?: string;
 }
 
 /**
@@ -60,6 +61,7 @@ export interface ExpensesOtherQueryOptions {
   orderBy?: string;
   orderDir?: 'asc' | 'desc';
   name?: string;
+  accountExpenseCode?: string;
   searchTerm?: string;
   createdAfter?: Date;
   createdBefore?: Date;

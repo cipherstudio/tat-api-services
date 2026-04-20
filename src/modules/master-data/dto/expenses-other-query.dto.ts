@@ -9,6 +9,10 @@ export class ExpensesOtherQueryDto extends CommonQueryDto {
 
   @IsOptional()
   @IsString()
+  accountExpenseCode?: string;
+
+  @IsOptional()
+  @IsString()
   searchTerm?: string;
 
   @IsOptional()

@@ -616,6 +616,7 @@ export class UpdateApprovalDto {
                 lodgingTotal: 2400,
                 movingCostChecked: true,
                 movingCostRate: 300,
+                movingCostDistance: 245,
               },
             ],
             accommodationTransportExpenses: [

@@ -64,6 +64,12 @@ export class ExpensesOtherController {
     description: 'Name',
   })
   @ApiQuery({
+    name: 'accountExpenseCode',
+    type: String,
+    required: false,
+    description: 'รหัสค่าใช้จ่ายบัญชี',
+  })
+  @ApiQuery({
     name: 'searchTerm',
     type: String,
     required: false,
@@ -99,6 +105,7 @@ export class ExpensesOtherController {
     @Query('orderBy') orderBy?: ExpensesOtherQueryDto['orderBy'],
     @Query('orderDir') orderDir?: 'asc' | 'desc',
     @Query('name') name?: string,
+    @Query('accountExpenseCode') accountExpenseCode?: string,
     @Query('searchTerm') searchTerm?: string,
     @Query('createdAfter', new ValidationPipe({ transform: true }))
     createdAfter?: Date,
@@ -116,6 +123,7 @@ export class ExpensesOtherController {
       orderBy,
       orderDir,
       name,
+      accountExpenseCode,
       searchTerm,
       createdAfter,
       createdBefore,

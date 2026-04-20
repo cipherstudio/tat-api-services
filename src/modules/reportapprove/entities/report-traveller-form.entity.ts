@@ -18,6 +18,9 @@ export class ReportTravellerForm {
   @ApiProperty({ example: 'IT Department' })
   department: string;
 
+  @ApiProperty({ example: 'ผู้บริหาร', required: false })
+  report_submit_to?: string;
+
   @ApiProperty({ example: '2024-07-03' })
   date: Date;
 

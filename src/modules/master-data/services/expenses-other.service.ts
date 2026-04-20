@@ -49,6 +49,7 @@ export class ExpensesOtherService {
       orderBy = 'created_at',
       orderDir = 'desc',
       name,
+      accountExpenseCode,
       searchTerm,
       createdAfter,
       createdBefore,
@@ -63,6 +64,9 @@ export class ExpensesOtherService {
       `orderBy:${orderBy}`,
       `orderDir:${orderDir}`,
       name ? `name:${name}` : null,
+      accountExpenseCode
+        ? `accountExpenseCode:${accountExpenseCode}`
+        : null,
       searchTerm ? `search:${searchTerm}` : null,
       createdAfter ? `createdAfter:${createdAfter.toISOString()}` : null,
       createdBefore ? `createdBefore:${createdBefore.toISOString()}` : null,
@@ -87,6 +91,10 @@ export class ExpensesOtherService {
 
     if (name) {
       conditions.name = name;
+    }
+
+    if (accountExpenseCode) {
+      conditions.account_expense_code = accountExpenseCode;
     }
 
     if (createdAfter) {

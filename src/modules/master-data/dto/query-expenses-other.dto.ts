@@ -9,7 +9,14 @@ export class QueryExpensesOtherDto extends CommonQueryDto {
   @IsString()
   name?: string;
 
-  @ApiPropertyOptional({ description: 'Search term for name' })
+  @ApiPropertyOptional({ description: 'รหัสค่าใช้จ่ายบัญชี (ตรงกับคอลัมน์)' })
+  @IsOptional()
+  @IsString()
+  accountExpenseCode?: string;
+
+  @ApiPropertyOptional({
+    description: 'ค้นหาในชื่อหรือรหัสค่าใช้จ่ายบัญชี',
+  })
   @IsOptional()
   @IsString()
   searchTerm?: string;
