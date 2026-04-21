@@ -20,6 +20,22 @@ export class SpouseCompanionDto {
 
   @ApiProperty({
     required: false,
+    description: 'ตำแหน่งคู่สมรส (ข้อความ)',
+  })
+  @IsOptional()
+  @IsString()
+  spousePositionText?: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'ระดับคู่สมรส (ข้อความ)',
+  })
+  @IsOptional()
+  @IsString()
+  spouseLevelText?: string;
+
+  @ApiProperty({
+    required: false,
     example: 'with_officer',
     description: 'รูปแบบการเดินทางของคู่สมรส',
   })

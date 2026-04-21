@@ -313,8 +313,18 @@ export class DataviewsService {
     if (!master) {
       return row;
     }
+    const [position4ot, exPosition] = await Promise.all([
+      this.viewPosition4otRepository.findFirstByTrimmedPositionCode(
+        master.pmtPosNo,
+      ),
+      this.employeeRepository.findExPositionByPmtCode(
+        String(master.pmtCode ?? ''),
+      ),
+    ]);
     const levelRaw =
       master.pmtLevelCode != null ? String(master.pmtLevelCode).trim() : '';
+    const posPositionname =
+      String(position4ot?.posPositionname ?? '').trim() || undefined;
     const spouseTatStaff: ViewDependentBenefSpouseTatStaff =
       levelRaw.length > 0
         ? {
@@ -323,12 +333,16 @@ export class DataviewsService {
             pmtNameT: master.pmtNameT,
             pmtNameE: master.pmtNameE,
             pmtLevelCode: levelRaw,
+            exPosition,
+            posPositionname,
           }
         : {
             staffType: 'contractor',
             pmtCode: master.pmtCode,
             pmtNameT: master.pmtNameT,
             pmtNameE: master.pmtNameE,
+            exPosition,
+            posPositionname,
           };
     return { ...row, spouseTatStaff };
   }

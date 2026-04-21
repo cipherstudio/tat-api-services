@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsBoolean } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 /**
@@ -140,4 +140,13 @@ export class CreateApprovalDto {
   @IsOptional()
   @IsString()
   documentTitle?: string;
+
+  @ApiProperty({
+    description: 'เดินทางเป็นครั้งแรกหรือไม่',
+    required: false,
+    example: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isFirstTimeTravel?: boolean;
 }

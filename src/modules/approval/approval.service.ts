@@ -513,6 +513,7 @@ export class ApprovalService {
           'approval.document_tel as documentTel',
           'approval.document_to as documentTo',
           'approval.document_title as documentTitle',
+          'approval.is_first_time_travel as isFirstTimeTravel',
           'approval.attachment_id as attachmentId',
           'approval.checklist_document_attachment_id as checklistDocumentAttachmentId',
           'approval.form3_total_outbound as form3TotalOutbound',
@@ -882,6 +883,7 @@ export class ApprovalService {
         'approval.document_tel as documentTel',
         'approval.document_to as documentTo',
         'approval.document_title as documentTitle',
+        'approval.is_first_time_travel as isFirstTimeTravel',
         'approval.attachment_id as attachmentId',
         'approval.checklist_document_attachment_id as checklistDocumentAttachmentId',
         'approval.form3_total_outbound as form3TotalOutbound',
@@ -1014,6 +1016,7 @@ export class ApprovalService {
         'asm.position',
         'asm.right_equivalent as rightEquivalent',
         'asm.organization_position as organizationPosition',
+        'asm.birth_date as birthDate',
         'asm.cancelled',
         'omt.PMT_LEVEL_CODE as viewLevel',
         'et.POSITION as viewPosition',
@@ -1223,6 +1226,8 @@ export class ApprovalService {
         .select(
           'is_tat_employee as isTatEmployee',
           'tat_employee_code as tatEmployeeCode',
+          'spouse_position_text as spousePositionText',
+          'spouse_level_text as spouseLevelText',
           'travel_pattern as travelPattern',
           'leave_order_no as leaveOrderNo',
           'leave_order_subject as leaveOrderSubject',
@@ -1237,6 +1242,9 @@ export class ApprovalService {
         staffMember.spouseCompanion = {
           isTatEmployee: Boolean(spouseCompanionRow.isTatEmployee),
           tatEmployeeCode: spouseCompanionRow.tatEmployeeCode ?? undefined,
+          spousePositionText:
+            spouseCompanionRow.spousePositionText ?? undefined,
+          spouseLevelText: spouseCompanionRow.spouseLevelText ?? undefined,
           travelPattern: spouseCompanionRow.travelPattern ?? undefined,
           leaveOrderNo: spouseCompanionRow.leaveOrderNo ?? undefined,
           leaveOrderSubject: spouseCompanionRow.leaveOrderSubject ?? undefined,
@@ -1593,6 +1601,9 @@ export class ApprovalService {
         document_to: updateDto.documentTo,
         document_title: updateDto.documentTitle,
         attachment_id: updateDto.attachmentId,
+        ...(updateDto.isFirstTimeTravel !== undefined
+          ? { is_first_time_travel: updateDto.isFirstTimeTravel }
+          : {}),
         form3_total_outbound: updateDto.form3TotalOutbound,
         form3_total_inbound: updateDto.form3TotalInbound,
         form3_total_amount: updateDto.form3TotalAmount,
@@ -1787,6 +1798,7 @@ export class ApprovalService {
               position: staffMember.position,
               right_equivalent: staffMember.rightEquivalent,
               organization_position: staffMember.organizationPosition,
+              birth_date: staffMember.birthDate ?? null,
               cancelled: staffMember.cancelled || false,
               created_at: new Date(),
               updated_at: new Date(),
@@ -1812,6 +1824,8 @@ export class ApprovalService {
                     ? false
                     : null,
               tat_employee_code: sc.tatEmployeeCode ?? null,
+              spouse_position_text: sc.spousePositionText ?? null,
+              spouse_level_text: sc.spouseLevelText ?? null,
               travel_pattern: sc.travelPattern ?? null,
               leave_order_no: sc.leaveOrderNo ?? null,
               leave_order_subject: sc.leaveOrderSubject ?? null,
@@ -4310,6 +4324,7 @@ export class ApprovalService {
         document_to: originalApproval.documentTo,
         document_title: originalApproval.documentTitle,
         attachment_id: originalApproval.attachmentId,
+        is_first_time_travel: originalApproval.isFirstTimeTravel ?? null,
         form3_total_outbound: originalApproval.form3TotalOutbound,
         form3_total_inbound: originalApproval.form3TotalInbound,
         form3_total_amount: originalApproval.form3TotalAmount,
@@ -4435,11 +4450,39 @@ export class ApprovalService {
               position: staffMember.position,
               right_equivalent: staffMember.rightEquivalent,
               organization_position: staffMember.organizationPosition,
+              birth_date: staffMember.birthDate ?? null,
               cancelled: staffMember.cancelled || false,
               created_at: new Date(),
               updated_at: new Date(),
             })
             .returning('id');
+
+          if (staffMember.spouseCompanion) {
+            const sc = staffMember.spouseCompanion;
+            await trx('approval_staff_member_spouse_companion').insert({
+              approval_id: newApproval.id,
+              staff_member_id: newStaffMember.id,
+              is_tat_employee:
+                sc.isTatEmployee === true
+                  ? true
+                  : sc.isTatEmployee === false
+                    ? false
+                    : null,
+              tat_employee_code: sc.tatEmployeeCode ?? null,
+              spouse_position_text: sc.spousePositionText ?? null,
+              spouse_level_text: sc.spouseLevelText ?? null,
+              travel_pattern: sc.travelPattern ?? null,
+              leave_order_no: sc.leaveOrderNo ?? null,
+              leave_order_subject: sc.leaveOrderSubject ?? null,
+              leave_order_effective_date: sc.leaveOrderEffectiveDate ?? null,
+              leave_order_file_id: sc.leaveOrderFileId ?? null,
+              leave_order_file_name: sc.leaveOrderFileName ?? null,
+              follow_travel_date: sc.followTravelDate ?? null,
+              reason: sc.reason ?? null,
+              created_at: new Date(),
+              updated_at: new Date(),
+            });
+          }
 
           // Copy work locations and their related data
           if (
@@ -4819,6 +4862,7 @@ export class ApprovalService {
         document_to: originalApproval.documentTo,
         document_title: originalApproval.documentTitle ? `${originalApproval.documentTitle} (ยกเลิก)` : '(ยกเลิก)',
         attachment_id: null,
+        is_first_time_travel: originalApproval.isFirstTimeTravel ?? null,
         form3_total_outbound: 0,
         form3_total_inbound: 0,
         form3_total_amount: 0,
@@ -4935,11 +4979,39 @@ export class ApprovalService {
               position: staffMember.position,
               right_equivalent: staffMember.rightEquivalent,
               organization_position: staffMember.organizationPosition,
+              birth_date: staffMember.birthDate ?? null,
               cancelled: staffMember.cancelled || false,
               created_at: new Date(),
               updated_at: new Date(),
             })
             .returning('id');
+
+          if (staffMember.spouseCompanion) {
+            const sc = staffMember.spouseCompanion;
+            await trx('approval_staff_member_spouse_companion').insert({
+              approval_id: newApproval.id,
+              staff_member_id: newStaffMember.id,
+              is_tat_employee:
+                sc.isTatEmployee === true
+                  ? true
+                  : sc.isTatEmployee === false
+                    ? false
+                    : null,
+              tat_employee_code: sc.tatEmployeeCode ?? null,
+              spouse_position_text: sc.spousePositionText ?? null,
+              spouse_level_text: sc.spouseLevelText ?? null,
+              travel_pattern: sc.travelPattern ?? null,
+              leave_order_no: sc.leaveOrderNo ?? null,
+              leave_order_subject: sc.leaveOrderSubject ?? null,
+              leave_order_effective_date: sc.leaveOrderEffectiveDate ?? null,
+              leave_order_file_id: sc.leaveOrderFileId ?? null,
+              leave_order_file_name: sc.leaveOrderFileName ?? null,
+              follow_travel_date: sc.followTravelDate ?? null,
+              reason: sc.reason ?? null,
+              created_at: new Date(),
+              updated_at: new Date(),
+            });
+          }
 
           if (
             staffMember.workLocations &&
@@ -5164,6 +5236,7 @@ export class ApprovalService {
         'approval.document_tel as documentTel',
         'approval.document_to as documentTo',
         'approval.document_title as documentTitle',
+        'approval.is_first_time_travel as isFirstTimeTravel',
         'approval.attachment_id as attachmentId',
         'approval.form3_total_outbound as form3TotalOutbound',
         'approval.form3_total_inbound as form3TotalInbound',

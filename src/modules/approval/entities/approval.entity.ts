@@ -102,6 +102,11 @@ export interface Approval {
   documentTitle?: string;
 
   /**
+   * เดินทางเป็นครั้งแรกหรือไม่
+   */
+  isFirstTimeTravel?: boolean | null;
+
+  /**
    * The attachment ID
    */
   attachmentId?: number;
@@ -347,6 +352,7 @@ export const approvalColumnMap = {
   document_tel: 'documentTel',
   document_to: 'documentTo',
   document_title: 'documentTitle',
+  is_first_time_travel: 'isFirstTimeTravel',
   attachment_id: 'attachmentId',
   checklist_document_attachment_id: 'checklistDocumentAttachmentId',
   form3_total_outbound: 'form3TotalOutbound',
@@ -407,6 +413,7 @@ export const approvalReverseColumnMap = {
   documentTel: 'document_tel',
   documentTo: 'document_to',
   documentTitle: 'document_title',
+  isFirstTimeTravel: 'is_first_time_travel',
   attachmentId: 'attachment_id',
   checklistDocumentAttachmentId: 'checklist_document_attachment_id',
   form3TotalOutbound: 'form3_total_outbound',

@@ -239,6 +239,15 @@ export class StaffMemberDto {
   cancelled?: boolean;
 
   @ApiProperty({
+    description: 'วันเกิดผู้เดินทาง (เช่น บุตร) รูปแบบ yyyy-mm-dd',
+    required: false,
+    example: '2015-06-01',
+  })
+  @IsOptional()
+  @IsDateString()
+  birthDate?: string;
+
+  @ApiProperty({
     description: 'สถานที่ทำงาน',
     type: [WorkLocationDto],
   })
@@ -433,6 +442,15 @@ export class UpdateApprovalDto {
   @IsOptional()
   @IsString()
   documentTitle?: string;
+
+  @ApiProperty({
+    description: 'เดินทางเป็นครั้งแรกหรือไม่',
+    required: false,
+    example: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isFirstTimeTravel?: boolean;
 
   @ApiProperty({
     description: 'Travel date ranges',

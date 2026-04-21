@@ -547,6 +547,19 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
       | undefined;
   }
 
+  async findExPositionByPmtCode(pmtCode: string): Promise<string | undefined> {
+    const code = String(pmtCode ?? '').trim();
+    if (!code) return undefined;
+    const row = await this.knex('EMPLOYEE')
+      .whereRaw('RTRIM("CODE") = ?', [code])
+      .select('EX_POSITION')
+      .first();
+    if (!row) return undefined;
+    const c = await toCamelCase<{ exPosition?: string }>(row);
+    const v = String(c.exPosition ?? '').trim();
+    return v || undefined;
+  }
+
   async checkIsAdmin(pmtCode: string, userRole?: string): Promise<boolean> {
     const trimmed = (pmtCode ?? '').trim();
     if (!trimmed) {

@@ -53,6 +53,7 @@ export class OpMasterTRepository extends KnexBaseRepository<OpMasterT> {
       'PMT_NAME_T',
       'PMT_NAME_E',
       'PMT_LEVEL_CODE',
+      'PMT_POS_NO',
     ] as const;
 
     let row = await this.knex(this.tableName)

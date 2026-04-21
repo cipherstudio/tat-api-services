@@ -45,4 +45,17 @@ export class ViewPosition4otRepository extends KnexBaseRepository<ViewPosition4o
       },
     };
   }
+
+  async findFirstByTrimmedPositionCode(
+    positionCode: string | null | undefined,
+  ) {
+    const code = String(positionCode ?? '').trim();
+    if (!code) return null;
+    const row = await this.knex(this.tableName)
+      .whereRaw('RTRIM("POS_POSITIONCODE") = ?', [code])
+      .select('POS_POSITIONCODE', 'POS_POSITIONNAME')
+      .first();
+    if (!row) return null;
+    return toCamelCase(row) as { posPositioncode?: string; posPositionname?: string };
+  }
 }

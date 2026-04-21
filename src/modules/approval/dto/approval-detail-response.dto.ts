@@ -187,6 +187,12 @@ export class StaffMemberDto {
   cancelled?: boolean;
 
   @ApiProperty({
+    description: 'วันเกิดผู้เดินทาง (yyyy-mm-dd)',
+    required: false
+  })
+  birthDate?: string;
+
+  @ApiProperty({
     description: 'ระดับสิทธิ์',
     example: 'C5'
   })
@@ -405,6 +411,13 @@ export class ApprovalDetailResponseDto implements Approval {
     example: 'Business Trip Request'
   })
   documentTitle?: string;
+
+  @ApiProperty({
+    description: 'เดินทางเป็นครั้งแรกหรือไม่',
+    required: false,
+    example: true,
+  })
+  isFirstTimeTravel?: boolean | null;
 
   @ApiProperty({
     description: 'Travel date ranges',

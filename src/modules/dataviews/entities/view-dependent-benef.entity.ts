@@ -4,6 +4,8 @@ export interface ViewDependentBenefSpouseTatStaff {
   pmtNameT?: string;
   pmtNameE?: string;
   pmtLevelCode?: string;
+  exPosition?: string;
+  posPositionname?: string;
 }
 
 export interface ViewDependentBenef {
