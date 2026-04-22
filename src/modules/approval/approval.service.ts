@@ -54,6 +54,38 @@ export class ApprovalService {
     private readonly notificationService: NotificationService,
   ) {}
 
+  private parseMovingCostSegmentsFromDb(
+    value: unknown,
+  ): { distance?: number; rate?: number }[] | undefined {
+    if (value == null || value === '') {
+      return undefined;
+    }
+    if (Array.isArray(value)) {
+      return value as { distance?: number; rate?: number }[];
+    }
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value) as unknown;
+        return Array.isArray(parsed)
+          ? (parsed as { distance?: number; rate?: number }[])
+          : undefined;
+      } catch {
+        return undefined;
+      }
+    }
+    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(value)) {
+      return this.parseMovingCostSegmentsFromDb(value.toString('utf8'));
+    }
+    return undefined;
+  }
+
+  private stringifyMovingCostSegmentsForDb(segments: unknown): string | null {
+    if (!Array.isArray(segments) || segments.length === 0) {
+      return null;
+    }
+    return JSON.stringify(segments);
+  }
+
   private async generateIncrementId(): Promise<string> {
     // Get current date
     const now = new Date();
@@ -1128,6 +1160,8 @@ export class ApprovalService {
             'moving_cost_checked as movingCostChecked',
             'moving_cost_rate as movingCostRate',
             'moving_cost_distance as movingCostDistance',
+            'moving_cost_segments as movingCostSegments',
+            'moving_excess_account_3_reason as movingExcessAccount3Reason',
             // International allowance fields
             'allowance_abroad_flat_checked as allowanceAbroadFlatChecked',
             'allowance_abroad_actual_checked as allowanceAbroadActualChecked',
@@ -1143,6 +1177,13 @@ export class ApprovalService {
             'meal_abroad_flat_amount as mealAbroadFlatAmount',
             'meal_abroad_actual_amount as mealAbroadActualAmount',
           );
+
+        for (const accommodationExpense of accommodationExpenses) {
+          accommodationExpense.movingCostSegments =
+            this.parseMovingCostSegmentsFromDb(
+              accommodationExpense.movingCostSegments,
+            );
+        }
 
         // Get accommodation transport expenses for each accommodation expense
         for (const accommodationExpense of accommodationExpenses) {
@@ -1941,6 +1982,12 @@ export class ApprovalService {
                       moving_cost_checked: expense.movingCostChecked,
                       moving_cost_rate: expense.movingCostRate,
                       moving_cost_distance: expense.movingCostDistance,
+                      moving_cost_segments:
+                        this.stringifyMovingCostSegmentsForDb(
+                          expense.movingCostSegments,
+                        ),
+                      moving_excess_account_3_reason:
+                        expense.movingExcessAccount3Reason ?? null,
                       // International allowance fields
                       allowance_abroad_flat_checked:
                         expense.allowanceAbroadFlatChecked,
@@ -4065,11 +4112,13 @@ export class ApprovalService {
           .select('final_staff_employee_code')
           .first();
 
-        // if current employee code is final_staff_employee_code, update approval status to APPROVED
-        if (
-          existingContinuous.employee_code ===
-          approval.final_staff_employee_code
-        ) {
+        const closeFullApproval =
+          updateDto.isFinalStep === true ||
+          (updateDto.isFinalStep !== false &&
+            existingContinuous.employee_code ===
+              approval.final_staff_employee_code);
+
+        if (closeFullApproval) {
           // get approval_status_label_id of APPROVED
           const approvalStatusLabelIdApproved = await trx(
             'approval_status_labels',
@@ -4599,6 +4648,12 @@ export class ApprovalService {
                       moving_cost_checked: expense.movingCostChecked,
                       moving_cost_rate: expense.movingCostRate,
                       moving_cost_distance: expense.movingCostDistance,
+                      moving_cost_segments:
+                        this.stringifyMovingCostSegmentsForDb(
+                          expense.movingCostSegments,
+                        ),
+                      moving_excess_account_3_reason:
+                        expense.movingExcessAccount3Reason ?? null,
                       // International allowance fields
                       allowance_abroad_flat_checked:
                         expense.allowanceAbroadFlatChecked,

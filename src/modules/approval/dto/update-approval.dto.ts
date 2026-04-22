@@ -635,6 +635,12 @@ export class UpdateApprovalDto {
                 movingCostChecked: true,
                 movingCostRate: 300,
                 movingCostDistance: 245,
+                movingCostSegments: [
+                  { distance: 300, rate: 5000 },
+                  { distance: 500, rate: 10000 },
+                ],
+                movingExcessAccount3Reason:
+                  'ข้อความเหตุผลบัญชีหมายเลข 3 (ถ้ามี)',
               },
             ],
             accommodationTransportExpenses: [

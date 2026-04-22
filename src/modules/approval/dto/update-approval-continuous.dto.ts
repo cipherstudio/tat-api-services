@@ -94,6 +94,16 @@ export class UpdateApprovalContinuousDto {
 
   @ApiProperty({
     description:
+      'เมื่อ statusCode เป็น APPROVED: true = จบสายอนุมัติ (เหมือน final approve); false = ส่งต่อคนถัดไป ถ้าไม่ส่งฟิลด์นี้ ระบบจะเดาจาก final_staff_employee_code แบบเดิม',
+    example: true,
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isFinalStep?: boolean;
+
+  @ApiProperty({
+    description:
       'ข้อความตำแหน่งเต็มของผู้รับอนุมัติ (เช่น รักษาการแทน...) เมื่อดึงจาก HR ไม่ครบ',
     required: false,
     example: 'รองผู้ว่าการ... รักษาการแทน ...',
@@ -121,4 +131,4 @@ export class UpdateApprovalContinuousDto {
   @ValidateIf((o) => o.checklistDocumentAttachmentId != null)
   @IsNumber()
   checklistDocumentAttachmentId?: number | null;
-} 
+}

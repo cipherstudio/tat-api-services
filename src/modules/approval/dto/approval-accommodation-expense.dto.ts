@@ -3,6 +3,26 @@ import { IsBoolean, IsOptional, IsString, IsNumber, IsArray, ValidateNested } fr
 import { Type } from 'class-transformer';
 import { ApprovalAccommodationTransportExpenseDto } from './approval-accommodation-transport-expense.dto';
 
+export class MovingCostSegmentDto {
+  @ApiProperty({
+    description: 'Segment distance (km)',
+    example: 300,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  distance?: number;
+
+  @ApiProperty({
+    description: 'Segment rate amount',
+    example: 5000,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  rate?: number;
+}
+
 export class ApprovalAccommodationExpenseDto {
   @ApiProperty({
     description: 'Total amount of accommodation expenses',
@@ -386,6 +406,27 @@ export class ApprovalAccommodationExpenseDto {
   @IsOptional()
   @IsNumber()
   movingCostDistance?: number;
+
+  @ApiProperty({
+    description: 'Moving cost breakdown by distance segments (stored as JSON)',
+    type: [MovingCostSegmentDto],
+    required: false,
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => MovingCostSegmentDto)
+  movingCostSegments?: MovingCostSegmentDto[];
+
+  @ApiProperty({
+    description:
+      'Reason text when moving cost exceeds account 3 rules (if applicable)',
+    example: 'ข้อความเหตุผลบัญชีหมายเลข 3 (ถ้ามี)',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  movingExcessAccount3Reason?: string;
 
   @ApiProperty({
     description: 'Transport expenses for this accommodation',
