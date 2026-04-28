@@ -138,8 +138,9 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
       query.where('ace.work_start_date', '<', today);
     } else if (isOverdue === false) {
       query.where(function() {
-        this.where('ace.work_start_date', '>=', today)
-             .orWhereNull('ace.work_start_date');
+        this.where('ace.next_claim_date', '>', today).orWhereNull(
+          'ace.next_claim_date',
+        );
       });
 
       query.whereNotIn('ace.approval_id', function() {

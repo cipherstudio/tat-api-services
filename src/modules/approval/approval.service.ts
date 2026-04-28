@@ -2937,6 +2937,9 @@ export class ApprovalService {
     }
 
     if (!effectiveNextPerm) {
+      if (permPostingAnchor && todayStr < permPostingAnchor) {
+        return null;
+      }
       return msgPermanentIncomplete;
     }
 
@@ -3158,19 +3161,33 @@ export class ApprovalService {
         'ไม่พบข้อมูลวันที่รายงานตัวกลับจากประจำต่างประเทศ กรุณาติดต่องานบรรจุและแต่งตั้ง เพื่อบันทึกข้อมูล';
 
       if (existingClothingExpenses.length > 0) {
-        const anyRowMissingNextClaim = existingClothingExpenses.some((row) => {
+        const rowsMissingNextClaim = existingClothingExpenses.filter((row) => {
           const raw = (row as { next_claim_date?: string | Date | null })
             .next_claim_date;
           return this.toDateOnlyString(raw) == null;
         });
-        if (anyRowMissingNextClaim) {
-          this.updateEligibility(
-            result,
-            employeeCode,
-            false,
-            msgClothingNextMissing,
+        if (rowsMissingNextClaim.length > 0) {
+          const shouldBlockForMissingNext = rowsMissingNextClaim.some(
+            (row) => {
+              const ws = this.toDateOnlyString(
+                (row as { work_start_date?: string | Date | null })
+                  .work_start_date,
+              );
+              if (ws == null) {
+                return true;
+              }
+              return todayStr >= ws;
+            },
           );
-          continue;
+          if (shouldBlockForMissingNext) {
+            this.updateEligibility(
+              result,
+              employeeCode,
+              false,
+              msgClothingNextMissing,
+            );
+            continue;
+          }
         }
       }
 
