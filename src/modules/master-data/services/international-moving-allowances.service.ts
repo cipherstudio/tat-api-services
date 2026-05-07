@@ -23,6 +23,7 @@ export class InternationalMovingAllowancesService {
       limit = 10,
       orderBy = 'created_at',
       orderDir = 'DESC',
+      officeId,
       office,
       currency,
       directorSalary,
@@ -40,6 +41,7 @@ export class InternationalMovingAllowancesService {
       `limit:${limit}`,
       `orderBy:${orderBy}`,
       `orderDir:${orderDir}`,
+      officeId ? `officeId:${officeId}` : null,
       office ? `office:${office}` : null,
       currency ? `currency:${currency}` : null,
       directorSalary ? `directorSalary:${directorSalary}` : null,
@@ -60,6 +62,10 @@ export class InternationalMovingAllowancesService {
     // Prepare conditions
     const conditions: Record<string, any> = {};
     
+    if (officeId) {
+      conditions.officeId = officeId;
+    }
+
     if (office) {
       conditions.office = office;
     }

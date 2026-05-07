@@ -1,7 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, Min } from 'class-validator';
+import { IsString, IsNumber, Min, IsOptional, IsInt } from 'class-validator';
 
 export class CreateInternationalMovingAllowancesDto {
+  @ApiProperty({
+    description: 'Office international ID',
+    required: false,
+    nullable: true,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  officeId?: number;
+
   @ApiProperty({ description: 'Office name' })
   @IsString()
   office: string;

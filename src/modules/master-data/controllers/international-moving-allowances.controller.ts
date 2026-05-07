@@ -76,6 +76,12 @@ export class InternationalMovingAllowancesController {
     description: 'Order direction',
   })
   @ApiQuery({
+    name: 'officeId',
+    type: Number,
+    required: false,
+    description: 'Office international ID',
+  })
+  @ApiQuery({
     name: 'office',
     type: String,
     required: false,
@@ -135,6 +141,8 @@ export class InternationalMovingAllowancesController {
     @Query('orderBy')
     orderBy?: InternationalMovingAllowancesQueryDto['orderBy'],
     @Query('orderDir') orderDir?: 'asc' | 'desc',
+    @Query('officeId', new ValidationPipe({ transform: true }))
+    officeId?: number,
     @Query('office') office?: string,
     @Query('currency') currency?: string,
     @Query('directorSalary', new ValidationPipe({ transform: true }))
@@ -157,6 +165,7 @@ export class InternationalMovingAllowancesController {
       limit,
       orderBy,
       orderDir,
+      officeId,
       office,
       currency,
       directorSalary,

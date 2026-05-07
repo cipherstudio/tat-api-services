@@ -1,9 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, IsDate, IsNumber } from 'class-validator';
+import { IsOptional, IsString, IsDate, IsNumber, IsInt, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CommonQueryDto } from '../../../common/dto/common-query.dtp';
 
 export class InternationalMovingAllowancesQueryDto extends CommonQueryDto {
+  @ApiProperty({ required: false })
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  @Type(() => Number)
+  officeId?: number;
+
   @ApiProperty({ required: false })
   @IsString()
   @IsOptional()

@@ -4,6 +4,13 @@ export class InternationalMovingAllowances {
   @ApiProperty({ description: 'Unique identifier' })
   id: number;
 
+  @ApiProperty({
+    description: 'Office international ID',
+    required: false,
+    nullable: true,
+  })
+  officeId?: number | null;
+
   @ApiProperty({ description: 'Office name' })
   office: string;
 
@@ -25,6 +32,7 @@ export class InternationalMovingAllowances {
 
 export const internationalMovingAllowancesColumnMap = {
   id: 'id',
+  officeId: 'office_id',
   office: 'office',
   currency: 'currency',
   directorSalary: 'director_salary',
@@ -35,6 +43,7 @@ export const internationalMovingAllowancesColumnMap = {
 
 export const internationalMovingAllowancesReverseColumnMap = {
   id: 'id',
+  office_id: 'officeId',
   office: 'office',
   currency: 'currency',
   director_salary: 'directorSalary',
