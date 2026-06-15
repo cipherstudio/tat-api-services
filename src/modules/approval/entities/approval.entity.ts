@@ -212,6 +212,16 @@ export interface Approval {
   finalStaffEmployeeCode?: string;
 
   /**
+   * Final staff position code (distinguishes same person holding multiple positions)
+   */
+  finalStaffPositionCode?: string;
+
+  /**
+   * Whether the final approver acts in a รักษาการ (acting) capacity
+   */
+  finalStaffIsDeputy?: boolean;
+
+  /**
    * Signer date
    */
   signerDate?: string;
@@ -374,6 +384,8 @@ export const approvalColumnMap = {
   final_degrees: 'finalDegrees',
   final_staff: 'finalStaff',
   final_staff_employee_code: 'finalStaffEmployeeCode',
+  final_staff_position_code: 'finalStaffPositionCode',
+  final_staff_is_deputy: 'finalStaffIsDeputy',
   signer_date: 'signerDate',
   document_ending: 'documentEnding',
   document_ending_wording: 'documentEndingWording',
@@ -435,6 +447,8 @@ export const approvalReverseColumnMap = {
   finalDegrees: 'final_degrees',
   finalStaff: 'final_staff',
   finalStaffEmployeeCode: 'final_staff_employee_code',
+  finalStaffPositionCode: 'final_staff_position_code',
+  finalStaffIsDeputy: 'final_staff_is_deputy',
   signerDate: 'signer_date',
   documentEnding: 'document_ending',
   documentEndingWording: 'document_ending_wording',

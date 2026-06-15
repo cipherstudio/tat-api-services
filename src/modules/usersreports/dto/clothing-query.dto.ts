@@ -40,5 +40,12 @@ export class ClothingQueryDto {
   @IsString()
   employeeName?: string;
 
-
+  @ApiPropertyOptional({
+    description:
+      'สถานะการเบิก/ยกเลิก: claimed | pending_cancel | cancelled',
+    enum: ['claimed', 'pending_cancel', 'cancelled'],
+  })
+  @IsOptional()
+  @IsEnum(['claimed', 'pending_cancel', 'cancelled'])
+  cancellationStatus?: 'claimed' | 'pending_cancel' | 'cancelled';
 } 

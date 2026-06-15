@@ -110,6 +110,12 @@ export class UsersReportsController {
   @ApiQuery({ name: 'startDate', required: false, description: 'วันที่เริ่มต้น' })
   @ApiQuery({ name: 'endDate', required: false, description: 'วันที่สิ้นสุด' })
   @ApiQuery({ name: 'employeeName', required: false, description: 'ชื่อพนักงาน' })
+  @ApiQuery({
+    name: 'cancellationStatus',
+    required: false,
+    enum: ['claimed', 'pending_cancel', 'cancelled'],
+    description: 'สถานะ: เบิกค่าเครื่องแต่งตัว / ขออนุมัติยกเลิก / ยกเลิกสำเร็จ',
+  })
   async getClothingReport(@Query() query: ClothingQueryDto) {
     const queryOptions = {
       page: query.page || 1,

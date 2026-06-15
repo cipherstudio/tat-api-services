@@ -122,6 +122,25 @@ export class UpdateApprovalContinuousDto {
   createdByPositionText?: string;
 
   @ApiProperty({
+    description:
+      'รหัสตำแหน่งของผู้รับขั้นถัดไป (ใช้แยกบทบาทเมื่อคนเดียวกันถือหลายตำแหน่ง ปกติ vs รักษาการ)',
+    required: false,
+    example: 'PPE001',
+  })
+  @IsOptional()
+  @IsString()
+  positionCode?: string;
+
+  @ApiProperty({
+    description: 'ผู้รับขั้นถัดไปทำในฐานะตำแหน่งรักษาการหรือไม่',
+    required: false,
+    example: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isDeputyStep?: boolean;
+
+  @ApiProperty({
     description: 'รหัสไฟล์แนบ checklist (เอกสาร checklist)',
     required: false,
     example: 1,

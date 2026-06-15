@@ -21,6 +21,44 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
     );
   }
 
+  /**
+   * #305: สร้างข้อมูล "ปีงบเก่า" (previous) จาก snapshot ที่เก็บไว้เอง
+   * (employee_old_fiscal_year_salary + employee_old_fiscal_year_holiday_hours)
+   * คืนรูปแบบเดียวกับ salaryHistory.current (มี holidayWorkHours ครบ 8 ชม.)
+   * ถ้าไม่มี snapshot ของพนักงานคนนี้ → คืน undefined (ให้ผู้เรียก fallback เป็น current)
+   */
+  private async buildPreviousFiscalYearSalary(
+    code: string,
+  ): Promise<any | undefined> {
+    const trimmed = String(code ?? '').trim();
+    if (!trimmed) return undefined;
+
+    const rawRow = await this.knex('employee_old_fiscal_year_salary')
+      .where('employee_code', trimmed)
+      .first();
+    if (!rawRow) return undefined;
+
+    const row = await toCamelCase<any>(rawRow);
+    const rawHours = await this.knex('employee_old_fiscal_year_holiday_hours')
+      .where('salary_id', row.id)
+      .orderBy('hour', 'asc');
+    const hours = await Promise.all(
+      rawHours.map(async (h) => await toCamelCase<any>(h)),
+    );
+
+    const salaryNum = Number(row.salary);
+    return {
+      salary: salaryNum,
+      plvSalary: salaryNum,
+      fiscalYear: row.fiscalYear,
+      holidayWorkHours: hours.map((h) => ({
+        hour: Number(h.hour),
+        workPay: Number(h.workPay),
+        taxRate: Number(h.taxRate),
+      })),
+    };
+  }
+
   async findByCode(code: string): Promise<
     | (Employee & {
         salaryHistory?: { current?: any; previous?: any };
@@ -28,6 +66,10 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
       })
     | undefined
   > {
+    // #305: อัตราเงินเดือน/ค่าจ้างวันหยุดของ "ปีงบเก่า" ดึงจาก snapshot ที่เราเก็บเอง
+    // (Oracle view คืนเฉพาะปีงบใหม่หลัง 1 ต.ค.) ใช้แทน previous ที่เดิมเป็นสำเนาของ current
+    const previousFiscalYear = await this.buildPreviousFiscalYearSalary(code);
+
     // Query ข้อมูลหลักจาก OP_MASTER_T
     const dbEntity = await this.knex('OP_MASTER_T')
       .whereRaw('RTRIM("PMT_CODE") = ?', [code])
@@ -124,9 +166,10 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
 
           const enrichedData = await enrichWithHolidayWorkHours(salaryData);
           if (enrichedData) {
+            const currentCamel = await toCamelCase(enrichedData);
             salaryHistory = {
-              current: await toCamelCase(enrichedData),
-              previous: await toCamelCase(enrichedData),
+              current: currentCamel,
+              previous: previousFiscalYear ?? currentCamel,
             };
           }
         }
@@ -236,9 +279,11 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
 
         const enrichedData = await enrichWithHolidayWorkHours(salaryData);
         if (enrichedData) {
+          const currentCamel = await toCamelCase(enrichedData);
           salaryHistory = {
-            current: await toCamelCase(enrichedData),
-            previous: await toCamelCase(enrichedData), // ใช้ค่าเดียวกันทั้ง current และ previous
+            current: currentCamel,
+            // #305: previous = ปีงบเก่าจาก snapshot ของเรา (fallback เป็น current ถ้าไม่มี snapshot)
+            previous: previousFiscalYear ?? currentCamel,
           };
         }
       }

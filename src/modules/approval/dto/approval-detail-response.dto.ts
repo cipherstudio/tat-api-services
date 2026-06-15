@@ -731,6 +731,20 @@ export class ApprovalDetailResponseDto implements Approval {
   finalStaffEmployeeCode?: string;
 
   @ApiProperty({
+    description: 'รหัสตำแหน่งของผู้อนุมัติลำดับสุดท้าย',
+    required: false,
+    example: 'PPE001'
+  })
+  finalStaffPositionCode?: string;
+
+  @ApiProperty({
+    description: 'ผู้อนุมัติลำดับสุดท้ายทำในฐานะตำแหน่งรักษาการหรือไม่',
+    required: false,
+    example: true
+  })
+  finalStaffIsDeputy?: boolean;
+
+  @ApiProperty({
     description: 'วันที่ลงนาม',
     required: false,
     example: '2024-03-20'

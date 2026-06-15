@@ -9,6 +9,7 @@ import { PaginatedResult } from '../../common/interfaces/pagination.interface';
 import { RedisCacheService } from '../cache/redis-cache.service';
 import { ApprovalRepository } from './repositories/approval.repository';
 import { KnexService } from '../../database/knex-service/knex.service';
+import { Knex } from 'knex';
 import { ApprovalDetailResponseDto } from './dto/approval-detail-response.dto';
 // import { ApprovalDateRangeDto } from './dto/approval-date-range.dto';
 // import { ApprovalContentDto } from './dto/approval-content.dto';
@@ -84,6 +85,116 @@ export class ApprovalService {
       return null;
     }
     return JSON.stringify(segments);
+  }
+
+  /**
+   * โหลดไฟล์แนบงบประมาณให้ครบทุกรูปแบบ:
+   * - approval_attachments ต่อ approval_budgets.id (รูปแบบใหม่)
+   * - approval_attachments ต่อ approval_id (legacy ก่อนแก้ #376)
+   * - approval_budgets.attachment_id (คอลัมน์เดิม)
+   */
+  private async enrichBudgetAttachments(
+    approvalId: number,
+    budgets: Array<{
+      id: number;
+      budgetAttachmentId?: number | null;
+      attachments?: AttachmentResponseDto[];
+    }>,
+  ): Promise<void> {
+    for (const budget of budgets) {
+      budget.attachments = await this.attachmentService.getAttachments(
+        'approval_budgets',
+        budget.id,
+      );
+    }
+
+    for (const budget of budgets) {
+      const columnFileId = budget.budgetAttachmentId;
+      if (columnFileId == null) {
+        continue;
+      }
+      const alreadyHas = (budget.attachments ?? []).some(
+        (att) => Number(att.fileId) === Number(columnFileId),
+      );
+      if (alreadyHas) {
+        continue;
+      }
+      try {
+        const file = await this.filesService.findById(Number(columnFileId));
+        budget.attachments = [
+          ...(budget.attachments ?? []),
+          {
+            id: 0,
+            entityType: 'approval_budgets',
+            entityId: budget.id,
+            fileId: file.id,
+            fileName: file.originalName,
+            filePath: file.path,
+            size: file.size,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ];
+      } catch {
+        // ไฟล์อาจถูกลบแล้ว
+      }
+    }
+  }
+
+  private makeBudgetRowKey(budget: {
+    department?: string | null;
+    budget_code?: string | null;
+    budgetCode?: string | null;
+    reservation_code?: string | null;
+    reservationCode?: string | null;
+    budget_type?: string | null;
+    budgetType?: string | null;
+    item_type?: string | null;
+    itemType?: string | null;
+  }): string {
+    return [
+      budget.department ?? '',
+      budget.budget_code ?? budget.budgetCode ?? '',
+      budget.reservation_code ?? budget.reservationCode ?? '',
+      budget.budget_type ?? budget.budgetType ?? '',
+      budget.item_type ?? budget.itemType ?? '',
+    ].join('|');
+  }
+
+  private async getAllBudgetAttachmentsForApproval(
+    approvalId: number,
+  ): Promise<AttachmentResponseDto[]> {
+    const budgetRows = await this.knexService
+      .knex('approval_budgets')
+      .where('approval_id', approvalId)
+      .orderBy('id', 'asc')
+      .select('id', 'attachment_id as budgetAttachmentId');
+
+    const budgets = budgetRows.map((row) => ({
+      id: row.id,
+      budgetAttachmentId: row.budgetAttachmentId,
+      attachments: [] as AttachmentResponseDto[],
+    }));
+
+    await this.enrichBudgetAttachments(approvalId, budgets);
+    const perRowAttachments = budgets.flatMap(
+      (budget) => budget.attachments ?? [],
+    );
+    const assignedFileIds = new Set(
+      perRowAttachments
+        .map((att) => att.fileId)
+        .filter((fileId): fileId is number => fileId != null)
+        .map(Number),
+    );
+    const legacyAttachments = await this.attachmentService.getAttachments(
+      'approval_budgets',
+      approvalId,
+    );
+    const orphanLegacy = legacyAttachments.filter(
+      (att) =>
+        att?.fileId != null && !assignedFileIds.has(Number(att.fileId)),
+    );
+    return [...perRowAttachments, ...orphanLegacy];
   }
 
   private async generateIncrementId(): Promise<string> {
@@ -173,6 +284,45 @@ export class ApprovalService {
       return trimmed;
     }
     return this.getPositionNameSnapshotForEmployeeCode(employeeCode);
+  }
+
+  /**
+   * รักษาการเปลี่ยนได้ทุกวัน (ดึง live จาก AB_DEPUTY). ใช้ตรวจว่า ณ ตอนอนุมัติ
+   * employeeCode ยังเป็นผู้รักษาการ "ตำแหน่งนั้น" (positionCode) อยู่จริงหรือไม่
+   * GDP_DEPUTY_STATUS: 0 = ทำงาน, 1 = สิ้นสุด, 2 = ยกเลิก
+   */
+  private async isActiveDeputyForPosition(
+    trx: Knex,
+    employeeCode: string | null | undefined,
+    positionCode: string | null | undefined,
+  ): Promise<boolean> {
+    const code = String(employeeCode ?? '').trim();
+    if (!code) {
+      return false;
+    }
+    const rows = await trx('AB_DEPUTY')
+      .where('GDP_DEPUTY_STATUS', 0)
+      .whereRaw('RTRIM("PMT_CODE") = ?', [code])
+      .select(
+        'GPD_DEPUTY_POG_CODE',
+        'GDP_DEPUTY_POSITION_EX',
+        'POG_CODE',
+      );
+    if (!rows.length) {
+      return false;
+    }
+    const pos = String(positionCode ?? '').trim();
+    // ไม่มี positionCode บันทึกไว้ (เอกสารเก่า): แค่ยังเป็นผู้รักษาการอยู่ก็พอ
+    if (!pos) {
+      return true;
+    }
+    const pick = (row: Record<string, any>, key: string) =>
+      row[key] ?? row[key.toLowerCase()];
+    return rows.some((r: Record<string, any>) =>
+      ['GPD_DEPUTY_POG_CODE', 'GDP_DEPUTY_POSITION_EX', 'POG_CODE']
+        .map((k) => String(pick(r, k) ?? '').trim())
+        .includes(pos),
+    );
   }
 
   private async getUserPrivilegeLevel(employeeCode: string): Promise<string> {
@@ -707,10 +857,8 @@ export class ApprovalService {
           'approval_signature',
           approvalId,
         );
-        const budgetAtts = await this.attachmentService.getAttachments(
-          'approval_budgets',
-          approvalId,
-        );
+        const budgetAtts =
+          await this.getAllBudgetAttachmentsForApproval(approvalId);
         const clothingAtts = await this.attachmentService.getAttachments(
           'approval_clothing_expense',
           approvalId,
@@ -933,6 +1081,8 @@ export class ApprovalService {
         'approval.comments',
         'approval.final_staff as finalStaff',
         'approval.final_staff_employee_code as finalStaffEmployeeCode',
+        'approval.final_staff_position_code as finalStaffPositionCode',
+        'approval.final_staff_is_deputy as finalStaffIsDeputy',
         'approval.signer_date as signerDate',
         'approval.document_ending as documentEnding',
         'approval.document_ending_wording as documentEndingWording',
@@ -1315,6 +1465,7 @@ export class ApprovalService {
     const budgets = await this.knexService
       .knex('approval_budgets')
       .where('approval_id', id)
+      .orderBy('id', 'asc')
       .select(
         'id',
         'budget_type as budgetType',
@@ -1361,6 +1512,9 @@ export class ApprovalService {
         'ac.id as approvalContinuousId',
         'ac.employee_code as employeeCode', // ผู้รับ
         'ac.approver_position as approverPositionSnapshot',
+        'ac.step_role as stepRole',
+        'ac.is_deputy_step as isDeputyStep',
+        'ac.position_code as positionCode',
         'vp4ot.POS_POSITIONNAME as positionFromHr',
         'et.NAME as signerName', // ผู้รับ
         'ac.signer_date as signerDate',
@@ -1403,6 +1557,9 @@ export class ApprovalService {
           row.createdByPositionSnapshot ?? row.CREATEDBYPOSITIONSNAPSHOT;
         const createdPositionFromHr =
           row.createdPositionFromHr ?? row.CREATEDPOSITIONFROMHR;
+        const stepRoleRaw = row.stepRole ?? row.STEPROLE ?? null;
+        const positionCodeRaw = row.positionCode ?? row.POSITIONCODE ?? null;
+        const isDeputyStepRaw = row.isDeputyStep ?? row.ISDEPUTYSTEP ?? null;
         const out: Record<string, unknown> = { ...row };
         for (const k of [
           'approverPositionSnapshot',
@@ -1413,9 +1570,21 @@ export class ApprovalService {
           'POSITIONFROMHR',
           'CREATEDBYPOSITIONSNAPSHOT',
           'CREATEDPOSITIONFROMHR',
+          'stepRole',
+          'STEPROLE',
+          'positionCode',
+          'POSITIONCODE',
+          'isDeputyStep',
+          'ISDEPUTYSTEP',
         ]) {
           delete out[k];
         }
+        const isDeputyStep =
+          isDeputyStepRaw == null
+            ? null
+            : isDeputyStepRaw === true ||
+              isDeputyStepRaw === 1 ||
+              isDeputyStepRaw === '1';
         return {
           ...out,
           position:
@@ -1426,6 +1595,9 @@ export class ApprovalService {
             (createdByPositionSnapshot ?? createdPositionFromHr ?? null) as
               | string
               | null,
+          stepRole: (stepRoleRaw ?? null) as string | null,
+          positionCode: (positionCodeRaw ?? null) as string | null,
+          isDeputyStep,
         };
       },
     ) as any[];
@@ -1487,14 +1659,8 @@ export class ApprovalService {
       id,
     );
 
-    // Get additional attachments for budgets
-    const budgetAttachments = await this.attachmentService.getAttachments(
-      'approval_budgets',
-      id,
-    );
-    for (const budget of budgets) {
-      budget.attachments = budgetAttachments;
-    }
+    // โหลดไฟล์แนบงบประมาณ (รองรับทั้ง per-row และ legacy ที่ entity_id = approval_id)
+    await this.enrichBudgetAttachments(id, budgets);
 
     // Get additional attachments for clothing expenses
     const clothingExpenseAttachments =
@@ -1521,10 +1687,13 @@ export class ApprovalService {
     }
 
     // Combine all attachments into one array
+    const allBudgetAttachments = budgets.flatMap(
+      (budget) => budget.attachments || [],
+    );
     const allAttachments = [
       ...approvalDocuments,
       ...approvalSignatures,
-      ...budgetAttachments,
+      ...allBudgetAttachments,
       ...clothingExpenseAttachments,
       ...continuousSignatureAttachments,
     ];
@@ -1622,6 +1791,8 @@ export class ApprovalService {
     const trx = await this.knexService.knex.transaction();
 
     try {
+      const pendingFileDeletes: number[] = [];
+
       // Update approval record
       const approvalUpdatePayload: Record<string, any> = {
         approval_ref: updateDto.approvalRef,
@@ -1661,6 +1832,8 @@ export class ApprovalService {
         approval_date: updateDto.approvalDate,
         final_staff: updateDto.finalStaff,
         final_staff_employee_code: updateDto.finalStaffEmployeeCode,
+        final_staff_position_code: updateDto.finalStaffPositionCode,
+        final_staff_is_deputy: updateDto.finalStaffIsDeputy,
         signer_date: updateDto.signerDate,
         document_ending: updateDto.documentEnding,
         document_ending_wording: updateDto.documentEndingWording,
@@ -2256,10 +2429,77 @@ export class ApprovalService {
 
       // Process budgets
       if (updateDto.budgets && Array.isArray(updateDto.budgets)) {
-        await trx('approval_budgets').where('approval_id', id).delete();
+        const keptBudgetFileIds = new Set<number>();
+        for (const budget of updateDto.budgets) {
+          if (budget && Array.isArray(budget.attachments)) {
+            for (const att of budget.attachments) {
+              if (att?.fileId != null) {
+                keptBudgetFileIds.add(Number(att.fileId));
+              }
+            }
+          }
+        }
+
+        const queueBudgetFileDeletes = (fileIds: number[]) => {
+          for (const fileId of fileIds) {
+            if (!keptBudgetFileIds.has(fileId)) {
+              pendingFileDeletes.push(fileId);
+            }
+          }
+        };
+
+        const existingBudgetRows = await trx('approval_budgets')
+          .where('approval_id', id)
+          .select(
+            'id',
+            'department',
+            'budget_code',
+            'reservation_code',
+            'budget_type',
+            'item_type',
+          );
+
+        const existingByKey = new Map<string, number>();
+        for (const row of existingBudgetRows) {
+          existingByKey.set(this.makeBudgetRowKey(row), row.id);
+        }
+
+        // ล้างรูปแบบเก่าที่ entity_id = approval_id (ก่อนแก้ #376)
+        const legacyDeletedIds = await this.attachmentService.syncAttachments(
+          'approval_budgets',
+          id,
+          [],
+          trx,
+        );
+        queueBudgetFileDeletes(legacyDeletedIds);
+
+        const matchedExistingIds = new Set<number>();
 
         for (const budget of updateDto.budgets) {
-          if (budget && typeof budget === 'object') {
+          if (!budget || typeof budget !== 'object') {
+            continue;
+          }
+
+          const budgetKey = this.makeBudgetRowKey(budget);
+          let budgetRowId: number | null = null;
+          const existingId = existingByKey.get(budgetKey);
+
+          if (existingId != null) {
+            budgetRowId = existingId;
+            matchedExistingIds.add(existingId);
+            await trx('approval_budgets')
+              .where('id', existingId)
+              .update({
+                budget_type: budget.budget_type,
+                item_type: budget.item_type,
+                reservation_code: budget.reservation_code,
+                department: budget.department,
+                budget_code: budget.budget_code,
+                attachment_id: budget.attachment_id ?? null,
+                strategy: budget.strategy ?? null,
+                plan: budget.plan ?? null,
+              });
+          } else {
             const [insertedBudget] = await trx('approval_budgets')
               .insert({
                 approval_id: id,
@@ -2273,7 +2513,41 @@ export class ApprovalService {
                 plan: budget.plan ?? null,
               })
               .returning('id');
+
+            budgetRowId =
+              typeof insertedBudget === 'object' && insertedBudget !== null
+                ? insertedBudget.id
+                : insertedBudget;
           }
+
+          if (budgetRowId == null) {
+            continue;
+          }
+
+          const attachments = Array.isArray(budget.attachments)
+            ? budget.attachments.filter((att) => att && att.fileId != null)
+            : [];
+          const deletedIds = await this.attachmentService.syncAttachments(
+            'approval_budgets',
+            Number(budgetRowId),
+            attachments,
+            trx,
+          );
+          queueBudgetFileDeletes(deletedIds);
+        }
+
+        for (const row of existingBudgetRows) {
+          if (matchedExistingIds.has(row.id)) {
+            continue;
+          }
+          const deletedIds = await this.attachmentService.syncAttachments(
+            'approval_budgets',
+            row.id,
+            [],
+            trx,
+          );
+          queueBudgetFileDeletes(deletedIds);
+          await trx('approval_budgets').where('id', row.id).delete();
         }
       }
 
@@ -2322,6 +2596,9 @@ export class ApprovalService {
               use_system_signature: updateDto.useSystemSignature,
               comments: updateDto.documentEndingWording,
               approver_position: approverPosition,
+              step_role: 'REVIEW',
+              is_deputy_step: updateDto.staffIsDeputy ?? false,
+              position_code: updateDto.staffPositionCode ?? null,
               updated_at: now,
             });
         } else {
@@ -2344,6 +2621,9 @@ export class ApprovalService {
               comments: updateDto.documentEndingWording,
               approver_position: approverPosition,
               created_by_position: createdByPosition,
+              step_role: 'REVIEW',
+              is_deputy_step: updateDto.staffIsDeputy ?? false,
+              position_code: updateDto.staffPositionCode ?? null,
               created_at: now,
               updated_at: now,
             })
@@ -2400,8 +2680,6 @@ export class ApprovalService {
         await trx('approval').where('id', id).update(updateData);
       }
 
-      const pendingFileDeletes: number[] = [];
-
       if (
         updateDto.documentAttachments &&
         updateDto.documentAttachments.length > 0
@@ -2429,25 +2707,7 @@ export class ApprovalService {
         pendingFileDeletes.push(...ids);
       }
 
-      // Process budget attachments — inside transaction
-      if (updateDto.budgets && Array.isArray(updateDto.budgets)) {
-        for (const budget of updateDto.budgets) {
-          if (
-            budget &&
-            typeof budget === 'object' &&
-            budget.attachments &&
-            budget.attachments.length > 0
-          ) {
-            const ids = await this.attachmentService.syncAttachments(
-              'approval_budgets',
-              id,
-              budget.attachments,
-              trx,
-            );
-            pendingFileDeletes.push(...ids);
-          }
-        }
-      }
+      // Process budget attachments — sync ต่อแถrow approval_budgets ใน block Process budgets ด้านบน
 
       // Process clothing expense attachments — inside transaction
       if (updateDto.staffMembers && Array.isArray(updateDto.staffMembers)) {
@@ -2595,6 +2855,16 @@ export class ApprovalService {
 
     // Delete all attachments from approval_attachments table
     try {
+      const budgetRows = await this.knexService
+        .knex('approval_budgets')
+        .where('approval_id', id)
+        .select('id');
+      for (const row of budgetRows) {
+        await this.attachmentService.deleteAttachments(
+          'approval_budgets',
+          row.id,
+        );
+      }
       await this.attachmentService.deleteAttachments('approval_document', id);
       await this.attachmentService.deleteAttachments('approval_signature', id);
       await this.attachmentService.deleteAttachments('approval_budgets', id);
@@ -3154,6 +3424,7 @@ export class ApprovalService {
         .knex('approval_clothing_expense as ace')
         .leftJoin('approval as a', 'ace.approval_id', 'a.id')
         .where('ace.employee_code', String(employeeCode))
+        .where('ace.is_cancelled', false)
         .orderBy('ace.created_at', 'desc')
         .select('ace.*', 'a.travel_type as approval_travel_type');
 
@@ -4123,17 +4394,53 @@ export class ApprovalService {
             continuous_employee_code: updateDto.employeeCode,
           });
 
-        // get approval.final_staff_employee_code
+        // get approval.final_staff_employee_code (+ position identity)
         const approval = await trx('approval')
           .where('id', existingContinuous.approval_id)
-          .select('final_staff_employee_code')
+          .select(
+            'final_staff_employee_code',
+            'final_staff_position_code',
+            'final_staff_is_deputy',
+          )
           .first();
+
+        // Position-aware close: prefer the explicit step_role stamped on the row.
+        // Legacy rows (step_role NULL) fall back to the old by-person match, but now
+        // also require the position code to match when both sides have one.
+        const finalPositionMatches =
+          approval.final_staff_position_code == null ||
+          existingContinuous.position_code == null
+            ? true
+            : String(existingContinuous.position_code).trim() ===
+              String(approval.final_staff_position_code).trim();
 
         const closeFullApproval =
           updateDto.isFinalStep === true ||
+          existingContinuous.step_role === 'FINAL' ||
           (updateDto.isFinalStep !== false &&
+            existingContinuous.step_role == null &&
             existingContinuous.employee_code ===
-              approval.final_staff_employee_code);
+              approval.final_staff_employee_code &&
+            finalPositionMatches);
+
+        // ผูกกับตำแหน่ง: ถ้าขั้นสุดท้ายเป็นตำแหน่งรักษาการ ผู้กดต้องยัง "รักษาการ"
+        // ตำแหน่งนั้นอยู่จริง ณ ตอนอนุมัติ (AB_DEPUTY live) ไม่งั้นห้ามอนุมัติ ต้องตีกลับ
+        const closingDeputyStep =
+          existingContinuous.is_deputy_step === true ||
+          existingContinuous.is_deputy_step === 1 ||
+          existingContinuous.is_deputy_step === '1';
+        if (closeFullApproval && closingDeputyStep) {
+          const stillActing = await this.isActiveDeputyForPosition(
+            trx,
+            employeeCode,
+            existingContinuous.position_code,
+          );
+          if (!stillActing) {
+            throw new BadRequestException(
+              'ผู้อนุมัติไม่ได้รักษาการตำแหน่งนี้แล้ว ไม่สามารถอนุมัติได้ กรุณาตีกลับเอกสาร',
+            );
+          }
+        }
 
         if (closeFullApproval) {
           // get approval_status_label_id of APPROVED
@@ -4218,6 +4525,26 @@ export class ApprovalService {
             updateDto.createdByPositionText,
             employeeCode,
           );
+
+          // บทบาทของขั้นถัดไป: FINAL ถ้าผู้รับคือผู้อนุมัติลำดับสุดท้าย "ในตำแหน่งเดียวกัน"
+          // (แยกกรณีคนเดียวกันถือหลายตำแหน่ง ปกติ vs รักษาการ) ไม่งั้นเป็น REVIEW
+          const finalIsDeputy =
+            approval.final_staff_is_deputy === true ||
+            approval.final_staff_is_deputy === 1 ||
+            approval.final_staff_is_deputy === '1';
+          const nextPositionMatchesFinal =
+            approval.final_staff_position_code == null ||
+            updateDto.positionCode == null
+              ? true
+              : String(updateDto.positionCode).trim() ===
+                String(approval.final_staff_position_code).trim();
+          const nextIsFinal =
+            !!approval.final_staff_employee_code &&
+            updateDto.employeeCode === approval.final_staff_employee_code &&
+            nextPositionMatchesFinal &&
+            (approval.final_staff_is_deputy == null ||
+              !!updateDto.isDeputyStep === finalIsDeputy);
+
           await trx('approval_continuous').insert({
             approval_id: existingContinuous.approval_id,
             employee_code: updateDto.employeeCode,
@@ -4231,6 +4558,9 @@ export class ApprovalService {
             created_by: employeeCode,
             approver_position: approverPosNext,
             created_by_position: createdByPosNext,
+            step_role: nextIsFinal ? 'FINAL' : 'REVIEW',
+            is_deputy_step: updateDto.isDeputyStep ?? false,
+            position_code: updateDto.positionCode ?? null,
             created_at: nowNext,
             updated_at: nowNext,
           });
@@ -4404,6 +4734,8 @@ export class ApprovalService {
         staff: originalApproval.staff,
         staff_employee_code: originalApproval.staffEmployeeCode,
         final_staff_employee_code: originalApproval.finalStaffEmployeeCode,
+        final_staff_position_code: originalApproval.finalStaffPositionCode,
+        final_staff_is_deputy: originalApproval.finalStaffIsDeputy,
         confidentiality_level: originalApproval.confidentialityLevel,
         urgency_level: originalApproval.urgencyLevel,
         comments: originalApproval.comments,
@@ -4946,6 +5278,8 @@ export class ApprovalService {
         staff: originalApproval.staff,
         staff_employee_code: originalApproval.staffEmployeeCode,
         final_staff_employee_code: originalApproval.finalStaffEmployeeCode,
+        final_staff_position_code: originalApproval.finalStaffPositionCode,
+        final_staff_is_deputy: originalApproval.finalStaffIsDeputy,
         confidentiality_level: originalApproval.confidentialityLevel,
         urgency_level: originalApproval.urgencyLevel,
         comments: originalApproval.comments,
@@ -5203,6 +5537,7 @@ export class ApprovalService {
     let approvalQuery = this.knexService
       .knex('approval_clothing_expense')
       .whereNotNull('approval_clothing_expense.approval_id')
+      .where('approval_clothing_expense.is_cancelled', false)
       .leftJoin(
         'approval',
         'approval_clothing_expense.approval_id',
@@ -5367,6 +5702,7 @@ export class ApprovalService {
     let totalQuery = this.knexService
       .knex('approval_clothing_expense')
       .whereNotNull('approval_clothing_expense.approval_id')
+      .where('approval_clothing_expense.is_cancelled', false)
       .leftJoin(
         'approval',
         'approval_clothing_expense.approval_id',

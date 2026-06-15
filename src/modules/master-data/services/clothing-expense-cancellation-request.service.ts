@@ -69,16 +69,38 @@ export class ClothingExpenseCancellationRequestService {
 
     if (dto.status === 'approved') {
       const approvalId = dto.approval_id || existingRecord.approval_id;
-      const selectedStaffIds = dto.selected_staff_ids || 
+      const selectedStaffIds = dto.selected_staff_ids ||
         (existingRecord.selected_staff_ids ? JSON.parse(existingRecord.selected_staff_ids as unknown as string) : []);
 
       if (approvalId && selectedStaffIds && selectedStaffIds.length > 0) {
-        const employeeCodes = selectedStaffIds.map(id => id.toString());
-        
-        await this.clothingExpenseCancellationRequestRepository.knex('approval_clothing_expense')
+        const idStrings = selectedStaffIds.map((id: number | string) => String(id));
+        const numericIds = idStrings
+          .map((id: string) => Number(id))
+          .filter((n: number) => !Number.isNaN(n));
+
+        const now = new Date();
+        const softDeleteData = {
+          is_cancelled: true,
+          cancelled_at: now,
+          cancellation_request_id: id,
+        };
+
+        const baseQuery = this.clothingExpenseCancellationRequestRepository
+          .knex('approval_clothing_expense')
           .where('approval_id', approvalId)
-          .whereIn('employee_code', employeeCodes)
-          .del();
+          .where('is_cancelled', false);
+
+        if (numericIds.length > 0) {
+          const updatedByStaffMemberId = await baseQuery
+            .clone()
+            .whereIn('staff_member_id', numericIds)
+            .update(softDeleteData);
+          if (updatedByStaffMemberId > 0) {
+            return updatedRecord;
+          }
+        }
+
+        await baseQuery.clone().whereIn('employee_code', idStrings).update(softDeleteData);
       }
     }
 

@@ -56,6 +56,12 @@ export class ApprovalClothingExpenseController {
   @ApiQuery({ name: 'increment_id', required: false, type: String, description: 'Increment ID' })
   @ApiQuery({ name: 'destination_country', required: false, type: String, description: 'Destination country' })
   @ApiQuery({
+    name: 'approval_request_date',
+    required: false,
+    type: String,
+    description: 'Filter by approval request date (YYYY-MM-DD)',
+  })
+  @ApiQuery({
     name: 'is_overdue',
     required: false,
     type: Boolean,
@@ -114,9 +120,13 @@ export class ApprovalClothingExpenseController {
     @Query('staff_member_id', new ValidationPipe({ transform: true })) staff_member_id?: number,
     @Query('approval_id', new ValidationPipe({ transform: true })) approval_id?: number,
     @Query('employee_code') employee_code?: string,
+    @Query('requestor_employee_code') requestor_employee_code?: string,
     @Query('increment_id') increment_id?: string,
     @Query('destination_country') destination_country?: string,
+    @Query('approval_request_date') approval_request_date?: string,
     @Query('is_overdue', new ValidationPipe({ transform: true })) is_overdue?: boolean,
+    @Query('beneficiary_only', new ValidationPipe({ transform: true })) beneficiary_only?: boolean,
+    @Query('include_cancelled', new ValidationPipe({ transform: true })) include_cancelled?: boolean,
   ) {
     const queryOptions: ApprovalClothingExpenseQueryDto = {
       page,
@@ -134,9 +144,13 @@ export class ApprovalClothingExpenseController {
       staff_member_id,
       approval_id,
       employee_code,
+      requestor_employee_code,
       increment_id,
       destination_country,
-      is_overdue
+      approval_request_date,
+      is_overdue,
+      beneficiary_only,
+      include_cancelled,
     };
 
     return this.approvalClothingExpenseService.findAll(queryOptions);

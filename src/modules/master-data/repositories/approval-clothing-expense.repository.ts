@@ -24,6 +24,8 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
     delete filter.order_by;
     delete filter.direction;
     delete filter.search;
+    delete filter.beneficiary_only;
+    delete filter.include_cancelled;
 
     const dbFilter = await toSnakeCase(filter);
     const offset = (page - 1) * limit;
@@ -46,10 +48,20 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
           'omt.PMT_CODE',
         )
         .leftJoin('approval_staff_members as asm', 'ace.staff_member_id', 'asm.id')
-        .leftJoin('approval as a', 'ace.approval_id', 'a.id');
+        .leftJoin('approval as a', 'ace.approval_id', 'a.id')
+        .leftJoin(
+          this.knex('approval_status_history')
+            .select('approval_id')
+            .max('created_at as approval_approved_date')
+            .where('approval_status_label_id', 3)
+            .groupBy('approval_id')
+            .as('approved_hist'),
+          'a.id',
+          'approved_hist.approval_id',
+        );
 
       // Apply filters
-      this.applyFilters(query, dbFilter);
+      this.applyFilters(query, dbFilter, conditions);
       // Apply search term
       this.applySearchTerm(query, searchTerm);
       
@@ -76,6 +88,9 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
         'a.travel_type as approval_travel_type',
         'a.created_employee_code as requestor_code',
         'a.created_employee_name as requestor_name',
+        'a.approval_date as approval_request_date',
+        'a.document_title as document_title',
+        'approved_hist.approval_approved_date',
       ])
       .orderBy(`ace.${orderBy}`, direction)
       .limit(limit)
@@ -109,12 +124,33 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
     };
   }
 
-  private applyFilters(query: any, dbFilter: Record<string, any>) {
+  private applyFilters(
+    query: any,
+    dbFilter: Record<string, any>,
+    conditions: Record<string, any> = {},
+  ) {
+    // flag พิเศษ (ไม่ใช่คอลัมน์ DB) — แบบเดียวกับ isRelateToMe ใน clothing-expense-cancellation-request
+    if (conditions.include_cancelled !== true) {
+      query.where('ace.is_cancelled', false);
+    }
+
     if (Object.keys(dbFilter).length > 0) {
       Object.entries(dbFilter).forEach(([key, value]) => {
         if (this.isValidFilterValue(value)) {
           if (key === 'is_overdue') {
             this.applyOverdueFilter(query, value);
+          } else if (key === 'employee_code') {
+            if (conditions.beneficiary_only === true) {
+              this.applyBeneficiaryOnlyFilter(query, String(value).trim());
+            } else {
+              this.applyEmployeeAccessFilter(query, String(value).trim());
+            }
+          } else if (key === 'requestor_employee_code') {
+            this.applyRequestorEmployeeFilter(query, String(value).trim());
+          } else if (key === 'approval_request_date') {
+            this.applyDateEqualsFilter(query, '"a"."approval_date"', String(value));
+          } else if (key === 'next_claim_date') {
+            this.applyDateEqualsFilter(query, '"ace"."next_claim_date"', String(value));
           } else {
             query.where(`ace.${key}`, value);
           }
@@ -123,11 +159,54 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
     }
   }
 
+  /** ประวัติส่วนตัว — เฉพาะแถวที่ employee_code ตรงกับผู้ใช้ */
+  private applyBeneficiaryOnlyFilter(query: any, employeeCode: string) {
+    query.whereRaw('RTRIM(CAST("ace"."employee_code" AS VARCHAR2(255))) = ?', [
+      employeeCode,
+    ]);
+  }
+
+  /** ผู้มีสิทธิ์เห็น: เจ้าของรายการ หรือ ผู้สร้าง/เจ้าของใบอนุมัติ */
+  private applyEmployeeAccessFilter(query: any, employeeCode: string) {
+    query.where(function () {
+      this.whereRaw('RTRIM(CAST("ace"."employee_code" AS VARCHAR2(255))) = ?', [
+        employeeCode,
+      ])
+        .orWhere('a.created_employee_code', employeeCode)
+        .orWhere('a.employee_code', employeeCode)
+        .orWhere('a.continuous_employee_code', employeeCode);
+    });
+  }
+
+  /** กรองตามผู้สร้างใบอนุมัติ — เห็นทุกรายการค่าเครื่องแต่งตัวในใบที่ตัวเองสร้าง */
+  private applyRequestorEmployeeFilter(query: any, employeeCode: string) {
+    query.where(function () {
+      this.where('a.created_employee_code', employeeCode)
+        .orWhere('a.employee_code', employeeCode)
+        .orWhere('a.continuous_employee_code', employeeCode);
+    });
+  }
+
   private isValidFilterValue(value: any): boolean {
     return value !== undefined && 
            value !== null && 
            value !== '' && 
            !Number.isNaN(value);
+  }
+
+  /** กรองวันที่แบบเทียบเฉพาะวัน (Oracle TRUNC) */
+  private applyDateEqualsFilter(
+    query: any,
+    quotedColumn: string,
+    rawDate: string,
+  ) {
+    const dateOnly = rawDate.split('T')[0];
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+      return;
+    }
+    query.whereRaw(`TRUNC(${quotedColumn}) = TO_DATE(?, 'YYYY-MM-DD')`, [
+      dateOnly,
+    ]);
   }
 
   private applyOverdueFilter(query: any, isOverdue: boolean) {
@@ -143,10 +222,20 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
         );
       });
 
-      query.whereNotIn('ace.approval_id', function() {
-        this.select('approval_id')
-          .from('clothing_expense_cancellation_requests')
-          .where('status', 'pending');
+      // ซ่อนเฉพาะรายการค่าเครื่องแต่งตัวของคนที่มีคำขอยกเลิก pending แล้ว
+      // (ไม่ซ่อนทั้งใบอนุมัติ — ให้ยกเลิกคนอื่นในใบเดียวกันต่อได้)
+      query.whereNotExists(function () {
+        this.select(1)
+          .from('clothing_expense_cancellation_requests as cecr')
+          .whereRaw('"cecr"."approval_id" = "ace"."approval_id"')
+          .where('cecr.status', 'pending')
+          .where(function () {
+            this.whereRaw(
+              '"cecr"."selected_staff_ids" LIKE \'%\' || CAST("ace"."staff_member_id" AS VARCHAR2(20)) || \'%\'',
+            ).orWhereRaw(
+              '"cecr"."selected_staff_ids" LIKE \'%\' || RTRIM(CAST("ace"."employee_code" AS VARCHAR2(255))) || \'%\'',
+            );
+          });
       });
     }
   }
@@ -195,6 +284,16 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
       )
       .leftJoin('approval_staff_members as asm', 'ace.staff_member_id', 'asm.id')
       .leftJoin('approval as a', 'ace.approval_id', 'a.id')
+      .leftJoin(
+        this.knex('approval_status_history')
+          .select('approval_id')
+          .max('created_at as approval_approved_date')
+          .where('approval_status_label_id', 3)
+          .groupBy('approval_id')
+          .as('approved_hist'),
+        'a.id',
+        'approved_hist.approval_id',
+      )
       .select([
         'ace.*',
         'omt.PMT_CODE as employee_pmt_code',
@@ -207,8 +306,12 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
         'a.travel_type as approval_travel_type',
         'a.created_employee_code as requestor_code',
         'a.created_employee_name as requestor_name',
+        'a.approval_date as approval_request_date',
+        'a.document_title as document_title',
+        'approved_hist.approval_approved_date',
       ])
       .where(transformedConditions)
+      .where('ace.is_cancelled', false)
       .first();
 
     if (result) {

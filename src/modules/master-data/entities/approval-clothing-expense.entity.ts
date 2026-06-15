@@ -15,7 +15,10 @@ export class ApprovalClothingExpense {
   employee_code: number;
   increment_id: string;
   destination_country: string;
-  
+  is_cancelled: boolean;
+  cancelled_at?: string | null;
+  cancellation_request_id?: number | null;
+
   // Additional fields from joins
   employee_pmt_code?: string;
   employee_name_th?: string;
@@ -24,4 +27,9 @@ export class ApprovalClothingExpense {
   employee_faculty?: string;
   employee_email?: string;
   approval_travel_type?: string;
+  requestor_code?: string;
+  requestor_name?: string;
+  approval_total_clothing_amount?: number;
+  approval_request_date?: string;
+  approval_approved_date?: string;
 }

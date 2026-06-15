@@ -1,5 +1,5 @@
-import { Controller, Get } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { Controller, Get, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { CronService } from './cron.service';
 import { MssqlService } from '../../database/mssql-service/mssql.service';
 
@@ -20,5 +20,25 @@ export class CronController {
   async testMssqlConnection() {
     const result = await this.mssqlService.knex.raw('SELECT 1 AS ok');
     return { ok: true, mssql: 'connected', result: result?.[0] ?? result };
+  }
+
+  /**
+   * #305 — รัน snapshot เงินเดือนปีงบเก่าแบบ manual (ปกติ cron รัน 30 ก.ย. ทุกปี)
+   * ระบุ ?codes=66019,62040 เพื่อทดสอบเฉพาะบางคน; ไม่ระบุ = ทุกคน
+   */
+  @Get('snapshot-old-fiscal-year')
+  @ApiOperation({
+    summary: '[เทส/แอดมิน] รัน snapshot เงินเดือนปีงบเก่า (#305)',
+  })
+  @ApiQuery({ name: 'codes', required: false })
+  async snapshotOldFiscalYear(@Query('codes') codes?: string) {
+    const list = codes
+      ? codes
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : undefined;
+    const result = await this.cronService.runOldFiscalYearSnapshot(list);
+    return { ok: true, ...result };
   }
 }

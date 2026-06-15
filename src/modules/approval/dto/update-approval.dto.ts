@@ -869,6 +869,24 @@ export class UpdateApprovalDto {
   staffEmployeeCode?: string;
 
   @ApiProperty({
+    description: 'รหัสตำแหน่งของผู้เห็นชอบผ่านเรื่อง (ขั้นแรก)',
+    required: false,
+    example: 'POG001',
+  })
+  @IsOptional()
+  @IsString()
+  staffPositionCode?: string;
+
+  @ApiProperty({
+    description: 'ผู้เห็นชอบผ่านเรื่อง (ขั้นแรก) ทำในฐานะตำแหน่งรักษาการหรือไม่',
+    required: false,
+    example: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  staffIsDeputy?: boolean;
+
+  @ApiProperty({
     description: 'ความเห็น',
     required: false,
     example: 'รายละเอียดความเห็น',
@@ -921,6 +939,25 @@ export class UpdateApprovalDto {
   @IsOptional()
   @IsString()
   finalStaffEmployeeCode?: string;
+
+  @ApiProperty({
+    description:
+      'รหัสตำแหน่งของผู้อนุมัติลำดับสุดท้าย (แยกกรณีคนเดียวกันถือหลายตำแหน่ง เช่น ปกติ vs รักษาการ)',
+    required: false,
+    example: 'PPE001',
+  })
+  @IsOptional()
+  @IsString()
+  finalStaffPositionCode?: string;
+
+  @ApiProperty({
+    description: 'ผู้อนุมัติลำดับสุดท้ายทำในฐานะตำแหน่งรักษาการหรือไม่',
+    required: false,
+    example: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  finalStaffIsDeputy?: boolean;
 
   @ApiProperty({
     description: 'วันที่ลงนาม',

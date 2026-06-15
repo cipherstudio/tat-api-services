@@ -230,4 +230,203 @@ export class CronService {
     next.setUTCDate(next.getUTCDate() + 1);
     return next.toISOString().split('T')[0];
   }
+
+  /**
+   * #305 — เก็บ snapshot เงินเดือน + ค่าจ้างทำงานวันหยุด/ภาษี ของ "ปีงบเก่า"
+   * รัน 30 ก.ย. ทุกปี (ก่อน 1 ต.ค. ที่ Oracle view จะปรับเป็นเงินเดือนปีงบใหม่)
+   * เก็บแบบ 1 record/พนักงาน (update ทับของเดิม) → ไม่สะสมหลายปี DB ไม่บวม
+   */
+  @Cron('0 0 30 9 *')
+  async snapshotOldFiscalYearSalary(): Promise<void> {
+    this.logger.log('[OldFiscalYearSalary] snapshot start');
+    try {
+      const result = await this.runOldFiscalYearSnapshot();
+      this.logger.log(
+        `[OldFiscalYearSalary] snapshot done: ${JSON.stringify(result)}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        '[OldFiscalYearSalary] snapshot error:',
+        error instanceof Error ? error.stack : JSON.stringify(error),
+      );
+    }
+  }
+
+  /**
+   * รัน snapshot ปีงบเก่า (เรียกได้ทั้งจาก cron และ endpoint ทดสอบ)
+   * ระบุ employeeCodes เพื่อทำเฉพาะบางคน (สำหรับทดสอบ); ไม่ระบุ = ทุกคน
+   */
+  async runOldFiscalYearSnapshot(
+    employeeCodes?: string[],
+  ): Promise<{ processed: number; upserted: number; skipped: number }> {
+    const knex = this.knexService.knex;
+    // ปี พ.ศ. ของปีงบที่กำลังจะกลายเป็น "เก่า" (snapshot ก่อน 1 ต.ค.)
+    const fiscalYear = new Date().getFullYear() + 543;
+
+    let query = knex('OP_MASTER_T').select(
+      knex.raw('RTRIM("PMT_CODE") as "code"'),
+      knex.raw('"PMT_NAME_T" as "name"'),
+      knex.raw('RTRIM("PMT_LEVEL_CODE") as "levelCode"'),
+      knex.raw('RTRIM("PMT_SAL_CODE") as "salCode"'),
+    );
+    if (employeeCodes && employeeCodes.length > 0) {
+      const codes = employeeCodes.map((c) => String(c).trim());
+      const placeholders = codes.map(() => '?').join(', ');
+      query = query.whereRaw(`RTRIM("PMT_CODE") IN (${placeholders})`, codes);
+    }
+
+    const employees: any[] = await query;
+    let upserted = 0;
+    let skipped = 0;
+
+    for (const emp of employees) {
+      try {
+        const code = String(this.rowField(emp, 'code', 'CODE') ?? '').trim();
+        if (!code) {
+          skipped += 1;
+          continue;
+        }
+
+        const salCodeRaw = this.rowField(emp, 'salCode', 'SALCODE');
+        const salCodeNum =
+          salCodeRaw != null && String(salCodeRaw).trim() !== ''
+            ? Number(String(salCodeRaw).trim())
+            : null;
+        if (!salCodeNum || Number.isNaN(salCodeNum)) {
+          skipped += 1;
+          continue;
+        }
+
+        const salRow = (await knex('OP_LEVEL_SAL_R')
+          .where('PLV_CODE', salCodeNum)
+          .select('PLV_SALARY')
+          .first()) as Record<string, unknown> | undefined;
+        const salaryRaw = this.rowField(salRow, 'PLV_SALARY', 'plv_salary');
+        const salary =
+          salaryRaw != null && !Number.isNaN(Number(salaryRaw))
+            ? Number(salaryRaw)
+            : null;
+        if (!salary || Number.isNaN(salary)) {
+          skipped += 1;
+          continue;
+        }
+
+        const rate = (await knex('holiday_work_rates')
+          .where('salary', salary)
+          .first()) as Record<string, unknown> | undefined;
+        const rateId = this.rowField(rate, 'id', 'ID');
+        if (rateId == null) {
+          skipped += 1;
+          continue;
+        }
+
+        const hours = (await knex('holiday_work_hours')
+          .where('rate_id', rateId)
+          .orderBy('hour', 'asc')) as Record<string, unknown>[];
+        if (!hours || hours.length === 0) {
+          skipped += 1;
+          continue;
+        }
+
+        await this.upsertOldFiscalYearRecord({
+          code,
+          name: this.rowField(emp, 'name', 'NAME') as string | undefined,
+          levelCode: this.rowField(emp, 'levelCode', 'LEVELCODE') as
+            | string
+            | undefined,
+          salary,
+          fiscalYear,
+          hours: hours.map((h) => ({
+            hour: Number(this.rowField(h, 'hour', 'HOUR')),
+            workPay: Number(this.rowField(h, 'work_pay', 'WORK_PAY')),
+            taxRate: Number(this.rowField(h, 'tax_rate', 'TAX_RATE')),
+          })),
+        });
+        upserted += 1;
+      } catch (error) {
+        skipped += 1;
+        this.logger.error(
+          `[OldFiscalYearSalary] error employee ${this.rowField(emp, 'code', 'CODE') ?? '?'}:`,
+          error instanceof Error ? error.stack : JSON.stringify(error),
+        );
+      }
+    }
+
+    return { processed: employees.length, upserted, skipped };
+  }
+
+  /** upsert 1 record/พนักงาน (update ทับ) + แทนที่ค่าจ้างวันหยุดรายชั่วโมงทั้งชุด */
+  private async upsertOldFiscalYearRecord(rec: {
+    code: string;
+    name?: string;
+    levelCode?: string;
+    salary: number;
+    fiscalYear: number;
+    hours: { hour: number; workPay: number; taxRate: number }[];
+  }): Promise<void> {
+    const knex = this.knexService.knex;
+
+    const existing = await knex('employee_old_fiscal_year_salary')
+      .where('employee_code', rec.code)
+      .first();
+
+    let salaryId: number;
+    if (existing) {
+      salaryId = Number(this.rowField(existing, 'id', 'ID'));
+      await knex('employee_old_fiscal_year_salary')
+        .where('id', salaryId)
+        .update({
+          employee_name: rec.name ?? null,
+          level_code: rec.levelCode ?? null,
+          salary: rec.salary,
+          fiscal_year: rec.fiscalYear,
+          updated_at: new Date(),
+        });
+      await knex('employee_old_fiscal_year_holiday_hours')
+        .where('salary_id', salaryId)
+        .del();
+    } else {
+      await knex('employee_old_fiscal_year_salary').insert({
+        employee_code: rec.code,
+        employee_name: rec.name ?? null,
+        level_code: rec.levelCode ?? null,
+        salary: rec.salary,
+        fiscal_year: rec.fiscalYear,
+      });
+      const inserted = await knex('employee_old_fiscal_year_salary')
+        .where('employee_code', rec.code)
+        .first();
+      const insertedId = this.rowField(inserted, 'id', 'ID');
+      if (insertedId == null) {
+        throw new Error(
+          `Failed to resolve salary record id for employee ${rec.code}`,
+        );
+      }
+      salaryId = Number(insertedId);
+    }
+
+    const hourRows = rec.hours.map((h) => ({
+      salary_id: salaryId,
+      hour: h.hour,
+      work_pay: h.workPay,
+      tax_rate: h.taxRate,
+    }));
+    if (hourRows.length > 0) {
+      await knex('employee_old_fiscal_year_holiday_hours').insert(hourRows);
+    }
+  }
+
+  /** อ่านค่าจาก row ของ Oracle/Knex ที่ key อาจเป็น camelCase หรือ UPPER_CASE */
+  private rowField(
+    row: Record<string, unknown> | undefined | null,
+    ...keys: string[]
+  ): unknown {
+    if (!row) return undefined;
+    for (const key of keys) {
+      if (row[key] !== undefined && row[key] !== null) return row[key];
+      const upper = key.toUpperCase();
+      if (row[upper] !== undefined && row[upper] !== null) return row[upper];
+    }
+    return undefined;
+  }
 }

@@ -514,9 +514,162 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
   }
 
   // Custom method for clothing reports
+  private applyClothingCancellationStatusFilter(
+    query: any,
+    cancellationStatus?: string,
+  ) {
+    if (!cancellationStatus || cancellationStatus === 'all') {
+      return;
+    }
+
+    const knex = this.knexService.knex;
+    const pendingMatchSubquery = function (this: any) {
+      this.select(knex.raw('1'))
+        .from('clothing_expense_cancellation_requests as cecr')
+        .whereRaw('"cecr"."approval_id" = "approval_clothing_expense"."approval_id"')
+        .where('cecr.status', 'pending')
+        .where(function () {
+          this.whereRaw(
+            '"cecr"."selected_staff_ids" LIKE \'%\' || CAST("approval_clothing_expense"."staff_member_id" AS VARCHAR2(20)) || \'%\'',
+          ).orWhereRaw(
+            '"cecr"."selected_staff_ids" LIKE \'%\' || RTRIM(CAST("approval_clothing_expense"."employee_code" AS VARCHAR2(255))) || \'%\'',
+          );
+        });
+    };
+
+    if (cancellationStatus === 'cancelled') {
+      query.where('approval_clothing_expense.is_cancelled', true);
+    } else if (cancellationStatus === 'pending_cancel') {
+      query
+        .where('approval_clothing_expense.is_cancelled', false)
+        .whereExists(pendingMatchSubquery);
+    } else if (cancellationStatus === 'claimed') {
+      query
+        .where('approval_clothing_expense.is_cancelled', false)
+        .whereNotExists(pendingMatchSubquery);
+    }
+  }
+
+  private matchesCancellationToClothingRow(
+    row: {
+      approval_id: number;
+      id: number;
+      staff_member_id: number;
+      employee_code: string;
+    },
+    cancellation: {
+      approval_id: number;
+      selected_staff_ids?: string | null;
+      clothing_expense_id?: number | null;
+      clothing_employee_code?: string | null;
+    },
+  ): boolean {
+    if (cancellation.approval_id !== row.approval_id) {
+      return false;
+    }
+
+    if (cancellation.selected_staff_ids) {
+      try {
+        const parsed = JSON.parse(cancellation.selected_staff_ids);
+        if (Array.isArray(parsed)) {
+          const ids = parsed
+            .filter(
+              (v) =>
+                v != null && String(v).trim() !== '' && String(v) !== 'null',
+            )
+            .map((v) => String(v));
+          if (ids.length > 0) {
+            return (
+              ids.includes(String(row.staff_member_id)) ||
+              ids.includes(String(row.employee_code))
+            );
+          }
+        }
+      } catch {
+        // ignore invalid JSON
+      }
+    }
+
+    if (
+      cancellation.clothing_expense_id &&
+      row.id === cancellation.clothing_expense_id
+    ) {
+      return true;
+    }
+
+    if (
+      cancellation.clothing_employee_code &&
+      String(row.employee_code) === String(cancellation.clothing_employee_code)
+    ) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private resolveClothingReportCancellation(
+    row: {
+      approval_id: number;
+      id: number;
+      staff_member_id: number;
+      employee_code: string;
+      is_cancelled?: boolean | number;
+      cancelled_at?: string | Date | null;
+      cancellation_request_id?: number | null;
+    },
+    cancellations: Array<{
+      id: number;
+      approval_id: number;
+      status: string;
+      creator_name?: string;
+      created_at?: string | Date;
+      updated_at?: string | Date;
+      selected_staff_ids?: string | null;
+      clothing_expense_id?: number | null;
+      clothing_employee_code?: string | null;
+    }>,
+  ) {
+    const isCancelled =
+      row.is_cancelled === true ||
+      row.is_cancelled === 1 ||
+      String(row.is_cancelled) === '1';
+
+    if (isCancelled) {
+      return {
+        cancellationStatus: 'cancelled' as const,
+        cancellationId: row.cancellation_request_id ?? null,
+        cancellationBy: null,
+        cancellationAt: row.cancelled_at ?? null,
+      };
+    }
+
+    const pendingMatch = cancellations.find(
+      (c) =>
+        c.status === 'pending' &&
+        this.matchesCancellationToClothingRow(row, c),
+    );
+
+    if (pendingMatch) {
+      return {
+        cancellationStatus: 'pending_cancel' as const,
+        cancellationId: pendingMatch.id,
+        cancellationBy: pendingMatch.creator_name ?? null,
+        cancellationAt: pendingMatch.created_at ?? null,
+      };
+    }
+
+    return {
+      cancellationStatus: 'claimed' as const,
+      cancellationId: null,
+      cancellationBy: null,
+      cancellationAt: null,
+    };
+  }
+
   async findClothingReports(query: any) {
     // Extract pagination and sorting parameters
-    const { page, limit, orderBy, orderDir, ...conditions } = query;
+    const { page, limit, orderBy, orderDir, cancellationStatus, ...conditions } =
+      query;
     
     // Build query with join to approval, approval_date_ranges, and EMPLOYEE
     let dbQuery = this.knexService.knex('approval_clothing_expense')
@@ -530,7 +683,11 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
         'approval_clothing_expense.clothing_reason',
         'approval_clothing_expense.reporting_date',
         'approval_clothing_expense.next_claim_date',
+        'approval_clothing_expense.work_start_date',
         'approval_clothing_expense.work_end_date',
+        'approval_clothing_expense.is_cancelled',
+        'approval_clothing_expense.cancelled_at',
+        'approval_clothing_expense.cancellation_request_id',
         'approval_clothing_expense.created_at',
         'approval_clothing_expense.updated_at',
         'approval_clothing_expense.staff_member_id',
@@ -541,6 +698,7 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
         'approval.increment_id as approval_increment_id',
         'approval.document_title',
         'approval.approval_date',
+        'approval.travel_type as approval_travel_type',
         'approval.created_employee_code',
         'approval.created_employee_name',
         'EMPLOYEE.NAME as employee_name'
@@ -565,6 +723,8 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     if (conditions.employeeName) {
       dbQuery = dbQuery.where('EMPLOYEE.NAME', 'like', `%${conditions.employeeName}%`);
     }
+
+    this.applyClothingCancellationStatusFilter(dbQuery, cancellationStatus);
 
     // Add order by
     const orderByField = orderBy || 'approval_clothing_expense.created_at';
@@ -591,6 +751,7 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     if (conditions.employeeName) {
       countQuery.where('EMPLOYEE.NAME', 'like', `%${conditions.employeeName}%`);
     }
+    this.applyClothingCancellationStatusFilter(countQuery, cancellationStatus);
 
     const total = await countQuery.count('* as count').first();
 
@@ -605,7 +766,7 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     const data = await dbQuery;
 
     // Get date ranges for all approvals
-    const approvalIds = data.map(item => item.approval_id).filter(id => id);
+    const approvalIds = [...new Set(data.map(item => item.approval_id).filter(id => id))];
     let dateRanges: any[] = [];
     
     if (approvalIds.length > 0) {
@@ -619,6 +780,23 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
       });
 
       dateRanges = await Promise.all(dateRangePromises);
+    }
+
+    let cancellationRequests: any[] = [];
+    if (approvalIds.length > 0) {
+      cancellationRequests = await this.knexService
+        .knex('clothing_expense_cancellation_requests')
+        .whereIn('approval_id', approvalIds)
+        .whereIn('status', ['pending', 'approved'])
+        .select(
+          'id',
+          'approval_id',
+          'status',
+          'creator_name',
+          'created_at',
+          'updated_at',
+          'selected_staff_ids',
+        );
     }
 
     // Create a map of date ranges by approval ID
@@ -640,12 +818,17 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     const totalCount = total ? parseInt(total.count as string) : 0;
     const totalPages = Math.ceil(totalCount / limitNum);
 
-    // Transform data and add date ranges
+    // Transform data and add date ranges + cancellation info
     const transformedData = await Promise.all(data.map(async (item) => {
       const transformedItem = await toCamelCase<ClothingReport>(item);
+      const cancellation = this.resolveClothingReportCancellation(
+        item,
+        cancellationRequests,
+      );
       return {
         ...(transformedItem as any),
         approvalDateRanges: dateRangeMap.get(item.approval_id) || [],
+        ...cancellation,
       };
     }));
 
