@@ -839,6 +839,10 @@ export class ApprovalService {
             'ac.signature_attachment_id as signatureAttachmentId',
             'ac.use_system_signature as useSystemSignature',
             'ac.comments as comments',
+            // #319 — ตำแหน่ง + สถานะรักษาการของแต่ละขั้น ใช้แสดง badge ในหน้าตาราง
+            'ac.approver_position as position',
+            'ac.is_deputy_step as isDeputyStep',
+            'ac.step_role as stepRole',
             'acs.status_code as statusCode',
             'acs.label as statusLabel',
           );
@@ -2680,10 +2684,10 @@ export class ApprovalService {
         await trx('approval').where('id', id).update(updateData);
       }
 
-      if (
-        updateDto.documentAttachments &&
-        updateDto.documentAttachments.length > 0
-      ) {
+      // #375: sync ทุกครั้งที่ frontend ส่ง array มา (รวม [] = ลบทั้งหมด)
+      // ถ้าเช็ค length > 0 จะข้าม sync ตอนผู้ใช้ลบไฟล์ทุกไฟล์ ทำให้ลิงก์เก่าค้าง
+      // และโดน re-hydrate กลับมาแสดงไฟล์ที่ลบไปแล้ว
+      if (Array.isArray(updateDto.documentAttachments)) {
         const ids = await this.attachmentService.syncAttachments(
           'approval_document',
           id,
@@ -4538,12 +4542,20 @@ export class ApprovalService {
               ? true
               : String(updateDto.positionCode).trim() ===
                 String(approval.final_staff_position_code).trim();
+          // เอกสารเก่าไม่ได้บันทึก final_staff_position_code (null) → ไม่รู้ว่า final เป็น
+          // ตำแหน่งปกติหรือรักษาการ จึง match แค่ "คน" (ข้าม deputy check) ไม่งั้น final ที่เป็น
+          // รักษาการจะกลายเป็น REVIEW. เอกสารใหม่ที่บันทึก position_code แล้วยังใช้ position-bound
+          // เต็ม (กัน #318/#385)
+          const finalPositionRecorded = approval.final_staff_position_code != null;
+          const nextDeputyMatchesFinal =
+            !finalPositionRecorded ||
+            approval.final_staff_is_deputy == null ||
+            !!updateDto.isDeputyStep === finalIsDeputy;
           const nextIsFinal =
             !!approval.final_staff_employee_code &&
             updateDto.employeeCode === approval.final_staff_employee_code &&
             nextPositionMatchesFinal &&
-            (approval.final_staff_is_deputy == null ||
-              !!updateDto.isDeputyStep === finalIsDeputy);
+            nextDeputyMatchesFinal;
 
           await trx('approval_continuous').insert({
             approval_id: existingContinuous.approval_id,

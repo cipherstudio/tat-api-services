@@ -26,6 +26,9 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
     delete filter.search;
     delete filter.beneficiary_only;
     delete filter.include_cancelled;
+    delete filter.group_by_approval;
+
+    const groupByApproval = conditions.group_by_approval === true;
 
     const dbFilter = await toSnakeCase(filter);
     const offset = (page - 1) * limit;
@@ -68,33 +71,55 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
       return query;
     };
 
+    const selectColumns = [
+      'ace.*',
+      'omt.PMT_CODE as employee_pmt_code',
+      'omt.PMT_NAME_T as employee_name_th',
+      'omt.PMT_NAME_E as employee_name_en',
+      'asm.name as staff_member_name',
+      'omt.PMT_POS_WK as employee_position',
+      'omt.PMT_CUR_FAC as employee_faculty',
+      'omt.PMT_EMAIL_ADDR as employee_email',
+      'a.travel_type as approval_travel_type',
+      'a.created_employee_code as requestor_code',
+      'a.created_employee_name as requestor_name',
+      'a.approval_date as approval_request_date',
+      'a.document_title as document_title',
+      'approved_hist.approval_approved_date',
+    ];
+
     // Query for total count
-    const countResult = await buildBaseQuery()
-      .count('ace.id as count')
-      .first();
+    const countResult = await (groupByApproval
+      ? buildBaseQuery().countDistinct('ace.approval_id as count')
+      : buildBaseQuery().count('ace.id as count')
+    ).first();
     const total = Number(countResult?.count || 0);
 
     // Query for data with pagination
-    const data = await buildBaseQuery()
-      .select([
-        'ace.*',
-        'omt.PMT_CODE as employee_pmt_code',
-        'omt.PMT_NAME_T as employee_name_th',
-        'omt.PMT_NAME_E as employee_name_en',
-        'asm.name as staff_member_name',
-        'omt.PMT_POS_WK as employee_position',
-        'omt.PMT_CUR_FAC as employee_faculty',
-        'omt.PMT_EMAIL_ADDR as employee_email',
-        'a.travel_type as approval_travel_type',
-        'a.created_employee_code as requestor_code',
-        'a.created_employee_name as requestor_name',
-        'a.approval_date as approval_request_date',
-        'a.document_title as document_title',
-        'approved_hist.approval_approved_date',
-      ])
-      .orderBy(`ace.${orderBy}`, direction)
-      .limit(limit)
-      .offset(offset);
+    let data;
+    if (groupByApproval) {
+      // หน้ารายการเบิกค่าเครื่องแต่งตัว: 1 แถวต่อ 1 ใบอนุมัติ (เลขที่หนังสือไม่ซ้ำ)
+      // เลือก ace ตัวแทน (id มากสุด) ต่อ approval ด้วย ROW_NUMBER แล้ว paginate ตามจำนวนใบ
+      const inner = buildBaseQuery().select([
+        ...selectColumns,
+        this.knex.raw(
+          'ROW_NUMBER() OVER (PARTITION BY "ace"."approval_id" ORDER BY "ace"."id" DESC) as "rn"',
+        ),
+      ]);
+      data = await this.knex
+        .select('*')
+        .from(inner.as('grouped'))
+        .where('rn', 1)
+        .orderBy(orderBy, direction)
+        .limit(limit)
+        .offset(offset);
+    } else {
+      data = await buildBaseQuery()
+        .select(selectColumns)
+        .orderBy(`ace.${orderBy}`, direction)
+        .limit(limit)
+        .offset(offset);
+    }
 
     for (const item of data) {
       if (item.employee_name_th == null && item.staff_member_name != null) {

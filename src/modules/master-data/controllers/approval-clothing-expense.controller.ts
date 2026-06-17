@@ -127,6 +127,7 @@ export class ApprovalClothingExpenseController {
     @Query('is_overdue', new ValidationPipe({ transform: true })) is_overdue?: boolean,
     @Query('beneficiary_only', new ValidationPipe({ transform: true })) beneficiary_only?: boolean,
     @Query('include_cancelled', new ValidationPipe({ transform: true })) include_cancelled?: boolean,
+    @Query('group_by_approval', new ValidationPipe({ transform: true })) group_by_approval?: boolean,
   ) {
     const queryOptions: ApprovalClothingExpenseQueryDto = {
       page,
@@ -151,6 +152,7 @@ export class ApprovalClothingExpenseController {
       is_overdue,
       beneficiary_only,
       include_cancelled,
+      group_by_approval,
     };
 
     return this.approvalClothingExpenseService.findAll(queryOptions);

@@ -32,6 +32,16 @@ export class CreateClothingExpenseCancellationRequestDto {
   @IsOptional()
   status?: 'pending' | 'approved' | 'rejected';
 
+  @ApiProperty({ description: 'Approver code (admin ที่กดอนุมัติยกเลิก)', required: false })
+  @IsString()
+  @IsOptional()
+  approved_by_code?: string;
+
+  @ApiProperty({ description: 'Approver name (admin ที่กดอนุมัติยกเลิก)', required: false })
+  @IsString()
+  @IsOptional()
+  approved_by_name?: string;
+
   @ApiProperty({ description: 'Selected staff IDs array', required: false, type: [Number] })
   @IsArray()
   @IsOptional()

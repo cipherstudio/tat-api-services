@@ -142,4 +142,13 @@ export class ApprovalClothingExpenseQueryDto {
   @Type(() => Boolean)
   @IsBoolean()
   include_cancelled?: boolean;
+
+  @ApiProperty({
+    required: false,
+    description: 'true = แสดง 1 แถวต่อ 1 ใบอนุมัติ (group ตาม approval_id) สำหรับหน้ารายการเบิกค่าเครื่องแต่งตัว',
+  })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  group_by_approval?: boolean;
 }

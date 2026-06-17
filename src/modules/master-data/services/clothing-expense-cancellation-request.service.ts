@@ -64,6 +64,13 @@ export class ClothingExpenseCancellationRequestService {
     if (dto.selected_staff_ids !== undefined) {
       data.selected_staff_ids = dto.selected_staff_ids ? JSON.stringify(dto.selected_staff_ids) : null;
     }
+    if (dto.approved_by_code !== undefined) data.approved_by_code = dto.approved_by_code;
+    if (dto.approved_by_name !== undefined) data.approved_by_name = dto.approved_by_name;
+
+    // #259.2 — บันทึกตัวตน + เวลา ของแอดมินที่กดอนุมัติยกเลิก
+    if (dto.status === 'approved') {
+      data.approved_at = new Date();
+    }
 
     const updatedRecord = await this.clothingExpenseCancellationRequestRepository.update(id, data);
 

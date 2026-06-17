@@ -622,6 +622,8 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
       approval_id: number;
       status: string;
       creator_name?: string;
+      approved_by_name?: string | null;
+      approved_at?: string | Date | null;
       created_at?: string | Date;
       updated_at?: string | Date;
       selected_staff_ids?: string | null;
@@ -635,10 +637,14 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
       String(row.is_cancelled) === '1';
 
     if (isCancelled) {
+      // #259.2 — แสดงชื่อแอดมินผู้กดอนุมัติยกเลิก (approved_by_name) ไม่ใช่ผู้ขอ (creator_name)
+      const approvedMatch = cancellations.find(
+        (c) => c.id === row.cancellation_request_id,
+      );
       return {
         cancellationStatus: 'cancelled' as const,
         cancellationId: row.cancellation_request_id ?? null,
-        cancellationBy: null,
+        cancellationBy: approvedMatch?.approved_by_name ?? null,
         cancellationAt: row.cancelled_at ?? null,
       };
     }
@@ -675,6 +681,13 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     let dbQuery = this.knexService.knex('approval_clothing_expense')
       .leftJoin('approval', 'approval_clothing_expense.approval_id', 'approval.id')
       .leftJoin('EMPLOYEE', 'approval_clothing_expense.employee_code', 'EMPLOYEE.CODE')
+      // #259.2 follow-up: คนนอกมี employee_code เป็น UUID ไม่อยู่ใน EMPLOYEE
+      // ดึงชื่อจาก approval_staff_members แทนเมื่อ EMPLOYEE.NAME เป็น null
+      .leftJoin(
+        'approval_staff_members as asm',
+        'approval_clothing_expense.staff_member_id',
+        'asm.id',
+      )
       .whereNull('approval.deleted_at') // Exclude soft deleted records
       .select(
         'approval_clothing_expense.id',
@@ -701,7 +714,9 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
         'approval.travel_type as approval_travel_type',
         'approval.created_employee_code',
         'approval.created_employee_name',
-        'EMPLOYEE.NAME as employee_name'
+        this.knexService.knex.raw(
+          'COALESCE("EMPLOYEE"."NAME", "asm"."name") as "employee_name"',
+        ),
       );
 
     // Add date range conditions for approval date
@@ -719,9 +734,12 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
       dbQuery = dbQuery.where('approval.approval_date', '<=', conditions.endDate);
     }
 
-    // Add employee name filter if provided
+    // Add employee name filter if provided (รวมคนนอกผ่าน asm.name)
     if (conditions.employeeName) {
-      dbQuery = dbQuery.where('EMPLOYEE.NAME', 'like', `%${conditions.employeeName}%`);
+      dbQuery = dbQuery.whereRaw(
+        'COALESCE("EMPLOYEE"."NAME", "asm"."name") LIKE ?',
+        [`%${conditions.employeeName}%`],
+      );
     }
 
     this.applyClothingCancellationStatusFilter(dbQuery, cancellationStatus);
@@ -735,6 +753,11 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     const countQuery = this.knexService.knex('approval_clothing_expense')
       .leftJoin('approval', 'approval_clothing_expense.approval_id', 'approval.id')
       .leftJoin('EMPLOYEE', 'approval_clothing_expense.employee_code', 'EMPLOYEE.CODE')
+      .leftJoin(
+        'approval_staff_members as asm',
+        'approval_clothing_expense.staff_member_id',
+        'asm.id',
+      )
       .whereNull('approval.deleted_at'); // Exclude soft deleted records
 
     // Apply the same filters to count query
@@ -749,7 +772,10 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
       countQuery.where('approval.approval_date', '<=', conditions.endDate);
     }
     if (conditions.employeeName) {
-      countQuery.where('EMPLOYEE.NAME', 'like', `%${conditions.employeeName}%`);
+      countQuery.whereRaw(
+        'COALESCE("EMPLOYEE"."NAME", "asm"."name") LIKE ?',
+        [`%${conditions.employeeName}%`],
+      );
     }
     this.applyClothingCancellationStatusFilter(countQuery, cancellationStatus);
 
@@ -793,6 +819,8 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
           'approval_id',
           'status',
           'creator_name',
+          'approved_by_name',
+          'approved_at',
           'created_at',
           'updated_at',
           'selected_staff_ids',
