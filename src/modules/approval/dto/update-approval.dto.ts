@@ -996,6 +996,16 @@ export class UpdateApprovalDto {
   signerName?: string;
 
   @ApiProperty({
+    description:
+      '#408 true เฉพาะตอน "ส่งขออนุมัติ" จริง — ใช้ตัดสินใจสร้าง continuous (เส้นทางอนุมัติ). บันทึกร่าง/ถัดไป ไม่ส่งหรือ false',
+    required: false,
+    example: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  submitForApproval?: boolean;
+
+  @ApiProperty({
     description: 'ใช้ลายเซ็นจากไฟล์แนบ',
     required: false,
     example: false,

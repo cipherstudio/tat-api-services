@@ -66,6 +66,16 @@ export class ApprovalAccommodationTransportExpenseDto {
   @IsNumber()
   attachmentId?: number;
 
+  @ApiProperty({ description: 'ชื่อไฟล์แนบ', required: false })
+  @IsOptional()
+  @IsString()
+  attachmentFileName?: string;
+
+  @ApiProperty({ description: 'ขนาดไฟล์แนบ (bytes)', required: false })
+  @IsOptional()
+  @IsNumber()
+  attachmentFileSize?: number;
+
   @ApiProperty({
     description: 'ไฟล์แนบ',
     type: [Object],

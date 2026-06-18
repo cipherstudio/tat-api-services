@@ -26,6 +26,7 @@ import { ApprovalService } from './approval.service';
 import { CreateApprovalDto } from './dto/create-approval.dto';
 import { UpdateApprovalDto } from './dto/update-approval.dto';
 import { UpdateApprovalStatusDto } from './dto/update-approval-status.dto';
+import { AppendRejectionSnapshotDto } from './dto/append-rejection-snapshot.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ApprovalQueryOptions } from './interfaces/approval-options.interface';
 import { Request } from 'express';
@@ -590,6 +591,24 @@ export class ApprovalController {
       updateDto,
       req.user.employee.code,
     );
+  }
+
+  @Post('rejection-snapshots/:id')
+  @ApiOperation({
+    summary: 'Append rejection snapshot attachments',
+    description:
+      'แนบไฟล์ snapshot ตอนตีกลับ (แยกจากไฟล์แนบ Form1) เข้า entity_type approval_rejection_snapshot',
+  })
+  @ApiResponse({ status: 201, description: 'Rejection snapshots appended' })
+  async appendRejectionSnapshots(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AppendRejectionSnapshotDto,
+  ) {
+    await this.approvalService.appendRejectionSnapshotAttachments(
+      id,
+      dto.fileIds,
+    );
+    return { success: true };
   }
 
   @Post('duplicate/:id')

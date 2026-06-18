@@ -107,6 +107,19 @@ export class DataviewsService {
     );
   }
 
+  /**
+   * พนักงานใหม่ที่มีแค่ใน OP_MASTER_T (ยังไม่ sync เข้า EMPLOYEE table) จะได้ name/code (จาก EMPLOYEE) = null
+   * → fallback ไป pmtNameT/pmtCode (OP_MASTER_T) เพื่อให้ทุก consumer (search/แสดงชื่อ/เลือกบุคคล) ใช้ได้
+   */
+  private resolveEmployeeNameCode<T extends Record<string, any>>(e: T): T {
+    if (!e || typeof e !== 'object') return e;
+    return {
+      ...e,
+      name: e.name ?? e.pmtNameT ?? null,
+      code: e.code ?? e.pmtCode ?? null,
+    };
+  }
+
   async findAllEmployees(): Promise<Employee[]> {
     return this.employeeRepository.findAll();
   }
@@ -118,7 +131,7 @@ export class DataviewsService {
     ]);
     if (!employee) return undefined;
     return {
-      ...employee,
+      ...this.resolveEmployeeNameCode(employee),
       deputies: this.mapDeputiesForEmployeeResponse(deputies),
     };
   }
@@ -132,7 +145,7 @@ export class DataviewsService {
     ]);
     if (!employee) return undefined;
     return {
-      ...employee,
+      ...this.resolveEmployeeNameCode(employee),
       deputies: this.mapDeputiesForEmployeeResponse(deputies),
     };
   }
@@ -157,7 +170,7 @@ export class DataviewsService {
       const code = String(e.pmtCode ?? e.code ?? '').trim();
       const deputies = deputiesByPmt.get(code) ?? [];
       return {
-        ...e,
+        ...this.resolveEmployeeNameCode(e),
         deputies: this.mapDeputiesForEmployeeResponse(deputies),
       };
     });

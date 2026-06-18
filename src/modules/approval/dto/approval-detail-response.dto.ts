@@ -486,6 +486,14 @@ export class ApprovalDetailResponseDto implements Approval {
   documentAttachments?: AttachmentResponseDto[];
 
   @ApiProperty({
+    description:
+      'ไฟล์ snapshot ตอนตีกลับ (บันทึกข้อความ/รายละเอียดค่าใช้จ่าย) — แยกออกจาก documentAttachments ของ Form1',
+    type: [AttachmentResponseDto],
+    required: false,
+  })
+  rejectionSnapshotAttachments?: AttachmentResponseDto[];
+
+  @ApiProperty({
     description: 'ไฟล์ลายเซ็นแนบ',
     type: [AttachmentResponseDto],
     required: false,
@@ -813,6 +821,14 @@ export class ApprovalDetailResponseDto implements Approval {
     example: '0001 : 25680708 : 1720'
   })
   expensePrintNumber?: string;
+
+  @ApiProperty({
+    description:
+      '#407 ครั้งที่ของเอกสาร (revision) = จำนวนครั้งที่ถูกตีกลับแล้วแก้ไข +1',
+    required: false,
+    example: 1,
+  })
+  printRevision?: number;
 
   @ApiProperty({ description: 'When the approval was created' })
   createdAt: Date;

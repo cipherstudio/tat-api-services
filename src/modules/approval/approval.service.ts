@@ -875,8 +875,22 @@ export class ApprovalService {
           'approval_accommodation_transport_expense',
           approvalId,
         );
+        // #ไฟล์แนบ รวม snapshot ตอนตีกลับ (bucket แยก) เพื่อให้ table list หมวด "รายการขออนุมัติที่ถูกปฏิเสธ" แสดงได้
+        const rejectionSnapshotAtts = await this.attachmentService.getAttachments(
+          'approval_rejection_snapshot',
+          approvalId,
+        );
+        // legacy ที่ยังปนใน approval_document → กรองออกจากไฟล์ user (documentAtts) แต่คงไว้ในผลรวม
+        const documentAttsUser = documentAtts.filter(
+          (a) => !this.isRejectionSnapshotFileName(a.fileName),
+        );
+        const legacySnapshotAtts = documentAtts.filter((a) =>
+          this.isRejectionSnapshotFileName(a.fileName),
+        );
         return [
-          ...documentAtts,
+          ...documentAttsUser,
+          ...rejectionSnapshotAtts,
+          ...legacySnapshotAtts,
           ...signatureAtts,
           ...budgetAtts,
           ...clothingAtts,
@@ -1032,6 +1046,25 @@ export class ApprovalService {
   //     orderDir as 'asc' | 'desc',
   //   );
   // }
+
+  /**
+   * #ไฟล์แนบ ตรวจว่าเป็น "ไฟล์ snapshot ตอนตีกลับ" (บันทึกข้อความ/รายละเอียดค่าใช้จ่าย ที่ระบบ gen)
+   * ใช้กับของ legacy ที่ยังเก็บปนใน entity_type 'approval_document' (ของใหม่ใช้ entity แยกแล้ว)
+   * สอดคล้องกับ frontend `isRejectionSnapshotAttachmentFileName`
+   */
+  private isRejectionSnapshotFileName(filename?: string | null): boolean {
+    const n = (filename ?? '').trim();
+    if (!n) return false;
+    return (
+      /^บันทึกข้อความ.+\.pdf$/i.test(n) ||
+      /^ไฟล์บันทึกข้อความ.+\.pdf$/i.test(n) ||
+      /^ใบบันทึกข้อความ.+\.pdf$/i.test(n) ||
+      /^รายละเอียดค่าใช้จ่าย.+\.pdf$/i.test(n) ||
+      /^ไฟล์รายละเอียดค่าใช้จ่าย.+\.pdf$/i.test(n) ||
+      /^approval-reject-/i.test(n) ||
+      /^expense-reject-/i.test(n)
+    );
+  }
 
   async findById(id: number): Promise<ApprovalDetailResponseDto> {
     // Try to get from cache first
@@ -1220,6 +1253,20 @@ export class ApprovalService {
 
     const staffMembers = await staffMembersFinalQuery;
 
+    // #406 ไฟล์แนบค่าพาหนะถูกเก็บสองที่: คอลัมน์ ate.attachment_id (ฟอร์มอ่าน) และตาราง
+    // approval_attachments (modal อ่าน). การ re-save ที่ไม่ได้แนบไฟล์ใหม่ทำให้คอลัมน์ถูกล้างเป็น null
+    // แต่ approval_attachments ยังอยู่ → ฟอร์มไม่เห็นไฟล์ทั้งที่ modal เห็น.
+    // ดึง approval_attachments ไว้ใช้ fallback (เติมหลังประกอบ staffMembers ครบ — ดู comment ด้านล่าง)
+    const transportAttachmentFallback =
+      await this.attachmentService.getAttachments(
+        'approval_accommodation_transport_expense',
+        id,
+      );
+    const TRANSPORT_ATTACHABLE_TYPES = [
+      'รถยนต์ส่วนบุคคล',
+      'รถจักรยานยนต์ส่วนบุคคล',
+    ];
+
     // Get work locations for each staff member
     for (const staffMember of staffMembers) {
       const workLocations = await this.knexService
@@ -1354,6 +1401,7 @@ export class ApprovalService {
               'ate.flight_route as flightRoute',
               'ate.attachment_id as attachmentId',
               'f.original_name as attachmentFileName',
+              'f.size as attachmentFileSize',
             );
           accommodationExpense.accommodationTransportExpenses =
             accommodationTransportExpenses;
@@ -1450,6 +1498,45 @@ export class ApprovalService {
           followTravelDate: spouseCompanionRow.followTravelDate ?? undefined,
           reason: spouseCompanionRow.reason ?? undefined,
         };
+      }
+    }
+
+    // #406 fallback (post-pass): เติมไฟล์แนบค่าพาหนะจาก approval_attachments เมื่อคอลัมน์ถูกล้างเป็น null
+    // ทำหลังประกอบ staffMembers ครบ เพื่อเช็คความกำกวมจากจำนวนรวม:
+    // เติมเฉพาะเมื่อ "จำนวนรายการพาหนะที่ไฟล์หาย" == "จำนวนไฟล์ใน approval_attachments" พอดี
+    // (เคสไฟล์เดียว = ตรงเป๊ะ; เคส N=N = จับคู่ตามลำดับ best-effort แล้ว self-heal ตอน save ครั้งถัดไป)
+    // ถ้าจำนวนไม่ตรง = กำกวม → ข้าม ไม่เดามั่ว ให้เจ้าของอัปไฟล์ใหม่
+    {
+      const nullTransportItems: Array<Record<string, any>> = [];
+      for (const staffMember of staffMembers as any[]) {
+        for (const workLocation of (staffMember.workLocations ?? []) as any[]) {
+          for (const accommodationExpense of (workLocation.accommodationExpenses ??
+            []) as any[]) {
+            for (const transportExpense of (accommodationExpense.accommodationTransportExpenses ??
+              []) as any[]) {
+              const hasColumnAttachment =
+                transportExpense.attachmentId != null &&
+                transportExpense.attachmentId !== '';
+              const isAttachableType = TRANSPORT_ATTACHABLE_TYPES.includes(
+                (transportExpense.type ?? '').trim(),
+              );
+              if (!hasColumnAttachment && isAttachableType) {
+                nullTransportItems.push(transportExpense);
+              }
+            }
+          }
+        }
+      }
+      if (
+        nullTransportItems.length > 0 &&
+        nullTransportItems.length === transportAttachmentFallback.length
+      ) {
+        nullTransportItems.forEach((transportExpense, idx) => {
+          const fallback = transportAttachmentFallback[idx];
+          transportExpense.attachmentId = fallback.fileId;
+          transportExpense.attachmentFileName = fallback.fileName;
+          transportExpense.attachmentFileSize = fallback.size;
+        });
       }
     }
 
@@ -1551,6 +1638,19 @@ export class ApprovalService {
       .select('*');
 
     const rawContinuousRows = await finalQuery;
+
+    // #408 กรณี "ทำแทน" (record_type = 'delegate'): คนตั้งเรื่อง = ผู้สร้าง (created_employee_code)
+    // เส้นทางอนุมัติแสดงชื่อผู้ส่งถูกแล้ว (ac.created_by = ผู้สร้าง) แต่ created_by_position snapshot
+    // เก็บตำแหน่งผิด (ของผู้เดินทาง employee_code ไม่ใช่ของผู้สร้าง) → ใช้ตำแหน่ง HR ของผู้สร้าง
+    // (createdPositionFromHr ซึ่ง join จาก ac.created_by) แทน snapshot ที่เพี้ยน เฉพาะแถวที่ผู้สร้างเป็นคนสร้าง
+    const isDelegate =
+      approval.recordType === 'delegate' &&
+      !!approval.createdEmployeeCode &&
+      approval.employeeCode !== approval.createdEmployeeCode;
+    const delegateCreatorCode = isDelegate
+      ? String(approval.createdEmployeeCode).trim()
+      : '';
+
     const continuousApproval = rawContinuousRows.map(
       (row: Record<string, unknown>) => {
         const approverPositionSnapshot =
@@ -1589,16 +1689,28 @@ export class ApprovalService {
             : isDeputyStepRaw === true ||
               isDeputyStepRaw === 1 ||
               isDeputyStepRaw === '1';
+        // #408 delegate: แถวที่คนตั้งเรื่อง (ผู้สร้าง) เป็นคนสร้าง → ใช้ตำแหน่ง HR ของผู้สร้าง
+        // (createdPositionFromHr) แทน snapshot ที่เก็บตำแหน่งผิด
+        const rowCreatedByCode = String(
+          row.createdEmployeeCode ?? row.CREATEDEMPLOYEECODE ?? '',
+        ).trim();
+        const isCreatorRow =
+          isDelegate &&
+          !!rowCreatedByCode &&
+          rowCreatedByCode === delegateCreatorCode;
+        const createdPosition = (
+          isCreatorRow
+            ? createdPositionFromHr ?? createdByPositionSnapshot
+            : createdByPositionSnapshot ?? createdPositionFromHr
+        ) as string | null;
+
         return {
           ...out,
           position:
             (approverPositionSnapshot ?? positionFromHr ?? null) as
               | string
               | null,
-          createdPosition:
-            (createdByPositionSnapshot ?? createdPositionFromHr ?? null) as
-              | string
-              | null,
+          createdPosition: createdPosition ?? null,
           stepRole: (stepRoleRaw ?? null) as string | null,
           positionCode: (positionCodeRaw ?? null) as string | null,
           isDeputyStep,
@@ -1654,10 +1766,49 @@ export class ApprovalService {
     //   )
     //   .orderBy('ac.created_at', 'asc');
 
-    const approvalDocuments = await this.attachmentService.getAttachments(
+    // #ไฟล์แนบ แยก "ไฟล์ Form1 ของ user" ออกจาก "snapshot ตอนตีกลับ"
+    // - ของใหม่: snapshot อยู่ใน entity_type 'approval_rejection_snapshot' (แยกชัด)
+    // - ของเก่า (legacy): ยังปนใน 'approval_document' → กรองด้วยชื่อไฟล์
+    // documentAttachments (Form1) = เฉพาะไฟล์ user; rejectionSnapshotAttachments = snapshot ทั้งหมด
+    const rawApprovalDocuments = await this.attachmentService.getAttachments(
       'approval_document',
       id,
     );
+    const newRejectionSnapshots = await this.attachmentService.getAttachments(
+      'approval_rejection_snapshot',
+      id,
+    );
+    const legacyRejectionSnapshots = rawApprovalDocuments.filter((a) =>
+      this.isRejectionSnapshotFileName(a.fileName),
+    );
+    const approvalDocuments = rawApprovalDocuments.filter(
+      (a) => !this.isRejectionSnapshotFileName(a.fileName),
+    );
+    const rejectionSnapshotAttachments = [
+      ...newRejectionSnapshots,
+      ...legacyRejectionSnapshots,
+    ];
+
+    // #ไฟล์แนบ lazy-migrate: ย้าย snapshot legacy ออกจาก 'approval_document' ไป 'approval_rejection_snapshot'
+    // (flip entity_type) เพื่อกันไม่ให้ถูก sync ลบตอน save Form1 — ทำครั้งเดียวต่อ doc, idempotent
+    const legacyFileIds = legacyRejectionSnapshots
+      .map((a) => Number(a.fileId))
+      .filter((f) => Number.isFinite(f) && f > 0);
+    if (legacyFileIds.length > 0) {
+      try {
+        await this.knexService
+          .knex('approval_attachments')
+          .where('entity_type', 'approval_document')
+          .where('entity_id', id)
+          .whereIn('file_id', legacyFileIds)
+          .update({ entity_type: 'approval_rejection_snapshot' });
+      } catch (e) {
+        console.warn(
+          `lazy-migrate rejection snapshots failed for approval ${id}:`,
+          e,
+        );
+      }
+    }
     const approvalSignatures = await this.attachmentService.getAttachments(
       'approval_signature',
       id,
@@ -1696,6 +1847,7 @@ export class ApprovalService {
     );
     const allAttachments = [
       ...approvalDocuments,
+      ...rejectionSnapshotAttachments,
       ...approvalSignatures,
       ...allBudgetAttachments,
       ...clothingExpenseAttachments,
@@ -1750,10 +1902,40 @@ export class ApprovalService {
       }
     }
 
+    // #407 "ครั้งที่" ของเอกสาร (revision): 0001 ปกติ → 0002 (สูงสุดแค่ 0002)
+    // เปลี่ยนเป็น 0002 เฉพาะเมื่อ "ถูกตีกลับ (REJECTED) แล้วมีการแก้ไขต่อ" = หลัง REJECTED แถวแรก
+    // มีสถานะ DRAFT (บันทึกร่าง) หรือ PENDING (ส่งอนุมัติใหม่) ตามมา. ตีกลับเฉยๆ ที่ยังไม่แก้ → ยังเป็น 0001.
+    // (id ของ approval_status_history เป็น auto-increment จึงใช้แทนลำดับเวลาได้)
+    const firstRejected = await this.knexService
+      .knex('approval_status_history as ash')
+      .join('approval_status_labels as asl', 'ash.approval_status_label_id', 'asl.id')
+      .where('ash.approval_id', id)
+      .where('asl.status_code', 'REJECTED')
+      .min('ash.id as minId')
+      .first();
+    const firstRejectedId = Number(
+      (firstRejected as Record<string, unknown> | undefined)?.minId ??
+        (firstRejected as Record<string, unknown> | undefined)?.MINID ??
+        0,
+    );
+    let printRevision = 1;
+    if (firstRejectedId > 0) {
+      const editedAfter = await this.knexService
+        .knex('approval_status_history as ash')
+        .join('approval_status_labels as asl', 'ash.approval_status_label_id', 'asl.id')
+        .where('ash.approval_id', id)
+        .whereIn('asl.status_code', ['DRAFT', 'PENDING'])
+        .where('ash.id', '>', firstRejectedId)
+        .first();
+      printRevision = editedAfter ? 2 : 1;
+    }
+
     // Combine all the data
     const response: ApprovalDetailResponseDto = {
       ...approvalDto,
+      printRevision,
       documentAttachments: approvalDocuments,
+      rejectionSnapshotAttachments,
       signatureAttachments: approvalSignatures,
       attachments: allAttachments,
       checklistDocumentAttachment,
@@ -1997,12 +2179,9 @@ export class ApprovalService {
         await trx('approval_entertainment_expense')
           .where('approval_id', id)
           .delete();
-        const keepContinuous =
-          approval.currentStatus === 'ไม่อนุมัติ' ||
-          approval.currentStatus === 'รออนุมัติ';
-        if (!keepContinuous) {
-          await trx('approval_continuous').where('approval_id', id).delete();
-        }
+        // #408 ไม่ลบ approval_continuous ตอน save form อีกต่อไป — มันคือ audit trail เส้นทางอนุมัติ
+        // (append ทุก action) ที่ /history + PDF ใช้. การลบทำลายประวัติ (รวม step ตีกลับ) ตอน save ร่าง.
+        // continuous จะถูกสร้างเฉพาะตอน "ส่งขออนุมัติ" (ดู block submitForApproval ด้านล่าง) เท่านั้น.
         await trx('approval_clothing_expense').where('approval_id', id).delete();
 
         for (const staffMember of updateDto.staffMembers) {
@@ -2556,7 +2735,9 @@ export class ApprovalService {
       }
 
       // Process continuous approval
-      if (updateDto.signerName) {
+      // #408 สร้าง continuous (step เส้นทางอนุมัติ) เฉพาะตอน "ส่งขออนุมัติ" จริง (submitForApproval)
+      // ไม่ใช่ทุกครั้งที่ save form/บันทึกร่าง (เดิม gate แค่ signerName ทำให้สร้างตั้งแต่ยังเป็นร่าง)
+      if (updateDto.submitForApproval && updateDto.signerName) {
         // get approval continuous status id
         const approvalContinuousStatusId = await this.knexService
           .knex('approval_continuous_status')
@@ -2741,26 +2922,49 @@ export class ApprovalService {
       }
 
       // Process accommodation transport expense attachments — inside transaction
+      // #406 syncAttachments key = approvalId (approval-level) และมันลบทั้งหมดก่อน insert
+      // เดิมเรียกต่อ item → item หลังลบทับ item ก่อน (modal เหลือไฟล์เดียว) และยัง schedule ลบ
+      // ไฟล์ของ item อื่นทิ้งด้วย. แก้: รวม fileId ของทุกพาหนะ (ไฟล์ใหม่ ?? attachmentId เดิมที่เก็บไว้)
+      // เป็นชุดเดียว แล้ว sync ครั้งเดียว → ตารางตรงกับคอลัมน์ ไม่ลบไฟล์ที่ยังใช้อยู่
       if (updateDto.staffMembers && Array.isArray(updateDto.staffMembers)) {
+        const allTransportAttachments: { fileId: number; fileName?: string }[] =
+          [];
         for (const staffMember of updateDto.staffMembers) {
           if (staffMember.workLocations && Array.isArray(staffMember.workLocations)) {
             for (const workLocation of staffMember.workLocations) {
               if (workLocation.accommodationTransportExpenses && Array.isArray(workLocation.accommodationTransportExpenses)) {
                 for (const transportExpense of workLocation.accommodationTransportExpenses) {
-                  if (transportExpense.files && Array.isArray(transportExpense.files) && transportExpense.files.length > 0) {
-                    const ids = await this.attachmentService.syncAttachments(
-                      'approval_accommodation_transport_expense',
-                      id,
-                      transportExpense.files,
-                      trx,
-                    );
-                    pendingFileDeletes.push(...ids);
+                  const hasNewFile =
+                    transportExpense.files &&
+                    Array.isArray(transportExpense.files) &&
+                    transportExpense.files.length > 0;
+                  if (hasNewFile) {
+                    for (const f of transportExpense.files) {
+                      if (f?.fileId != null) {
+                        allTransportAttachments.push({
+                          fileId: f.fileId,
+                          fileName: f.fileName,
+                        });
+                      }
+                    }
+                  } else if (transportExpense.attachmentId != null) {
+                    // ไม่ได้แนบไฟล์ใหม่ แต่มีไฟล์เดิม → คงไว้ในตารางด้วย
+                    allTransportAttachments.push({
+                      fileId: transportExpense.attachmentId,
+                    });
                   }
                 }
               }
             }
           }
         }
+        const ids = await this.attachmentService.syncAttachments(
+          'approval_accommodation_transport_expense',
+          id,
+          allTransportAttachments,
+          trx,
+        );
+        pendingFileDeletes.push(...ids);
       }
 
       // Process continuous approval signature attachments — inside transaction
@@ -4285,11 +4489,24 @@ export class ApprovalService {
       );
     }
 
-    // if (existingContinuous.statusCode !== 'PENDING') {
-    //   throw new NotFoundException(
-    //     `Approval continuous with ID ${id} cannot be updated. Only PENDING status can be updated.`,
-    //   );
-    // }
+    // #ดึงกลับ ถ้าเอกสารถูก "ดึงกลับมาแก้ไข" โดยเจ้าของเรื่อง (สถานะ approval = ฉบับร่าง/DRAFT)
+    // ผู้อนุมัติลำดับถัดไปกดส่งต่อ/อนุมัติไม่ได้ — โยน error เพื่อให้ frontend โชว์ข้อความเป็น toast
+    const parentApprovalStatus = await this.knexService
+      .knex('approval as a')
+      .leftJoin('approval_status_labels as asl', 'a.approval_status_label_id', 'asl.id')
+      .where('a.id', existingContinuous.approval_id)
+      .select('asl.status_code as statusCode')
+      .first();
+    const parentStatusCode = (
+      (parentApprovalStatus as Record<string, unknown> | undefined)?.statusCode ??
+      (parentApprovalStatus as Record<string, unknown> | undefined)?.STATUSCODE ??
+      null
+    ) as string | null;
+    if (parentStatusCode === 'DRAFT') {
+      throw new BadRequestException(
+        'บันทึกข้อมูลไม่สำเร็จ เอกสารอยู่ระหว่างการดึงกลับเพื่อแก้ไขโดยเจ้าของเรื่อง',
+      );
+    }
 
     // Start a transaction
     const trx = await this.knexService.knex.transaction();
@@ -5945,6 +6162,52 @@ export class ApprovalService {
     return employee?.PMT_NAME_T || employee?.PMT_NAME_E || employeeCode;
   }
 
+  /**
+   * #ไฟล์แนบ append ไฟล์ snapshot ตอนตีกลับ ลง entity_type 'approval_rejection_snapshot' (แยกจาก Form1)
+   * dedupe ด้วย fileId, append เข้ากับของเดิม (เก็บประวัติทุกครั้งที่ตีกลับ)
+   */
+  async appendRejectionSnapshotAttachments(
+    id: number,
+    fileIds: number[],
+  ): Promise<void> {
+    const uniqueNew = [
+      ...new Set((fileIds ?? []).filter((f) => Number.isFinite(f) && f > 0)),
+    ];
+    if (uniqueNew.length === 0) return;
+
+    const existing = await this.attachmentService.getAttachments(
+      'approval_rejection_snapshot',
+      id,
+    );
+    const seen = new Set<number>();
+    const merged: { fileId: number }[] = [];
+    for (const a of existing) {
+      const fid = Number(a.fileId);
+      if (fid > 0 && !seen.has(fid)) {
+        merged.push({ fileId: fid });
+        seen.add(fid);
+      }
+    }
+    for (const fid of uniqueNew) {
+      if (!seen.has(fid)) {
+        merged.push({ fileId: fid });
+        seen.add(fid);
+      }
+    }
+
+    await this.attachmentService.syncAttachments(
+      'approval_rejection_snapshot',
+      id,
+      merged,
+    );
+    await this.cacheService.del(
+      this.cacheService.generateKey(this.CACHE_PREFIX, id),
+    );
+    await this.cacheService.del(
+      this.cacheService.generateListKey(this.CACHE_PREFIX),
+    );
+  }
+
   async getApprovalFiles(id: number, type?: string): Promise<AttachmentResponseDto[]> {
     const approval = await this.findById(id);
     if (!approval) {
@@ -5961,6 +6224,7 @@ export class ApprovalService {
         'approval_continuous_signature',
         'approval_accommodation_transport_expense',
         'approval_checklist_document',
+        'approval_rejection_snapshot',
       ];
 
       if (!validTypes.includes(type)) {
