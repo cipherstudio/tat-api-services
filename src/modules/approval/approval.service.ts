@@ -1137,6 +1137,7 @@ export class ApprovalService {
         'approval.created_employee_name as createdEmployeeName',
         'approval.continuous_employee_code as continuousEmployeeCode',
         'asl.label as currentStatus',
+        'asl.status_code as currentStatusCode',
       )
       .join(
         'approval_status_labels as asl',
@@ -1595,6 +1596,15 @@ export class ApprovalService {
           this.knexService.knex.raw('RTRIM("omt2"."PMT_POS_NO")'),
         );
       })
+      // #385.2: join ตำแหน่งจาก position_code ที่ stamp ไว้บนแถว (ตำแหน่งที่ใช้จริงในขั้นนั้น)
+      // เพื่อให้ position แสดงตำแหน่งที่ถูกต้อง ไม่ปนรักษาการเมื่อขั้นนั้นเป็น REVIEW ปกติ
+      .leftJoin('VIEW_POSITION_4OT as vp4ot_step', (builder) => {
+        builder.on(
+          'vp4ot_step.POS_POSITIONCODE',
+          '=',
+          this.knexService.knex.raw('RTRIM("ac"."position_code")'),
+        );
+      })
       .where('ac.approval_id', id);
 
     const subQuery = approvalQuery
@@ -1607,6 +1617,7 @@ export class ApprovalService {
         'ac.is_deputy_step as isDeputyStep',
         'ac.position_code as positionCode',
         'vp4ot.POS_POSITIONNAME as positionFromHr',
+        'vp4ot_step.POS_POSITIONNAME as positionFromCode',
         'et.NAME as signerName', // ผู้รับ
         'ac.signer_date as signerDate',
         'ac.document_ending as documentEnding',
@@ -1657,6 +1668,8 @@ export class ApprovalService {
           row.approverPositionSnapshot ?? row.APPROVERPOSITIONSNAPSHOT;
         const positionFromHr =
           row.positionFromHr ?? row.POSITIONFROMHR;
+        const positionFromCode =
+          row.positionFromCode ?? row.POSITIONFROMCODE;
         const createdByPositionSnapshot =
           row.createdByPositionSnapshot ?? row.CREATEDBYPOSITIONSNAPSHOT;
         const createdPositionFromHr =
@@ -1668,10 +1681,12 @@ export class ApprovalService {
         for (const k of [
           'approverPositionSnapshot',
           'positionFromHr',
+          'positionFromCode',
           'createdByPositionSnapshot',
           'createdPositionFromHr',
           'APPROVERPOSITIONSNAPSHOT',
           'POSITIONFROMHR',
+          'POSITIONFROMCODE',
           'CREATEDBYPOSITIONSNAPSHOT',
           'CREATEDPOSITIONFROMHR',
           'stepRole',
@@ -1689,25 +1704,20 @@ export class ApprovalService {
             : isDeputyStepRaw === true ||
               isDeputyStepRaw === 1 ||
               isDeputyStepRaw === '1';
-        // #408 delegate: แถวที่คนตั้งเรื่อง (ผู้สร้าง) เป็นคนสร้าง → ใช้ตำแหน่ง HR ของผู้สร้าง
-        // (createdPositionFromHr) แทน snapshot ที่เก็บตำแหน่งผิด
-        const rowCreatedByCode = String(
-          row.createdEmployeeCode ?? row.CREATEDEMPLOYEECODE ?? '',
-        ).trim();
-        const isCreatorRow =
-          isDelegate &&
-          !!rowCreatedByCode &&
-          rowCreatedByCode === delegateCreatorCode;
+        // #408/#409 delegate: snapshot (created_by_position) เก็บตำแหน่งผิด (ของผู้เดินทาง ไม่ใช่ผู้สร้าง)
+        // → ทุกแถวในใบ delegate ใช้ตำแหน่ง HR ของผู้สร้างจริง (vp4ot2 join จาก ac.created_by) เสมอ
         const createdPosition = (
-          isCreatorRow
+          isDelegate
             ? createdPositionFromHr ?? createdByPositionSnapshot
             : createdByPositionSnapshot ?? createdPositionFromHr
         ) as string | null;
 
         return {
           ...out,
+          // #385.2: ถ้ามี position_code stamp → ใช้ชื่อตำแหน่งจาก code นั้นก่อน
+          // (ตรงกับตำแหน่งที่ใช้จริงในขั้นนั้น ไม่ปน รักษาการ กรณี REVIEW ปกติ)
           position:
-            (approverPositionSnapshot ?? positionFromHr ?? null) as
+            (positionFromCode ?? approverPositionSnapshot ?? positionFromHr ?? null) as
               | string
               | null,
           createdPosition: createdPosition ?? null,
@@ -1902,32 +1912,34 @@ export class ApprovalService {
       }
     }
 
-    // #407 "ครั้งที่" ของเอกสาร (revision): 0001 ปกติ → 0002 (สูงสุดแค่ 0002)
-    // เปลี่ยนเป็น 0002 เฉพาะเมื่อ "ถูกตีกลับ (REJECTED) แล้วมีการแก้ไขต่อ" = หลัง REJECTED แถวแรก
-    // มีสถานะ DRAFT (บันทึกร่าง) หรือ PENDING (ส่งอนุมัติใหม่) ตามมา. ตีกลับเฉยๆ ที่ยังไม่แก้ → ยังเป็น 0001.
+    // #407/#407.1 "ครั้งที่" ของเอกสาร (revision): นับรอบ REJECTED→DRAFT(save) แต่ละรอบ +1
+    // - ตีกลับแล้วกด บันทึกร่าง/ถัดไป ครั้งแรก → เขียน DRAFT ลง history (ทำใน update()) → นับรอบ
+    // - กด บันทึกร่าง อีกกี่ครั้งก็ไม่เพิ่ม เพราะมี DRAFT หลัง REJECTED แล้ว
+    // - ดึงกลับเอง (ไม่มี REJECTED ใน history) → ไม่นับ คงเป็น 0001
     // (id ของ approval_status_history เป็น auto-increment จึงใช้แทนลำดับเวลาได้)
-    const firstRejected = await this.knexService
+    const rejectedRows = await this.knexService
       .knex('approval_status_history as ash')
       .join('approval_status_labels as asl', 'ash.approval_status_label_id', 'asl.id')
       .where('ash.approval_id', id)
       .where('asl.status_code', 'REJECTED')
-      .min('ash.id as minId')
-      .first();
-    const firstRejectedId = Number(
-      (firstRejected as Record<string, unknown> | undefined)?.minId ??
-        (firstRejected as Record<string, unknown> | undefined)?.MINID ??
-        0,
-    );
+      .orderBy('ash.id', 'asc')
+      .select('ash.id as id');
     let printRevision = 1;
-    if (firstRejectedId > 0) {
-      const editedAfter = await this.knexService
+    for (const rej of rejectedRows) {
+      const rejId = Number(
+        (rej as Record<string, unknown>)?.id ??
+          (rej as Record<string, unknown>)?.ID ??
+          0,
+      );
+      // มี DRAFT ใน history หลัง REJECTED นี้ = user ได้กด save หลังตีกลับแล้ว
+      const draftAfter = await this.knexService
         .knex('approval_status_history as ash')
         .join('approval_status_labels as asl', 'ash.approval_status_label_id', 'asl.id')
         .where('ash.approval_id', id)
-        .whereIn('asl.status_code', ['DRAFT', 'PENDING'])
-        .where('ash.id', '>', firstRejectedId)
+        .where('asl.status_code', 'DRAFT')
+        .where('ash.id', '>', rejId)
         .first();
-      printRevision = editedAfter ? 2 : 1;
+      if (draftAfter) printRevision++;
     }
 
     // Combine all the data
@@ -2995,6 +3007,63 @@ export class ApprovalService {
         oldSignatureAttachmentId !== updateDto.signatureAttachmentId
       ) {
         pendingFileDeletes.push(oldSignatureAttachmentId);
+      }
+
+      // #407: เขียน DRAFT ลง approval_status_history ครั้งแรกที่ save หลัง REJECTED
+      // (ทำให้ printRevision นับ REJECTED→DRAFT cycle ได้ถูกต้อง)
+      // กด บันทึกร่าง/ถัดไป อีกกี่ครั้งก็ไม่เพิ่ม เพราะ draftAfterReject จะไม่ null แล้ว
+      const _currentStatusCode = String(
+        (approval as unknown as Record<string, unknown>)?.currentStatusCode ??
+          (approval as unknown as Record<string, unknown>)?.CURRENTSTATUSCODE ??
+          '',
+      ).toUpperCase();
+      if (_currentStatusCode === 'REJECTED') {
+        const lastRejected = await trx('approval_status_history as ash')
+          .join(
+            'approval_status_labels as asl',
+            'ash.approval_status_label_id',
+            'asl.id',
+          )
+          .where('ash.approval_id', id)
+          .where('asl.status_code', 'REJECTED')
+          .orderBy('ash.id', 'desc')
+          .select('ash.id as id')
+          .first();
+        const lastRejectedId = Number(
+          (lastRejected as Record<string, unknown> | undefined)?.id ??
+            (lastRejected as Record<string, unknown> | undefined)?.ID ??
+            0,
+        );
+        if (lastRejectedId > 0) {
+          const draftAfterReject = await trx('approval_status_history as ash')
+            .join(
+              'approval_status_labels as asl',
+              'ash.approval_status_label_id',
+              'asl.id',
+            )
+            .where('ash.approval_id', id)
+            .where('asl.status_code', 'DRAFT')
+            .where('ash.id', '>', lastRejectedId)
+            .first();
+          if (!draftAfterReject) {
+            const draftLabel = await trx('approval_status_labels')
+              .where('status_code', 'DRAFT')
+              .select('id')
+              .first();
+            const draftLabelId =
+              (draftLabel as Record<string, unknown> | undefined)?.id ??
+              (draftLabel as Record<string, unknown> | undefined)?.ID;
+            if (draftLabelId) {
+              await trx('approval_status_history').insert({
+                approval_status_label_id: draftLabelId,
+                created_by: employeeCode,
+                approval_id: id,
+                created_at: new Date(),
+                updated_at: new Date(),
+              });
+            }
+          }
+        }
       }
 
       // Commit the transaction — releases all DB locks
@@ -4622,6 +4691,7 @@ export class ApprovalService {
             'final_staff_employee_code',
             'final_staff_position_code',
             'final_staff_is_deputy',
+            'staff_employee_code',
           )
           .first();
 
@@ -4691,21 +4761,30 @@ export class ApprovalService {
           // get the approval creator (employee_code from approval table)
           const approval = await trx('approval')
             .where('id', existingContinuous.approval_id)
-            .select('employee_code')
+            .select('employee_code', 'created_employee_code', 'record_type')
             .first();
+
+          // #409: ทำแทน (delegate) → ส่งกลับ created_employee_code (ผู้สร้าง)
+          const backToCodeApproved =
+            approval.record_type === 'delegate' &&
+            !!approval.created_employee_code &&
+            String(approval.created_employee_code).trim() !==
+              String(approval.employee_code).trim()
+              ? String(approval.created_employee_code).trim()
+              : String(approval.employee_code).trim();
 
           // update approval.continuous_employee_code กลับไปผู้สร้าง
           await trx('approval')
             .where('id', existingContinuous.approval_id)
             .update({
-              continuous_employee_code: approval.employee_code,
+              continuous_employee_code: backToCodeApproved,
             });
 
           // insert approval_continuous // ส่งกลับไปผู้สร้าง
           const nowApproved = new Date();
           const approverPosApproved = await this.resolvePositionSnapshot(
             updateDto.approverPositionText,
-            approval.employee_code,
+            backToCodeApproved,
           );
           const createdByPosApproved = await this.resolvePositionSnapshot(
             updateDto.createdByPositionText,
@@ -4713,7 +4792,7 @@ export class ApprovalService {
           );
           await trx('approval_continuous').insert({
             approval_id: existingContinuous.approval_id,
-            employee_code: approval.employee_code,
+            employee_code: backToCodeApproved,
             signer_name: updateDto.signerName,
             signer_date: updateDto.signerDate,
             use_file_signature: updateDto.useFileSignature,
@@ -4732,7 +4811,7 @@ export class ApprovalService {
           await this.createApprovalCompletedNotification(
             existingContinuous.approval_id,
             'APPROVED',
-            approval.employee_code,
+            backToCodeApproved,
             employeeCode,
           );
         } else {
@@ -4768,11 +4847,43 @@ export class ApprovalService {
             !finalPositionRecorded ||
             approval.final_staff_is_deputy == null ||
             !!updateDto.isDeputyStep === finalIsDeputy;
+          // #318: คนเดียวเป็นทั้ง REVIEW (staff) และ FINAL (finalStaff) → ต้องผ่าน REVIEW ก่อน
+          // เมื่อยังไม่มี row ของคนนี้ในเส้นทาง = ครั้งแรก = REVIEW ไม่ใช่ FINAL
+          // (ป้องกัน nextIsFinal=true เพราะ position null ทำให้ข้ามขั้น REVIEW)
+          const samePersonBothRoles =
+            !!approval.staff_employee_code &&
+            String(approval.staff_employee_code).trim() ===
+              String(approval.final_staff_employee_code ?? '').trim();
+          // เฉพาะ row ที่ APPROVED แล้ว (= REVIEW ผ่านไปแล้ว) ถึงจะนับว่าควรเป็น FINAL
+          // ถ้าเจอแค่ PENDING (ยังไม่ได้กด) ให้เป็น REVIEW อีกรอบ (กรณี re-submit)
+          const existingRowForFinalPerson = samePersonBothRoles
+            ? await trx('approval_continuous as ac')
+                .join(
+                  'approval_continuous_status as acs',
+                  'ac.approval_continuous_status_id',
+                  'acs.id',
+                )
+                .where('ac.approval_id', existingContinuous.approval_id)
+                .where(
+                  'ac.employee_code',
+                  String(updateDto.employeeCode ?? '').trim(),
+                )
+                .where('acs.status_code', 'APPROVED')
+                .first()
+            : null;
+          // #318: คนเดียวเป็นทั้ง REVIEW/FINAL — ถ้า current row เป็น REVIEW (step_role='REVIEW')
+          // ให้ next row เป็น FINAL เสมอ (ไม่ต้อง query APPROVED เพราะ DB update ยังไม่ commit)
+          const currentRowIsReview =
+            String(existingContinuous.step_role ?? existingContinuous.STEP_ROLE ?? '')
+              .toUpperCase() === 'REVIEW';
           const nextIsFinal =
             !!approval.final_staff_employee_code &&
             updateDto.employeeCode === approval.final_staff_employee_code &&
             nextPositionMatchesFinal &&
-            nextDeputyMatchesFinal;
+            nextDeputyMatchesFinal &&
+            (!samePersonBothRoles ||
+              currentRowIsReview ||
+              !!existingRowForFinalPerson);
 
           await trx('approval_continuous').insert({
             approval_id: existingContinuous.approval_id,
@@ -4783,7 +4894,7 @@ export class ApprovalService {
             signature_attachment_id: updateDto.signatureAttachmentId,
             use_system_signature: updateDto.useSystemSignature,
             comments: updateDto.comments,
-            approval_continuous_status_id: approvalContinuousStatusId.id,
+            approval_continuous_status_id: pendingStatusId.id, // ← PENDING ไม่ใช่ APPROVED
             created_by: employeeCode,
             approver_position: approverPosNext,
             created_by_position: createdByPosNext,
@@ -4835,21 +4946,30 @@ export class ApprovalService {
         // get the approval creator (employee_code from approval table)
         const approval = await trx('approval')
           .where('id', existingContinuous.approval_id)
-          .select('employee_code')
+          .select('employee_code', 'created_employee_code', 'record_type')
           .first();
+
+        // #409: ทำแทน (delegate) → ส่งกลับ created_employee_code (ผู้สร้าง) ไม่ใช่ employee_code (ผู้เดินทาง)
+        const backToCode =
+          approval.record_type === 'delegate' &&
+          !!approval.created_employee_code &&
+          String(approval.created_employee_code).trim() !==
+            String(approval.employee_code).trim()
+            ? String(approval.created_employee_code).trim()
+            : String(approval.employee_code).trim();
 
         // update approval.continuous_employee_code กลับไปผู้สร้าง
         await trx('approval')
           .where('id', existingContinuous.approval_id)
           .update({
-            continuous_employee_code: approval.employee_code,
+            continuous_employee_code: backToCode,
           });
 
         // insert approval_continuous // ส่งกลับไปผู้สร้าง
         const nowRejected = new Date();
         const approverPosRejected = await this.resolvePositionSnapshot(
           updateDto.approverPositionText,
-          approval.employee_code,
+          backToCode,
         );
         const createdByPosRejected = await this.resolvePositionSnapshot(
           updateDto.createdByPositionText,
@@ -4857,7 +4977,7 @@ export class ApprovalService {
         );
         await trx('approval_continuous').insert({
           approval_id: existingContinuous.approval_id,
-          employee_code: approval.employee_code,
+          employee_code: backToCode,
           signer_name: updateDto.signerName,
           signer_date: updateDto.signerDate,
           use_file_signature: updateDto.useFileSignature,
@@ -4876,7 +4996,7 @@ export class ApprovalService {
         await this.createApprovalCompletedNotification(
           existingContinuous.approval_id,
           'REJECTED',
-          approval.employee_code,
+          backToCode,
           employeeCode,
         );
       }
