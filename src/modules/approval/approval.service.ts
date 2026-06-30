@@ -2775,6 +2775,17 @@ export class ApprovalService {
           .orderBy('id', 'desc')
           .first();
 
+        // #385.1 Case 1: คนเดียวเป็นทั้ง REVIEW/FINAL ตำแหน่งเดียวกัน ไม่ใช่รักษาการ
+        // → stamp step_role='FINAL' ทันทีที่ submit ไม่ต้องผ่าน REVIEW ก่อน
+        const submitIsCase1SelfFinalNoDeputy =
+          !!updateDto.staffEmployeeCode &&
+          !!updateDto.finalStaffEmployeeCode &&
+          String(updateDto.staffEmployeeCode).trim() ===
+            String(updateDto.finalStaffEmployeeCode).trim() &&
+          !updateDto.staffIsDeputy &&
+          !updateDto.finalStaffIsDeputy;
+        const submitStepRole = submitIsCase1SelfFinalNoDeputy ? 'FINAL' : 'REVIEW';
+
         if (
           latestContinuous &&
           latestContinuous.created_by === employeeCode
@@ -2793,7 +2804,7 @@ export class ApprovalService {
               use_system_signature: updateDto.useSystemSignature,
               comments: updateDto.documentEndingWording,
               approver_position: approverPosition,
-              step_role: 'REVIEW',
+              step_role: submitStepRole,
               is_deputy_step: updateDto.staffIsDeputy ?? false,
               position_code: updateDto.staffPositionCode ?? null,
               updated_at: now,
@@ -2818,7 +2829,7 @@ export class ApprovalService {
               comments: updateDto.documentEndingWording,
               approver_position: approverPosition,
               created_by_position: createdByPosition,
-              step_role: 'REVIEW',
+              step_role: submitStepRole,
               is_deputy_step: updateDto.staffIsDeputy ?? false,
               position_code: updateDto.staffPositionCode ?? null,
               created_at: now,
@@ -3083,6 +3094,30 @@ export class ApprovalService {
       await this.cacheService.del(
         this.cacheService.generateListKey(this.CACHE_PREFIX),
       );
+
+      // #407: คำนวณ printRevision หลัง commit แล้วแนบไปกับ response ให้ frontend อัปเดต print number ได้ทันที
+      const rejRows = await this.knexService
+        .knex('approval_status_history as ash')
+        .join('approval_status_labels as asl', 'ash.approval_status_label_id', 'asl.id')
+        .where('ash.approval_id', id)
+        .where('asl.status_code', 'REJECTED')
+        .orderBy('ash.id', 'asc')
+        .select('ash.id as id');
+      let printRevision = 1;
+      for (const rej of rejRows) {
+        const rejId = Number(
+          (rej as Record<string, unknown>)?.id ?? (rej as Record<string, unknown>)?.ID ?? 0,
+        );
+        const draftAfter = await this.knexService
+          .knex('approval_status_history as ash')
+          .join('approval_status_labels as asl', 'ash.approval_status_label_id', 'asl.id')
+          .where('ash.approval_id', id)
+          .where('asl.status_code', 'DRAFT')
+          .where('ash.id', '>', rejId)
+          .first();
+        if (draftAfter) printRevision++;
+      }
+      (updatedApprovalRecord as Record<string, unknown>).printRevision = printRevision;
 
       return updatedApprovalRecord;
     } catch (error) {
