@@ -18,6 +18,43 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     super(knexService, 'approval');
   }
 
+  // Matches a "ตั้งแต่วันที่/ถึงวันที่" travel-date filter against the
+  // actual travel period in approval_date_ranges (an approval can have
+  // several date ranges for multi-leg trips), rather than approval.approval_date
+  // (the approval decision date - a different concept entirely).
+  // - Only one side given: exact match on that single day (a date range
+  //   starting, or ending, exactly on that day) - not an open-ended range.
+  // - Both sides given: a real range search (overlap with [start, end]).
+  private applyTravelDateFilter(
+    query: any,
+    approvalIdColumn: string,
+    startDate?: string,
+    endDate?: string,
+  ): any {
+    if (startDate && endDate) {
+      return query.whereRaw(
+        `EXISTS (SELECT 1 FROM "approval_date_ranges" "adr" WHERE "adr"."approval_id" = ${approvalIdColumn} AND "adr"."end_date" >= ? AND "adr"."start_date" <= ?)`,
+        [startDate, endDate],
+      );
+    }
+    // Only one side given: exact match on start_date (the same column shown
+    // as "วันที่เดินทาง" in the table) regardless of which input box - ตั้งแต่/ถึง
+    // both just mean "this single day", same as the work/activity pages.
+    if (startDate) {
+      return query.whereRaw(
+        `EXISTS (SELECT 1 FROM "approval_date_ranges" "adr" WHERE "adr"."approval_id" = ${approvalIdColumn} AND "adr"."start_date" = ?)`,
+        [startDate],
+      );
+    }
+    if (endDate) {
+      return query.whereRaw(
+        `EXISTS (SELECT 1 FROM "approval_date_ranges" "adr" WHERE "adr"."approval_id" = ${approvalIdColumn} AND "adr"."start_date" = ?)`,
+        [endDate],
+      );
+    }
+    return query;
+  }
+
   async findWithPagination(
     page: number = 1,
     limit: number = 10,
@@ -96,20 +133,14 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
       dbQuery = dbQuery.where('approval.name', 'like', `%${conditions.requesterName}%`);
     }
 
-    // Add date range conditions for approval date
-    if (conditions.approvalDateStart && conditions.approvalDateEnd) {
-      // Both dates provided - filter by date range
-      dbQuery = dbQuery.whereBetween('approval.approval_date', [
-        conditions.approvalDateStart,
-        conditions.approvalDateEnd,
-      ]);
-    } else if (conditions.approvalDateStart) {
-      // Only start date provided - filter from start date onwards
-      dbQuery = dbQuery.where('approval.approval_date', '>=', conditions.approvalDateStart);
-    } else if (conditions.approvalDateEnd) {
-      // Only end date provided - filter up to end date
-      dbQuery = dbQuery.where('approval.approval_date', '<=', conditions.approvalDateEnd);
-    }
+    // Add date range conditions - matches against the actual travel dates
+    // (approval_date_ranges), not approval.approval_date (approval date).
+    dbQuery = this.applyTravelDateFilter(
+      dbQuery,
+      '"approval"."id"',
+      conditions.approvalDateStart,
+      conditions.approvalDateEnd,
+    );
 
     // Add travel type filter if provided
     if (conditions.travelType) {
@@ -141,16 +172,12 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     if (conditions.requesterName) {
       countQuery.where('approval.name', 'like', `%${conditions.requesterName}%`);
     }
-    if (conditions.approvalDateStart && conditions.approvalDateEnd) {
-      countQuery.whereBetween('approval.approval_date', [
-        conditions.approvalDateStart,
-        conditions.approvalDateEnd,
-      ]);
-    } else if (conditions.approvalDateStart) {
-      countQuery.where('approval.approval_date', '>=', conditions.approvalDateStart);
-    } else if (conditions.approvalDateEnd) {
-      countQuery.where('approval.approval_date', '<=', conditions.approvalDateEnd);
-    }
+    this.applyTravelDateFilter(
+      countQuery,
+      '"approval"."id"',
+      conditions.approvalDateStart,
+      conditions.approvalDateEnd,
+    );
     if (conditions.travelType) {
       countQuery.where('approval.travel_type', conditions.travelType);
     }
@@ -320,8 +347,12 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
         this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.startDate + ' 23:59:59']),
       ]);
     } else if (conditions.endDate) {
-      // Only end date provided - filter up to end date
-      dbQuery = dbQuery.where('report_approve.created_at', '<=', this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']));
+      // Only end date provided - match that single day only (ถึงวันที่ alone
+      // still means "this one day", not "everything up to here")
+      dbQuery = dbQuery.whereBetween('report_approve.created_at', [
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD\')', [conditions.endDate]),
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']),
+      ]);
     }
 
     // Add order by
@@ -354,7 +385,10 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
         this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.startDate + ' 23:59:59']),
       ]);
     } else if (conditions.endDate) {
-      countQuery.where('report_approve.created_at', '<=', this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']));
+      countQuery.whereBetween('report_approve.created_at', [
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD\')', [conditions.endDate]),
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']),
+      ]);
     }
 
     const total = await countQuery.count('* as count').first();
@@ -433,6 +467,9 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
         ),
         this.knexService.knex.raw(
           `(COALESCE("approval"."form3_total_amount", 0) + COALESCE("approval"."form4_total_amount", 0) + COALESCE("approval"."form5_total_amount", 0)) as requested_amount`
+        ),
+        this.knexService.knex.raw(
+          `(SELECT MIN("adr"."start_date") FROM "approval_date_ranges" "adr" WHERE "adr"."approval_id" = "approval"."id") as range_start_date`
         )
       );
 
@@ -451,20 +488,14 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
       dbQuery = dbQuery.where('approval_status_labels.status_code', conditions.approvalStatus);
     }
 
-    // Add date range conditions for approval date
-    if (conditions.startDate && conditions.endDate) {
-      // Both dates provided - filter by date range
-      dbQuery = dbQuery.whereBetween('approval.approval_date', [
-        conditions.startDate,
-        conditions.endDate,
-      ]);
-    } else if (conditions.startDate) {
-      // Only start date provided - filter from start date onwards
-      dbQuery = dbQuery.where('approval.approval_date', '>=', conditions.startDate);
-    } else if (conditions.endDate) {
-      // Only end date provided - filter up to end date
-      dbQuery = dbQuery.where('approval.approval_date', '<=', conditions.endDate);
-    }
+    // Add date range conditions - matches against the actual travel dates
+    // (approval_date_ranges), not approval.approval_date (approval date).
+    dbQuery = this.applyTravelDateFilter(
+      dbQuery,
+      '"approval"."id"',
+      conditions.startDate,
+      conditions.endDate,
+    );
 
     // Add budget type filter if provided
     if (conditions.budgetType) {
@@ -510,16 +541,12 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
       .whereNull('approval.deleted_at'); // Exclude soft deleted records
 
     // Apply the same filters to count query
-    if (conditions.startDate && conditions.endDate) {
-      countQuery.whereBetween('approval.approval_date', [
-        conditions.startDate,
-        conditions.endDate,
-      ]);
-    } else if (conditions.startDate) {
-      countQuery.where('approval.approval_date', '>=', conditions.startDate);
-    } else if (conditions.endDate) {
-      countQuery.where('approval.approval_date', '<=', conditions.endDate);
-    }
+    this.applyTravelDateFilter(
+      countQuery,
+      '"approval"."id"',
+      conditions.startDate,
+      conditions.endDate,
+    );
     if (conditions.incrementId) {
       countQuery.where('approval.increment_id', 'like', `%${conditions.incrementId}%`);
     }
@@ -788,19 +815,19 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
         ),
       );
 
-    // Add date range conditions for approval date
+    // Add date range conditions - matches against the actual travel dates
+    // on approval_clothing_expense (work_start_date/work_end_date), not
+    // approval.approval_date (approval date). Only one side given: exact
+    // match on that single day. Both given: a real range search.
     if (conditions.startDate && conditions.endDate) {
-      // Both dates provided - filter by date range
-      dbQuery = dbQuery.whereBetween('approval.approval_date', [
-        conditions.startDate,
-        conditions.endDate,
-      ]);
+      dbQuery = dbQuery.whereRaw(
+        'COALESCE("approval_clothing_expense"."work_end_date", "approval_clothing_expense"."work_start_date") >= ? AND "approval_clothing_expense"."work_start_date" <= ?',
+        [conditions.startDate, conditions.endDate],
+      );
     } else if (conditions.startDate) {
-      // Only start date provided - filter from start date onwards
-      dbQuery = dbQuery.where('approval.approval_date', '>=', conditions.startDate);
+      dbQuery = dbQuery.where('approval_clothing_expense.work_start_date', conditions.startDate);
     } else if (conditions.endDate) {
-      // Only end date provided - filter up to end date
-      dbQuery = dbQuery.where('approval.approval_date', '<=', conditions.endDate);
+      dbQuery = dbQuery.where('approval_clothing_expense.work_start_date', conditions.endDate);
     }
 
     // Add employee name filter if provided (รวมคนนอกผ่าน asm.name)
@@ -831,14 +858,14 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
 
     // Apply the same filters to count query
     if (conditions.startDate && conditions.endDate) {
-      countQuery.whereBetween('approval.approval_date', [
-        conditions.startDate,
-        conditions.endDate,
-      ]);
+      countQuery.whereRaw(
+        'COALESCE("approval_clothing_expense"."work_end_date", "approval_clothing_expense"."work_start_date") >= ? AND "approval_clothing_expense"."work_start_date" <= ?',
+        [conditions.startDate, conditions.endDate],
+      );
     } else if (conditions.startDate) {
-      countQuery.where('approval.approval_date', '>=', conditions.startDate);
+      countQuery.where('approval_clothing_expense.work_start_date', conditions.startDate);
     } else if (conditions.endDate) {
-      countQuery.where('approval.approval_date', '<=', conditions.endDate);
+      countQuery.where('approval_clothing_expense.work_start_date', conditions.endDate);
     }
     if (conditions.employeeName) {
       countQuery.whereRaw(
@@ -969,7 +996,11 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
         this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.startDate + ' 23:59:59']),
       ]);
     } else if (conditions.endDate) {
-      dbQuery = dbQuery.where('audit_logs.created_at', '<=', this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']));
+      // Only end date provided - match that single day only (same as ตั้งแต่วันที่ alone)
+      dbQuery = dbQuery.whereBetween('audit_logs.created_at', [
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD\')', [conditions.endDate]),
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']),
+      ]);
     }
     if (conditions.employeeName) {
       dbQuery = dbQuery.where('audit_logs.employee_name', 'like', `%${conditions.employeeName}%`);
@@ -997,7 +1028,10 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
         this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.startDate + ' 23:59:59']),
       ]);
     } else if (conditions.endDate) {
-      countQuery.where('audit_logs.created_at', '<=', this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']));
+      countQuery.whereBetween('audit_logs.created_at', [
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD\')', [conditions.endDate]),
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']),
+      ]);
     }
     if (conditions.employeeName) {
       countQuery.where('audit_logs.employee_name', 'like', `%${conditions.employeeName}%`);
