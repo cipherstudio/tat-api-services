@@ -2,8 +2,10 @@ import {
   Controller,
   Get,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import { Response } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -18,6 +20,23 @@ import { ExpenditureQueryDto } from '../dto/expenditure-query.dto';
 import { ClothingQueryDto } from '../dto/clothing-query.dto';
 import { ActivityQueryDto } from '../dto/activity-query.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import {
+  buildExcelBuffer,
+  thaiDateFilenamePart,
+  inclusiveDayCount,
+  resolveDestinationName,
+  formatThaiDate,
+} from '../../../common/utils/excel-export.util';
+
+const TRAVEL_TYPE_LABELS: Record<string, string> = {
+  'temporary-domestic': 'ชั่วคราวในประเทศ',
+  'temporary-international': 'ชั่วคราวต่างประเทศ',
+  'temporary-both': 'ชั่วคราวทั้งในประเทศและต่างประเทศ',
+  domestic: 'ประจำในประเทศ',
+  international: 'ประจำต่างประเทศ',
+  'training-domestic': 'ฝึกอบรมในประเทศ',
+  'training-international': 'ฝึกอบรมต่างประเทศ',
+};
 
 @ApiTags('Users Reports')
 @Controller('users-reports')
@@ -49,6 +68,82 @@ export class UsersReportsController {
       ...query,
     };
     return this.usersReportsService.getCommuteReport(queryOptions);
+  }
+
+  @Get('commute/export/excel')
+  @ApiOperation({ summary: 'Export รายงานการเดินทางเป็น Excel' })
+  @ApiQuery({ name: 'incrementId', required: false })
+  @ApiQuery({ name: 'approvalStatus', required: false })
+  @ApiQuery({ name: 'documentTitle', required: false })
+  @ApiQuery({ name: 'requesterName', required: false })
+  @ApiQuery({ name: 'approvalDateStart', required: false })
+  @ApiQuery({ name: 'approvalDateEnd', required: false })
+  @ApiQuery({ name: 'travelType', required: false })
+  async exportCommuteReport(
+    @Query() query: CommuteQueryDto,
+    @Res() res: Response,
+  ) {
+    const queryOptions = {
+      ...query,
+      page: 1,
+      limit: 100000,
+      orderBy: query.orderBy || 'approval.increment_id',
+      orderDir: query.orderDir || 'DESC',
+    };
+    const result = await this.usersReportsService.getCommuteReport(queryOptions);
+    const { provinceNames, countryNames, officeLookup } =
+      await this.usersReportsService.getDestinationNameLists();
+
+    const buffer = await buildExcelBuffer(
+      'รายงานระบบอนุมัติเดินทาง',
+      [
+        { header: 'ลำดับ', key: 'no', width: 10 },
+        { header: 'เลขที่หนังสือ', key: 'incrementId', width: 18 },
+        { header: 'ประเภทการเดินทาง', key: 'travelType', width: 22 },
+        { header: 'ผู้ขออนุมัติ', key: 'name', width: 25 },
+        { header: 'เรื่อง', key: 'documentTitle', width: 35 },
+        { header: 'สถานที่เดินทาง (จังหวัด/ประเทศ)', key: 'destination', width: 30 },
+        { header: 'จำนวนวันที่เดินทาง', key: 'travelDays', width: 16 },
+        { header: 'วันที่เริ่มเดินทาง', key: 'workStartDate', width: 18 },
+        { header: 'วันที่สิ้นสุดเดินทาง', key: 'workEndDate', width: 18 },
+        { header: 'วันที่สร้างอนุมัติ', key: 'createdDate', width: 18 },
+        { header: 'วันที่ขออนุมัติ', key: 'requestedDate', width: 18 },
+        { header: 'วันที่อนุมัติ', key: 'approvalDate', width: 18 },
+        { header: 'ยอดเงินที่ขอ', key: 'requestedAmount', width: 18 },
+        { header: 'จำนวนผู้เดินทาง/คน', key: 'travelerCount', width: 18 },
+        { header: 'สถานะ', key: 'statusLabel', width: 18 },
+      ],
+      result.data.map((item: any, index: number) => ({
+        no: index + 1,
+        incrementId: item.incrementId,
+        travelType: TRAVEL_TYPE_LABELS[item.travelType] || item.travelType,
+        name: item.name,
+        documentTitle: item.documentTitle,
+        destination: resolveDestinationName(
+          item.workDestination || item.endCountry || item.startCountry,
+          provinceNames,
+          countryNames,
+          officeLookup,
+        ),
+        travelDays: inclusiveDayCount(item.rangeStartDate, item.rangeEndDate) ?? '-',
+        workStartDate: item.rangeStartDate,
+        workEndDate: item.rangeEndDate,
+        createdDate: item.createdAt,
+        requestedDate: item.createdAt,
+        approvalDate: item.approvalDate,
+        requestedAmount: item.requestedAmount,
+        travelerCount: item.travelerCount || 1,
+        statusLabel: item.statusLabel,
+      })),
+    );
+
+    const filename = `รายงานระบบอนุมัติเดินทาง (${thaiDateFilenamePart()}).xlsx`;
+    res.set({
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+    });
+    res.send(buffer);
   }
 
   @Get('work')
@@ -89,15 +184,96 @@ export class UsersReportsController {
   @ApiQuery({ name: 'department', required: false, description: 'หน่วยงานเจ้าของงบโครงการย่อย' })
   @ApiQuery({ name: 'documentTitle', required: false, description: 'เรื่อง' })
   @ApiQuery({ name: 'requesterName', required: false, description: 'ผู้ตั้งเรื่องอนุมัติ' })
+  @ApiQuery({ name: 'incrementId', required: false, description: 'เลขที่หนังสือ' })
+  @ApiQuery({ name: 'travelType', required: false, description: 'ประเภทการเดินทาง' })
+  @ApiQuery({ name: 'approvalStatus', required: false, description: 'สถานะการอนุมัติ' })
   async getExpenditureReport(@Query() query: ExpenditureQueryDto) {
     const queryOptions = {
       page: query.page || 1,
       limit: query.limit || 10,
-      orderBy: query.orderBy || 'approval_budgets.created_at',
+      orderBy: query.orderBy || 'approval.increment_id',
       orderDir: query.orderDir || 'DESC',
       ...query,
     };
     return this.usersReportsService.getExpenditureReport(queryOptions);
+  }
+
+  @Get('expenditure/export/excel')
+  @ApiOperation({ summary: 'Export รายงานการใช้งบประมาณเป็น Excel' })
+  async exportExpenditureReport(
+    @Query() query: ExpenditureQueryDto,
+    @Res() res: Response,
+  ) {
+    const queryOptions = {
+      ...query,
+      page: 1,
+      limit: 100000,
+      orderBy: query.orderBy || 'approval.increment_id',
+      orderDir: query.orderDir || 'DESC',
+    };
+    const result = await this.usersReportsService.getExpenditureReport(queryOptions);
+    const { provinceNames, countryNames, officeLookup } =
+      await this.usersReportsService.getDestinationNameLists();
+
+    let lastApprovalId: number | null = null;
+    let documentNo = 0;
+    const rows = result.data.map((item: any) => {
+      const isNewDocument = item.approvalId !== lastApprovalId;
+      if (isNewDocument) {
+        documentNo += 1;
+        lastApprovalId = item.approvalId;
+      }
+
+      return {
+        no: isNewDocument ? documentNo : '',
+        incrementId: isNewDocument ? item.incrementId : '',
+        travelType: isNewDocument ? (TRAVEL_TYPE_LABELS[item.travelType] || item.travelType) : '',
+        budgetType: item.budgetType,
+        itemType: item.itemType,
+        department: isNewDocument ? item.pogDesc : '',
+        reservationCode: item.reservationCode,
+        name: isNewDocument ? item.name : '',
+        documentTitle: isNewDocument ? item.documentTitle : '',
+        destination: isNewDocument
+          ? resolveDestinationName(item.workDestination || item.endCountry, provinceNames, countryNames, officeLookup)
+          : '',
+        createdDate: isNewDocument ? item.approvalCreatedAt : '',
+        requestedDate: isNewDocument ? item.approvalCreatedAt : '',
+        approvalDate: isNewDocument ? item.approvalDate : '',
+        requestedAmount: isNewDocument ? item.requestedAmount : '',
+        statusLabel: isNewDocument ? item.statusLabel : '',
+      };
+    });
+
+    const buffer = await buildExcelBuffer(
+      'รายงานการใช้งบประมาณ',
+      [
+        { header: 'ลำดับ', key: 'no', width: 10 },
+        { header: 'เลขที่หนังสือ', key: 'incrementId', width: 18 },
+        { header: 'ประเภทการเดินทาง', key: 'travelType', width: 22 },
+        { header: 'ประเภทงบประมาณ', key: 'budgetType', width: 18 },
+        { header: 'ประเภทรายการ', key: 'itemType', width: 20 },
+        { header: 'หน่วยงานเจ้าของงบประมาณ', key: 'department', width: 25 },
+        { header: 'รหัสใบจองเงิน', key: 'reservationCode', width: 18 },
+        { header: 'ผู้ขออนุมัติ', key: 'name', width: 25 },
+        { header: 'เรื่อง', key: 'documentTitle', width: 35 },
+        { header: 'สถานที่เดินทาง (จังหวัด/ประเทศ)', key: 'destination', width: 30 },
+        { header: 'วันที่สร้างอนุมัติ', key: 'createdDate', width: 18 },
+        { header: 'วันที่ขออนุมัติ', key: 'requestedDate', width: 18 },
+        { header: 'วันที่อนุมัติ', key: 'approvalDate', width: 18 },
+        { header: 'ยอดเงินที่ขอ', key: 'requestedAmount', width: 18 },
+        { header: 'สถานะ', key: 'statusLabel', width: 18 },
+      ],
+      rows,
+    );
+
+    const filename = `รายงานการใช้งบประมาณระบบอนุมัติการเดินทาง (${thaiDateFilenamePart()}).xlsx`;
+    res.set({
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+    });
+    res.send(buffer);
   }
 
   @Get('clothing')
@@ -148,5 +324,131 @@ export class UsersReportsController {
     return this.usersReportsService.getActivityReport(queryOptions);
   }
 
+  @Get('activity/export/excel')
+  @ApiOperation({ summary: 'Export รายงานประวัติการเข้าใช้งานระบบเป็น Excel' })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  @ApiQuery({ name: 'employeeName', required: false })
+  async exportActivityReport(
+    @Query() query: ActivityQueryDto,
+    @Res() res: Response,
+  ) {
+    const queryOptions = {
+      ...query,
+      page: 1,
+      limit: 100000,
+      orderBy: query.orderBy || 'created_at',
+      orderDir: query.orderDir || 'DESC',
+    };
+    const result = await this.usersReportsService.getActivityReport(queryOptions);
 
+    const buffer = await buildExcelBuffer(
+      'รายงานประวัติการเข้าใช้งานระบบ',
+      [
+        { header: 'ลำดับ', key: 'no', width: 10 },
+        { header: 'ชื่อ-สกุล', key: 'employeeName', width: 30 },
+        { header: 'วันที่เข้าใช้งานระบบ', key: 'createdAt', width: 25 },
+      ],
+      result.data.map((item: any, index: number) => ({
+        no: index + 1,
+        employeeName: item.employeeName,
+        createdAt: item.createdAt,
+      })),
+    );
+
+    const filename = `รายงานประวัติการเข้าใช้งานระบบ (${thaiDateFilenamePart()}).xlsx`;
+    res.set({
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+    });
+    res.send(buffer);
+  }
+
+  @Get('clothing/export/excel')
+  @ApiOperation({ summary: 'Export รายงานค่าเครื่องแต่งตัวเป็น Excel' })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  @ApiQuery({ name: 'employeeName', required: false })
+  @ApiQuery({ name: 'cancellationStatus', required: false })
+  async exportClothingReport(
+    @Query() query: ClothingQueryDto,
+    @Res() res: Response,
+  ) {
+    const queryOptions = {
+      ...query,
+      page: 1,
+      limit: 100000,
+      orderBy: query.orderBy || 'created_at',
+      orderDir: query.orderDir || 'DESC',
+    };
+    const result = await this.usersReportsService.getClothingReport(queryOptions);
+    const { provinceNames, countryNames, officeLookup } =
+      await this.usersReportsService.getDestinationNameLists();
+
+    const isUuid = (value: unknown) =>
+      typeof value === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        value,
+      );
+
+    const buildRemark = (item: any): string => {
+      const status = item.cancellationStatus || 'claimed';
+      if (status === 'pending_cancel') {
+        return [
+          'ขออนุมัติยกเลิก',
+          item.cancellationBy ? `โดย ${item.cancellationBy}` : '',
+          item.cancellationAt ? `(${formatThaiDate(item.cancellationAt)})` : '',
+        ].filter(Boolean).join(' ');
+      }
+      if (status === 'cancelled') {
+        return [
+          'ขออนุมัติยกเลิกสำเร็จ',
+          item.cancellationBy ? `โดย ${item.cancellationBy}` : '',
+          item.cancellationAt ? `(${formatThaiDate(item.cancellationAt)})` : '',
+        ].filter(Boolean).join(' ');
+      }
+      return '-';
+    };
+
+    const buffer = await buildExcelBuffer(
+      'รายงานค่าเครื่องแต่งตัว',
+      [
+        { header: 'ลำดับ', key: 'no', width: 10 },
+        { header: 'ID(รหัสพนักงาน)', key: 'employeeCode', width: 15 },
+        { header: 'ชื่อ-นามสกุล', key: 'employeeName', width: 30 },
+        { header: 'เลขที่เอกสาร', key: 'incrementId', width: 18 },
+        { header: 'ชื่อเรื่อง', key: 'documentTitle', width: 30 },
+        { header: 'ประเทศที่เดินทางไป', key: 'destinationCountry', width: 20 },
+        { header: 'ประเภทการเดินทาง', key: 'approvalTravelType', width: 20 },
+        { header: 'ราคาตามสิทธิ์ (บาท)', key: 'clothingAmount', width: 18 },
+        { header: 'วันที่เดินทางไป', key: 'workStartDate', width: 18 },
+        { header: 'วันที่รายงานตัว', key: 'reportingDate', width: 18 },
+        { header: 'วันที่เบิกได้ครั้งถัดไป', key: 'nextClaimDate', width: 20 },
+        { header: 'หมายเหตุ', key: 'remark', width: 30 },
+      ],
+      result.data.map((item: any, index: number) => ({
+        no: index + 1,
+        employeeCode: isUuid(item.employeeCode) ? '-' : item.employeeCode,
+        employeeName: item.employeeName,
+        incrementId: item.incrementId || item.approvalIncrementId,
+        documentTitle: item.documentTitle,
+        destinationCountry: resolveDestinationName(item.destinationCountry, provinceNames, countryNames, officeLookup),
+        approvalTravelType: TRAVEL_TYPE_LABELS[item.approvalTravelType] || item.approvalTravelType,
+        clothingAmount: item.clothingAmount,
+        workStartDate: item.workStartDate,
+        reportingDate: item.reportingDate,
+        nextClaimDate: item.nextClaimDate,
+        remark: buildRemark(item),
+      })),
+    );
+
+    const filename = `รายงานค่าเครื่องแต่งตัว (${thaiDateFilenamePart()}).xlsx`;
+    res.set({
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+    });
+    res.send(buffer);
+  }
 } 

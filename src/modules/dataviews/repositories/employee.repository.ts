@@ -411,12 +411,16 @@ export class EmployeeRepository extends KnexBaseRepository<Employee> {
     // Apply filters
     if (query.code) {
       baseBuilder = baseBuilder.whereRaw(
-        'RTRIM("OP_MASTER_T"."PMT_CODE") = ?',
-        [query.code],
+        'RTRIM("OP_MASTER_T"."PMT_CODE") LIKE ?',
+        [`%${query.code}%`],
       );
     }
     if (query.name) {
-      baseBuilder = baseBuilder.where('OP_MASTER_T.PMT_NAME_T', query.name);
+      baseBuilder = baseBuilder.where((builder) => {
+        builder
+          .where('OP_MASTER_T.PMT_NAME_T', 'like', `%${query.name}%`)
+          .orWhere('OP_MASTER_T.PMT_NAME_E', 'like', `%${query.name}%`);
+      });
     }
     if (query.searchTerm) {
       baseBuilder = baseBuilder.where(

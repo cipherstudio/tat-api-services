@@ -152,7 +152,11 @@ export class UsersReportsService {
 
     // Cache the result
     await this.cacheService.set(cacheKey, JSON.stringify(response), this.CACHE_TTL);
-    
+
     return response;
   }
-} 
+
+  async getDestinationNameLists() {
+    return this.usersReportsRepository.getDestinationNameLists();
+  }
+}

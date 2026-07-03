@@ -34,6 +34,20 @@ export class EmployeeAdminService {
       throw new ConflictException('Employee Code already exists');
     }
 
+    // A previously-removed admin leaves a soft-deleted row behind, and the
+    // pmt_code unique constraint still applies to it - revive it instead of
+    // inserting a new row (which would hit ORA-00001).
+    const deletedRow =
+      await this.employeeAdminRepository.findByPmtCodeIncludingDeleted(
+        createDto.pmt_code,
+      );
+    if (deletedRow) {
+      return await this.employeeAdminRepository.revive(
+        deletedRow.id,
+        createDto,
+      );
+    }
+
     return await this.employeeAdminRepository.create(createDto);
   }
 

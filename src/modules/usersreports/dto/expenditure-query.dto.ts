@@ -64,4 +64,19 @@ export class ExpenditureQueryDto {
   @IsOptional()
   @IsString()
   requesterName?: string;
-} 
+
+  @ApiPropertyOptional({ description: 'เลขที่หนังสือ' })
+  @IsOptional()
+  @IsString()
+  incrementId?: string;
+
+  @ApiPropertyOptional({ description: 'ประเภทการเดินทาง' })
+  @IsOptional()
+  @IsString()
+  travelType?: string;
+
+  @ApiPropertyOptional({ description: 'สถานะการอนุมัติ' })
+  @IsOptional()
+  @IsString()
+  approvalStatus?: string;
+}

@@ -133,7 +133,7 @@ export class EmployeeAdminRepository extends KnexBaseRepository<EmployeeAdmin> {
   async findByPmtCode(pmtCode: string): Promise<EmployeeAdmin | null> {
     const result = await this.knexService
       .knex('employee_admin')
-      .where('pmt_code', pmtCode)
+      .whereRaw('RTRIM("pmt_code") = ?', [pmtCode.trim()])
       .whereNull('deleted_at')
       .first();
 
@@ -145,11 +145,44 @@ export class EmployeeAdminRepository extends KnexBaseRepository<EmployeeAdmin> {
   ): Promise<EmployeeAdmin | null> {
     const result = await this.knexService
       .knex('employee_admin')
-      .where('employee_code', employeeCode)
+      .whereRaw('RTRIM("employee_code") = ?', [employeeCode.trim()])
       .whereNull('deleted_at')
       .first();
 
     return result || null;
+  }
+
+  // Includes soft-deleted rows - the pmt_code unique constraint still
+  // applies to them, so a previously-removed admin must be revived
+  // (not re-inserted) when added again.
+  async findByPmtCodeIncludingDeleted(
+    pmtCode: string,
+  ): Promise<EmployeeAdmin | null> {
+    const result = await this.knexService
+      .knex('employee_admin')
+      .whereRaw('RTRIM("pmt_code") = ?', [pmtCode.trim()])
+      .first();
+
+    return result || null;
+  }
+
+  async revive(
+    id: number,
+    data: Partial<EmployeeAdmin>,
+  ): Promise<EmployeeAdmin> {
+    await this.knexService
+      .knex('employee_admin')
+      .where('id', id)
+      .update({
+        ...data,
+        deleted_at: null,
+        updated_at: this.knexService.knex.fn.now(),
+      });
+
+    return await this.knexService
+      .knex('employee_admin')
+      .where('id', id)
+      .first();
   }
 
   async findActiveEmployees(): Promise<EmployeeAdmin[]> {

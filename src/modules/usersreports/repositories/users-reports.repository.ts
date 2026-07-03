@@ -61,7 +61,25 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
       .select(
         'approval.*',
         'approval_status_labels.label as status_label',
-        'approval_status_labels.status_code as status_code'
+        'approval_status_labels.status_code as status_code',
+        this.knexService.knex.raw(
+          `COALESCE(
+            (SELECT "awl"."destination" FROM "approval_work_locations" "awl" WHERE "awl"."approval_id" = "approval"."id" AND "awl"."destination" IS NOT NULL AND ROWNUM = 1),
+            (SELECT "ate"."destination" FROM "approval_trip_entries" "ate" WHERE "ate"."approval_id" = "approval"."id" AND "ate"."destination" IS NOT NULL AND ROWNUM = 1)
+          ) as work_destination`
+        ),
+        this.knexService.knex.raw(
+          `(COALESCE("approval"."form3_total_amount", 0) + COALESCE("approval"."form4_total_amount", 0) + COALESCE("approval"."form5_total_amount", 0)) as requested_amount`
+        ),
+        this.knexService.knex.raw(
+          `(SELECT COUNT(*) FROM "approval_staff_members" "asm" WHERE "asm"."approval_id" = "approval"."id") as traveler_count`
+        ),
+        this.knexService.knex.raw(
+          `(SELECT MIN("adr"."start_date") FROM "approval_date_ranges" "adr" WHERE "adr"."approval_id" = "approval"."id") as range_start_date`
+        ),
+        this.knexService.knex.raw(
+          `(SELECT MAX("adr"."end_date") FROM "approval_date_ranges" "adr" WHERE "adr"."approval_id" = "approval"."id") as range_end_date`
+        )
       );
 
     // Add LIKE conditions for incrementId and documentTitle
@@ -296,8 +314,11 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
         this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']),
       ]);
     } else if (conditions.startDate) {
-      // Only start date provided - filter from start date onwards
-      dbQuery = dbQuery.where('report_approve.created_at', '>=', this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD\')', [conditions.startDate]));
+      // Only start date provided - match that single day only
+      dbQuery = dbQuery.whereBetween('report_approve.created_at', [
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD\')', [conditions.startDate]),
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.startDate + ' 23:59:59']),
+      ]);
     } else if (conditions.endDate) {
       // Only end date provided - filter up to end date
       dbQuery = dbQuery.where('report_approve.created_at', '<=', this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']));
@@ -328,7 +349,10 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
         this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']),
       ]);
     } else if (conditions.startDate) {
-      countQuery.where('report_approve.created_at', '>=', this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD\')', [conditions.startDate]));
+      countQuery.whereBetween('report_approve.created_at', [
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD\')', [conditions.startDate]),
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.startDate + ' 23:59:59']),
+      ]);
     } else if (conditions.endDate) {
       countQuery.where('report_approve.created_at', '<=', this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']));
     }
@@ -376,6 +400,7 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     let dbQuery = this.knexService.knex('approval_budgets')
       .leftJoin('approval', 'approval_budgets.approval_id', 'approval.id')
       .leftJoin('OP_ORGANIZE_R', 'approval_budgets.department', 'OP_ORGANIZE_R.POG_CODE')
+      .leftJoin('approval_status_labels', 'approval.approval_status_label_id', 'approval_status_labels.id')
       .whereNotNull('approval.approval_date')
       .whereNull('approval.deleted_at') // Exclude soft deleted records
       .select(
@@ -383,14 +408,48 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
         'approval_budgets.budget_type',
         'approval_budgets.item_type',
         'approval_budgets.department',
+        'approval_budgets.reservation_code',
         'approval_budgets.approval_id',
         'approval_budgets.created_at',
         'approval_budgets.updated_at',
+        'approval.increment_id',
+        'approval.travel_type',
         'approval.document_title',
         'approval.name',
+        'approval.work_start_date',
+        'approval.work_end_date',
         'approval.approval_date',
-        'OP_ORGANIZE_R.POG_DESC'
+        'approval.created_at as approval_created_at',
+        'approval.start_country',
+        'approval.end_country',
+        'approval_status_labels.label as status_label',
+        'approval_status_labels.status_code as status_code',
+        'OP_ORGANIZE_R.POG_DESC',
+        this.knexService.knex.raw(
+          `COALESCE(
+            (SELECT "awl"."destination" FROM "approval_work_locations" "awl" WHERE "awl"."approval_id" = "approval"."id" AND "awl"."destination" IS NOT NULL AND ROWNUM = 1),
+            (SELECT "ate"."destination" FROM "approval_trip_entries" "ate" WHERE "ate"."approval_id" = "approval"."id" AND "ate"."destination" IS NOT NULL AND ROWNUM = 1)
+          ) as work_destination`
+        ),
+        this.knexService.knex.raw(
+          `(COALESCE("approval"."form3_total_amount", 0) + COALESCE("approval"."form4_total_amount", 0) + COALESCE("approval"."form5_total_amount", 0)) as requested_amount`
+        )
       );
+
+    // Add LIKE condition for document number
+    if (conditions.incrementId) {
+      dbQuery = dbQuery.where('approval.increment_id', 'like', `%${conditions.incrementId}%`);
+    }
+
+    // Add travel type filter if provided
+    if (conditions.travelType) {
+      dbQuery = dbQuery.where('approval.travel_type', conditions.travelType);
+    }
+
+    // Add approval status filter if provided
+    if (conditions.approvalStatus) {
+      dbQuery = dbQuery.where('approval_status_labels.status_code', conditions.approvalStatus);
+    }
 
     // Add date range conditions for approval date
     if (conditions.startDate && conditions.endDate) {
@@ -446,6 +505,7 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     const countQuery = this.knexService.knex('approval_budgets')
       .leftJoin('approval', 'approval_budgets.approval_id', 'approval.id')
       .leftJoin('OP_ORGANIZE_R', 'approval_budgets.department', 'OP_ORGANIZE_R.POG_CODE')
+      .leftJoin('approval_status_labels', 'approval.approval_status_label_id', 'approval_status_labels.id')
       .whereNotNull('approval.approval_date')
       .whereNull('approval.deleted_at'); // Exclude soft deleted records
 
@@ -459,6 +519,15 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
       countQuery.where('approval.approval_date', '>=', conditions.startDate);
     } else if (conditions.endDate) {
       countQuery.where('approval.approval_date', '<=', conditions.endDate);
+    }
+    if (conditions.incrementId) {
+      countQuery.where('approval.increment_id', 'like', `%${conditions.incrementId}%`);
+    }
+    if (conditions.travelType) {
+      countQuery.where('approval.travel_type', conditions.travelType);
+    }
+    if (conditions.approvalStatus) {
+      countQuery.where('approval_status_labels.status_code', conditions.approvalStatus);
     }
     if (conditions.budgetType) {
       countQuery.where('approval_budgets.budget_type', conditions.budgetType);
@@ -895,7 +964,10 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
         this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']),
       ]);
     } else if (conditions.startDate) {
-      dbQuery = dbQuery.where('audit_logs.created_at', '>=', this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD\')', [conditions.startDate]));
+      dbQuery = dbQuery.whereBetween('audit_logs.created_at', [
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD\')', [conditions.startDate]),
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.startDate + ' 23:59:59']),
+      ]);
     } else if (conditions.endDate) {
       dbQuery = dbQuery.where('audit_logs.created_at', '<=', this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']));
     }
@@ -920,7 +992,10 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
         this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']),
       ]);
     } else if (conditions.startDate) {
-      countQuery.where('audit_logs.created_at', '>=', this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD\')', [conditions.startDate]));
+      countQuery.whereBetween('audit_logs.created_at', [
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD\')', [conditions.startDate]),
+        this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.startDate + ' 23:59:59']),
+      ]);
     } else if (conditions.endDate) {
       countQuery.where('audit_logs.created_at', '<=', this.knexService.knex.raw('TO_DATE(?, \'YYYY-MM-DD HH24:MI:SS\')', [conditions.endDate + ' 23:59:59']));
     }
@@ -960,6 +1035,44 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
         totalPages,
         lastPage: totalPages,
       },
+    };
+  }
+
+  // Names used to resolve a plain province/country name out of free-text
+  // destination strings (see excel-export.util.ts resolveDestinationName).
+  // destination_id on approval_work_locations/approval_trip_entries has no
+  // enforced FK constraint and was found to point at stale rows after the
+  // provinces/countries lookup tables got reseeded - do not join on it.
+  // office_domestic.province_id / office_international.country_id DO have
+  // real enforced FK constraints, so resolving destination text -> office
+  // name -> province/country via those is reliable.
+  async getDestinationNameLists(): Promise<{
+    provinceNames: string[];
+    countryNames: string[];
+    officeLookup: { officeName: string; resolvedName: string }[];
+  }> {
+    const provinces = await this.knexService.knex('provinces').select('name_th');
+    const countries = await this.knexService.knex('countries').select('name_th');
+    const domesticOffices = await this.knexService
+      .knex('office_domestic as od')
+      .leftJoin('provinces as p', 'od.province_id', 'p.id')
+      .whereNotNull('p.name_th')
+      .select('od.name as office_name', 'p.name_th as resolved_name');
+    const internationalOffices = await this.knexService
+      .knex('office_international as oi')
+      .leftJoin('countries as c', 'oi.country_id', 'c.id')
+      .whereNotNull('c.name_th')
+      .select('oi.name as office_name', 'c.name_th as resolved_name');
+
+    const officeLookup = [...domesticOffices, ...internationalOffices].map((o) => ({
+      officeName: o.OFFICE_NAME || o.office_name,
+      resolvedName: o.RESOLVED_NAME || o.resolved_name,
+    }));
+
+    return {
+      provinceNames: provinces.map((p) => p.NAME_TH || p.name_th),
+      countryNames: countries.map((c) => c.NAME_TH || c.name_th),
+      officeLookup,
     };
   }
 } 
