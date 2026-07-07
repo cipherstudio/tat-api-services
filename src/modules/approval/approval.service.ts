@@ -11,6 +11,7 @@ import { ApprovalRepository } from './repositories/approval.repository';
 import { KnexService } from '../../database/knex-service/knex.service';
 import { Knex } from 'knex';
 import { ApprovalDetailResponseDto } from './dto/approval-detail-response.dto';
+import { toCamelCase } from '../../common/utils/case-mapping';
 // import { ApprovalDateRangeDto } from './dto/approval-date-range.dto';
 // import { ApprovalContentDto } from './dto/approval-content.dto';
 // import { ApprovalTripEntryDto } from './dto/approval-trip-entry.dto';
@@ -2064,9 +2065,12 @@ export class ApprovalService {
       }
 
       // Get the updated approval record
-      const updatedApprovalRecord = await trx('approval')
+      const updatedApprovalRecordRaw = await trx('approval')
         .where('id', id)
         .first();
+      const updatedApprovalRecord = await toCamelCase<Approval>(
+        updatedApprovalRecordRaw,
+      );
 
       // Process travel date ranges
       if (
@@ -3117,7 +3121,7 @@ export class ApprovalService {
           .first();
         if (draftAfter) printRevision++;
       }
-      (updatedApprovalRecord as Record<string, unknown>).printRevision = printRevision;
+      (updatedApprovalRecord as unknown as Record<string, unknown>).printRevision = printRevision;
 
       return updatedApprovalRecord;
     } catch (error) {
