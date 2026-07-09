@@ -362,7 +362,13 @@ export class UsersReportsController {
     name: 'cancellationStatus',
     required: false,
     enum: ['claimed', 'pending_cancel', 'cancelled'],
-    description: 'สถานะ: เบิกค่าเครื่องแต่งตัว / ขออนุมัติยกเลิก / ยกเลิกสำเร็จ',
+    description: 'สถานะการเบิกค่าเครื่องแต่งตัว',
+  })
+  @ApiQuery({
+    name: 'approvalStatus',
+    required: false,
+    enum: ['DRAFT', 'PENDING', 'APPROVED', 'REJECTED'],
+    description: 'สถานะเอกสาร',
   })
   async getClothingReport(@Query() query: ClothingQueryDto) {
     const queryOptions = {
@@ -443,6 +449,7 @@ export class UsersReportsController {
   @ApiQuery({ name: 'endDate', required: false })
   @ApiQuery({ name: 'employeeName', required: false })
   @ApiQuery({ name: 'cancellationStatus', required: false })
+  @ApiQuery({ name: 'approvalStatus', required: false })
   async exportClothingReport(
     @Query() query: ClothingQueryDto,
     @Res() res: Response,
@@ -497,6 +504,7 @@ export class UsersReportsController {
         { header: 'วันที่เดินทางไป', key: 'workStartDate', width: 18 },
         { header: 'วันที่รายงานตัว', key: 'reportingDate', width: 18 },
         { header: 'วันที่เบิกได้ครั้งถัดไป', key: 'nextClaimDate', width: 20 },
+        { header: 'สถานะเอกสาร', key: 'statusLabel', width: 18 },
         { header: 'หมายเหตุ', key: 'remark', width: 30 },
       ],
       result.data.map((item: any, index: number) => ({
@@ -507,12 +515,16 @@ export class UsersReportsController {
         documentTitle: item.documentTitle,
         destinationCountry: resolveDestinationName(item.destinationCountry, provinceNames, countryNames, officeLookup),
         approvalTravelType: TRAVEL_TYPE_LABELS[item.approvalTravelType] || item.approvalTravelType,
-        clothingAmount: item.clothingAmount,
+        clothingAmount: formatThaiCurrency(item.clothingAmount),
         workStartDate: formatThaiDateNumeric(item.workStartDate),
         reportingDate: formatThaiDateNumeric(item.reportingDate),
         nextClaimDate: formatThaiDateNumeric(item.nextClaimDate),
+        statusLabel: item.statusLabel || '-',
         remark: buildRemark(item),
       })),
+      {
+        titleRow: `รายงานการเบิกค่าเครื่องแต่งตัวข้อมูล ณ วันที่ ${formatThaiDate(new Date())}`,
+      },
     );
 
     const filename = `รายงานค่าเครื่องแต่งตัว (${thaiDateFilenamePart()}).xlsx`;

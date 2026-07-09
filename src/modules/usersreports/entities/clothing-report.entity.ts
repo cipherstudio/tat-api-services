@@ -18,6 +18,8 @@ export class ClothingReport {
   approvalIncrementId?: string; // renamed from incrementId to avoid conflict
   documentTitle?: string;
   approvalDate?: string;
+  statusLabel?: string;
+  statusCode?: string;
   createdEmployeeCode?: string;
   createdEmployeeName?: string;
   

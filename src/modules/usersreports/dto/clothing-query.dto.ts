@@ -48,4 +48,12 @@ export class ClothingQueryDto {
   @IsOptional()
   @IsEnum(['claimed', 'pending_cancel', 'cancelled'])
   cancellationStatus?: 'claimed' | 'pending_cancel' | 'cancelled';
+
+  @ApiPropertyOptional({
+    description: 'สถานะเอกสาร: DRAFT | PENDING | APPROVED | REJECTED',
+    enum: ['DRAFT', 'PENDING', 'APPROVED', 'REJECTED'],
+  })
+  @IsOptional()
+  @IsEnum(['DRAFT', 'PENDING', 'APPROVED', 'REJECTED'])
+  approvalStatus?: 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED';
 } 

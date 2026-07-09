@@ -870,6 +870,11 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     // Build query with join to approval, approval_date_ranges, and EMPLOYEE
     let dbQuery = this.knexService.knex('approval_clothing_expense')
       .leftJoin('approval', 'approval_clothing_expense.approval_id', 'approval.id')
+      .leftJoin(
+        'approval_status_labels',
+        'approval.approval_status_label_id',
+        'approval_status_labels.id',
+      )
       .leftJoin('EMPLOYEE', 'approval_clothing_expense.employee_code', 'EMPLOYEE.CODE')
       // #259.2 follow-up: คนนอกมี employee_code เป็น UUID ไม่อยู่ใน EMPLOYEE
       // ดึงชื่อจาก approval_staff_members แทนเมื่อ EMPLOYEE.NAME เป็น null
@@ -904,6 +909,8 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
         'approval.travel_type as approval_travel_type',
         'approval.created_employee_code',
         'approval.created_employee_name',
+        'approval_status_labels.label as status_label',
+        'approval_status_labels.status_code as status_code',
         this.knexService.knex.raw(
           'COALESCE("EMPLOYEE"."NAME", "asm"."name") as "employee_name"',
         ),
@@ -932,6 +939,13 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
       );
     }
 
+    if (conditions.approvalStatus) {
+      dbQuery = dbQuery.where(
+        'approval_status_labels.status_code',
+        conditions.approvalStatus,
+      );
+    }
+
     this.applyClothingCancellationStatusFilter(dbQuery, cancellationStatus);
 
     // Add order by
@@ -942,6 +956,11 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     // Get total count for pagination (without ORDER BY)
     const countQuery = this.knexService.knex('approval_clothing_expense')
       .leftJoin('approval', 'approval_clothing_expense.approval_id', 'approval.id')
+      .leftJoin(
+        'approval_status_labels',
+        'approval.approval_status_label_id',
+        'approval_status_labels.id',
+      )
       .leftJoin('EMPLOYEE', 'approval_clothing_expense.employee_code', 'EMPLOYEE.CODE')
       .leftJoin(
         'approval_staff_members as asm',
@@ -965,6 +984,12 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
       countQuery.whereRaw(
         'COALESCE("EMPLOYEE"."NAME", "asm"."name") LIKE ?',
         [`%${conditions.employeeName}%`],
+      );
+    }
+    if (conditions.approvalStatus) {
+      countQuery.where(
+        'approval_status_labels.status_code',
+        conditions.approvalStatus,
       );
     }
     this.applyClothingCancellationStatusFilter(countQuery, cancellationStatus);

@@ -6,22 +6,44 @@ export interface ExcelColumn {
   width?: number;
 }
 
+export interface BuildExcelOptions {
+  titleRow?: string;
+}
+
 export async function buildExcelBuffer(
   sheetName: string,
   columns: ExcelColumn[],
   rows: Record<string, unknown>[],
+  options?: BuildExcelOptions,
 ): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet(sheetName);
 
-  sheet.columns = columns.map((col) => ({
-    header: col.header,
-    key: col.key,
-    width: col.width ?? 20,
-  }));
-  sheet.getRow(1).font = { bold: true };
+  let currentRow = 1;
 
-  rows.forEach((row) => sheet.addRow(row));
+  if (options?.titleRow) {
+    sheet.getRow(currentRow).getCell(1).value = options.titleRow;
+    sheet.mergeCells(currentRow, 1, currentRow, columns.length);
+    sheet.getRow(currentRow).font = { bold: true };
+    currentRow++;
+  }
+
+  const headerRow = sheet.getRow(currentRow);
+  columns.forEach((col, index) => {
+    headerRow.getCell(index + 1).value = col.header;
+    sheet.getColumn(index + 1).key = col.key;
+    sheet.getColumn(index + 1).width = col.width ?? 20;
+  });
+  headerRow.font = { bold: true };
+  currentRow++;
+
+  rows.forEach((row) => {
+    const dataRow = sheet.getRow(currentRow);
+    columns.forEach((col, index) => {
+      dataRow.getCell(index + 1).value = row[col.key] as ExcelJS.CellValue;
+    });
+    currentRow++;
+  });
 
   const buffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(buffer);
