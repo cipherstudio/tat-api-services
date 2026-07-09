@@ -50,7 +50,7 @@ export class ExpenditureQueryDto {
   @IsString()
   itemType?: string;
 
-  @ApiPropertyOptional({ description: 'หน่วยงานเจ้าของงบโครงการย่อย' })
+  @ApiPropertyOptional({ description: 'หน่วยงานเจ้าของงบประมาณ/ใบจองเงิน (ค้นหาชื่อหน่วยงานหรือรหัสใบจอง)' })
   @IsOptional()
   @IsString()
   department?: string;

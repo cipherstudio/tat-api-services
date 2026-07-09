@@ -470,7 +470,15 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
         ),
         this.knexService.knex.raw(
           `(SELECT MIN("adr"."start_date") FROM "approval_date_ranges" "adr" WHERE "adr"."approval_id" = "approval"."id") as range_start_date`
-        )
+        ),
+        this.knexService.knex.raw(
+          `(SELECT MAX("adr"."end_date") FROM "approval_date_ranges" "adr" WHERE "adr"."approval_id" = "approval"."id") as range_end_date`
+        ),
+        'approval.attachment_id',
+        'approval.signature_attachment_id',
+        'approval.form3_total_amount',
+        'approval.form4_total_amount',
+        'approval.form5_total_amount'
       );
 
     // Add LIKE condition for document number
@@ -507,9 +515,16 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
       dbQuery = dbQuery.where('approval_budgets.item_type', conditions.itemType);
     }
 
-    // Add department filter if provided
+    // Add department / reservation owner filter if provided
     if (conditions.department) {
-      dbQuery = dbQuery.where('OP_ORGANIZE_R.POG_DESC', 'like', `%${conditions.department}%`);
+      const ownerSearch = `%${conditions.department}%`;
+      dbQuery = dbQuery.where(function () {
+        this.where('OP_ORGANIZE_R.POG_DESC', 'like', ownerSearch).orWhere(
+          'approval_budgets.reservation_code',
+          'like',
+          ownerSearch,
+        );
+      });
     }
 
     // Add document title filter if provided
@@ -563,7 +578,14 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
       countQuery.where('approval_budgets.item_type', conditions.itemType);
     }
     if (conditions.department) {
-      countQuery.where('OP_ORGANIZE_R.POG_DESC', 'like', `%${conditions.department}%`);
+      const ownerSearch = `%${conditions.department}%`;
+      countQuery.where(function () {
+        this.where('OP_ORGANIZE_R.POG_DESC', 'like', ownerSearch).orWhere(
+          'approval_budgets.reservation_code',
+          'like',
+          ownerSearch,
+        );
+      });
     }
     if (conditions.documentTitle) {
       countQuery.where('approval.document_title', 'like', `%${conditions.documentTitle}%`);
@@ -587,6 +609,73 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     // Execute query
     const data = await dbQuery;
 
+    const approvalIds = [...new Set(data.map((item) => item.approval_id))];
+    const dateRangeMap = new Map<number, Array<{ startDate: string; endDate: string }>>();
+    const attachmentMap = new Map<number, any[]>();
+
+    if (approvalIds.length > 0) {
+      const dateRanges = await this.knexService
+        .knex('approval_date_ranges')
+        .select('approval_id', 'start_date', 'end_date')
+        .whereIn('approval_id', approvalIds)
+        .orderBy('start_date', 'asc');
+
+      dateRanges.forEach((range) => {
+        const approvalId = range.approval_id as number;
+        const existing = dateRangeMap.get(approvalId) || [];
+        existing.push({
+          startDate: range.start_date,
+          endDate: range.end_date,
+        });
+        dateRangeMap.set(approvalId, existing);
+      });
+
+      const attachmentResults = await Promise.all(
+        approvalIds.map(async (approvalId) => {
+          const documentAtts = await this.attachmentService.getAttachments(
+            'approval_document',
+            approvalId,
+          );
+          const signatureAtts = await this.attachmentService.getAttachments(
+            'approval_signature',
+            approvalId,
+          );
+          const budgetAtts = await this.attachmentService.getAttachments(
+            'approval_budgets',
+            approvalId,
+          );
+          const clothingAtts = await this.attachmentService.getAttachments(
+            'approval_clothing_expense',
+            approvalId,
+          );
+          const continuousAtts = await this.attachmentService.getAttachments(
+            'approval_continuous_signature',
+            approvalId,
+          );
+          const accommodationTransportAtts =
+            await this.attachmentService.getAttachments(
+              'approval_accommodation_transport_expense',
+              approvalId,
+            );
+          return {
+            approvalId,
+            attachments: [
+              ...documentAtts,
+              ...signatureAtts,
+              ...budgetAtts,
+              ...clothingAtts,
+              ...continuousAtts,
+              ...accommodationTransportAtts,
+            ],
+          };
+        }),
+      );
+
+      attachmentResults.forEach(({ approvalId, attachments }) => {
+        attachmentMap.set(approvalId, attachments);
+      });
+    }
+
     // Calculate pagination metadata
     const totalCount = total ? parseInt(total.count as string) : 0;
     const totalPages = Math.ceil(totalCount / limitNum);
@@ -594,7 +683,12 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
     // Transform data
     const transformedData = await Promise.all(data.map(async (item) => {
       const transformedItem = await toCamelCase<ExpenditureReport>(item);
-      return transformedItem;
+      const approvalId = item.approval_id as number;
+      return {
+        ...(transformedItem as any),
+        approvalDateRanges: dateRangeMap.get(approvalId) || [],
+        attachments: attachmentMap.get(approvalId) || [],
+      };
     }));
 
     return {

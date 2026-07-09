@@ -16,6 +16,7 @@ import { CommitteePositionService } from './services/committee-position.service.
 import { OutsiderEquivalentService } from './services/outsider-equivalent.service.js';
 import { PerDiemRatesService } from './services/per-diem-rates.service';
 import { AccommodationRatesService } from './services/accommodation-rates.service';
+import { TrainingAccommodationRatesService } from './services/training-accommodation-rates.service';
 import { ExpensesOtherConditionsService } from './services/expenses-other-conditions.service';
 import { DomesticMovingAllowancesService } from './services/domestic-moving-allowances.service';
 import { InternationalMovingAllowancesService } from './services/international-moving-allowances.service';
@@ -43,6 +44,7 @@ import { CommitteePositionController } from './controllers/committee-position.co
 import { OutsiderEquivalentController } from './controllers/outsider-equivalent.controller.js';
 import { PerDiemRatesController } from './controllers/per-diem-rates.controller';
 import { AccommodationRatesController } from './controllers/accommodation-rates.controller';
+import { TrainingAccommodationRatesController } from './controllers/training-accommodation-rates.controller';
 import { ExpensesOtherConditionsController } from './controllers/expenses-other-conditions.controller';
 import { DomesticMovingAllowancesController } from './controllers/domestic-moving-allowances.controller';
 import { InternationalMovingAllowancesController } from './controllers/international-moving-allowances.controller';
@@ -70,6 +72,7 @@ import { CommitteePositionRepository } from './repositories/committee-position.r
 import { OutsiderEquivalentRepository } from './repositories/outsider-equivalent.repository.js';
 import { PerDiemRatesRepository } from './repositories/per-diem-rates.repository';
 import { AccommodationRatesRepository } from './repositories/accommodation-rates.repository';
+import { TrainingAccommodationRatesRepository } from './repositories/training-accommodation-rates.repository';
 import { ExpensesOtherConditionsRepository } from './repositories/expenses-other-conditions.repository';
 import { DomesticMovingAllowancesRepository } from './repositories/domestic-moving-allowances.repository';
 import { InternationalMovingAllowancesRepository } from './repositories/international-moving-allowances.repository';
@@ -119,6 +122,7 @@ import { ReportSettingsRepository } from './repositories/report-settings.reposit
     OutsiderEquivalentController,
     PerDiemRatesController,
     AccommodationRatesController,
+    TrainingAccommodationRatesController,
     ExpensesOtherConditionsController,
     DomesticMovingAllowancesController,
     InternationalMovingAllowancesController,
@@ -152,6 +156,7 @@ import { ReportSettingsRepository } from './repositories/report-settings.reposit
     OutsiderEquivalentService,
     PerDiemRatesService,
     AccommodationRatesService,
+    TrainingAccommodationRatesService,
     ExpensesOtherConditionsService,
     DomesticMovingAllowancesService,
     InternationalMovingAllowancesService,
@@ -185,6 +190,7 @@ import { ReportSettingsRepository } from './repositories/report-settings.reposit
     OutsiderEquivalentRepository,
     PerDiemRatesRepository,
     AccommodationRatesRepository,
+    TrainingAccommodationRatesRepository,
     ExpensesOtherConditionsRepository,
     DomesticMovingAllowancesRepository,
     InternationalMovingAllowancesRepository,
@@ -223,6 +229,7 @@ import { ReportSettingsRepository } from './repositories/report-settings.reposit
     OutsiderEquivalentService,
     PerDiemRatesService,
     AccommodationRatesService,
+    TrainingAccommodationRatesService,
     ExpensesOtherConditionsService,
     DomesticMovingAllowancesService,
     InternationalMovingAllowancesService,

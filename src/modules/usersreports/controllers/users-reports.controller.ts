@@ -26,6 +26,8 @@ import {
   inclusiveDayCount,
   resolveDestinationName,
   formatThaiDate,
+  formatThaiDateNumeric,
+  formatThaiCurrency,
 } from '../../../common/utils/excel-export.util';
 
 const TRAVEL_TYPE_LABELS: Record<string, string> = {
@@ -126,12 +128,12 @@ export class UsersReportsController {
           officeLookup,
         ),
         travelDays: inclusiveDayCount(item.rangeStartDate, item.rangeEndDate) ?? '-',
-        workStartDate: item.rangeStartDate,
-        workEndDate: item.rangeEndDate,
-        createdDate: item.createdAt,
-        requestedDate: item.createdAt,
-        approvalDate: item.approvalDate,
-        requestedAmount: item.requestedAmount,
+        workStartDate: formatThaiDateNumeric(item.rangeStartDate),
+        workEndDate: formatThaiDateNumeric(item.rangeEndDate),
+        createdDate: formatThaiDateNumeric(item.createdAt),
+        requestedDate: formatThaiDateNumeric(item.createdAt),
+        approvalDate: formatThaiDateNumeric(item.approvalDate),
+        requestedAmount: formatThaiCurrency(item.requestedAmount),
         travelerCount: item.travelerCount || 1,
         statusLabel: item.statusLabel,
       })),
@@ -167,6 +169,57 @@ export class UsersReportsController {
       ...query,
     };
     return this.usersReportsService.getWorkReport(queryOptions);
+  }
+
+  @Get('work/export/excel')
+  @ApiOperation({ summary: 'Export รายงานการจัดทำรายงานเดินทางปฏิบัติงานเป็น Excel' })
+  @ApiQuery({ name: 'documentNumber', required: false })
+  @ApiQuery({ name: 'title', required: false })
+  @ApiQuery({ name: 'creatorName', required: false })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  async exportWorkReport(
+    @Query() query: WorkQueryDto,
+    @Res() res: Response,
+  ) {
+    const queryOptions = {
+      ...query,
+      page: 1,
+      limit: 100000,
+      orderBy: query.orderBy || 'report_approve.created_at',
+      orderDir: query.orderDir || 'DESC',
+    };
+    const result = await this.usersReportsService.getWorkReport(queryOptions);
+
+    const buffer = await buildExcelBuffer(
+      'รายงานการจัดทำรายงานเดินทางปฏิบัติงาน',
+      [
+        { header: 'ลำดับ', key: 'no', width: 10 },
+        { header: 'หมายเลขเอกสาร', key: 'documentNumber', width: 18 },
+        { header: 'ชื่อเอกสาร', key: 'title', width: 35 },
+        { header: 'ผู้จัดทำรายงาน', key: 'creatorName', width: 25 },
+        { header: 'วันที่สร้างเอกสาร', key: 'createdAt', width: 18 },
+        { header: 'วันที่แก้ไขล่าสุด', key: 'updatedAt', width: 18 },
+        { header: 'สถานะ', key: 'statusName', width: 18 },
+      ],
+      result.data.map((item: any, index: number) => ({
+        no: index + 1,
+        documentNumber: item.documentNumber,
+        title: item.title,
+        creatorName: item.creatorName,
+        createdAt: formatThaiDateNumeric(item.createdAt),
+        updatedAt: formatThaiDateNumeric(item.updatedAt),
+        statusName: item.statusName,
+      })),
+    );
+
+    const filename = `รายงานการจัดทำรายงานเดินทางปฏิบัติงาน (${thaiDateFilenamePart()}).xlsx`;
+    res.set({
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+    });
+    res.send(buffer);
   }
 
   @Get('expenditure')
@@ -217,6 +270,25 @@ export class UsersReportsController {
 
     let lastApprovalId: number | null = null;
     let documentNo = 0;
+    const formatExcelDepartment = (item: any): string => {
+      if (
+        item.itemType === 'ตัดจ่ายจากใบจอง' ||
+        item.itemType === 'งบจัดสรร'
+      ) {
+        return '-';
+      }
+      if (item.itemType === 'โครงการย่อย / กิจกรรม') {
+        return item.pogDesc || '-';
+      }
+      return item.pogDesc || '-';
+    };
+    const formatExcelReservationCode = (item: any): string => {
+      if (item.itemType === 'ตัดจ่ายจากใบจอง') {
+        return item.reservationCode || '-';
+      }
+      return '-';
+    };
+
     const rows = result.data.map((item: any) => {
       const isNewDocument = item.approvalId !== lastApprovalId;
       if (isNewDocument) {
@@ -230,17 +302,17 @@ export class UsersReportsController {
         travelType: isNewDocument ? (TRAVEL_TYPE_LABELS[item.travelType] || item.travelType) : '',
         budgetType: item.budgetType,
         itemType: item.itemType,
-        department: isNewDocument ? item.pogDesc : '',
-        reservationCode: item.reservationCode,
+        department: formatExcelDepartment(item),
+        reservationCode: formatExcelReservationCode(item),
         name: isNewDocument ? item.name : '',
         documentTitle: isNewDocument ? item.documentTitle : '',
         destination: isNewDocument
           ? resolveDestinationName(item.workDestination || item.endCountry, provinceNames, countryNames, officeLookup)
           : '',
-        createdDate: isNewDocument ? item.approvalCreatedAt : '',
-        requestedDate: isNewDocument ? item.approvalCreatedAt : '',
-        approvalDate: isNewDocument ? item.approvalDate : '',
-        requestedAmount: isNewDocument ? item.requestedAmount : '',
+        createdDate: isNewDocument ? formatThaiDateNumeric(item.approvalCreatedAt) : '',
+        requestedDate: isNewDocument ? formatThaiDateNumeric(item.approvalCreatedAt) : '',
+        approvalDate: isNewDocument ? formatThaiDateNumeric(item.approvalDate) : '',
+        requestedAmount: isNewDocument ? formatThaiCurrency(item.requestedAmount) : '',
         statusLabel: isNewDocument ? item.statusLabel : '',
       };
     });
@@ -398,14 +470,14 @@ export class UsersReportsController {
         return [
           'ขออนุมัติยกเลิก',
           item.cancellationBy ? `โดย ${item.cancellationBy}` : '',
-          item.cancellationAt ? `(${formatThaiDate(item.cancellationAt)})` : '',
+          item.cancellationAt ? `(${formatThaiDateNumeric(item.cancellationAt)})` : '',
         ].filter(Boolean).join(' ');
       }
       if (status === 'cancelled') {
         return [
           'ขออนุมัติยกเลิกสำเร็จ',
           item.cancellationBy ? `โดย ${item.cancellationBy}` : '',
-          item.cancellationAt ? `(${formatThaiDate(item.cancellationAt)})` : '',
+          item.cancellationAt ? `(${formatThaiDateNumeric(item.cancellationAt)})` : '',
         ].filter(Boolean).join(' ');
       }
       return '-';
@@ -436,9 +508,9 @@ export class UsersReportsController {
         destinationCountry: resolveDestinationName(item.destinationCountry, provinceNames, countryNames, officeLookup),
         approvalTravelType: TRAVEL_TYPE_LABELS[item.approvalTravelType] || item.approvalTravelType,
         clothingAmount: item.clothingAmount,
-        workStartDate: item.workStartDate,
-        reportingDate: item.reportingDate,
-        nextClaimDate: item.nextClaimDate,
+        workStartDate: formatThaiDateNumeric(item.workStartDate),
+        reportingDate: formatThaiDateNumeric(item.reportingDate),
+        nextClaimDate: formatThaiDateNumeric(item.nextClaimDate),
         remark: buildRemark(item),
       })),
     );

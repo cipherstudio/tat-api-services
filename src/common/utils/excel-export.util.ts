@@ -95,6 +95,30 @@ export function formatThaiDate(value: unknown): string {
   return `${day} ${month} ${year}`;
 }
 
+// "06-07-2569" (numeric วัน-เดือน-ปี, พ.ศ.) for use as Excel cell values -
+// distinct from formatThaiDate's spelled-out month, for report exports that
+// need a consistent numeric date column.
+export function formatThaiDateNumeric(value: unknown): string {
+  if (!value) return '';
+  const date = value instanceof Date ? value : new Date(value as string);
+  if (isNaN(date.getTime())) return String(value);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear() + 543;
+  return `${day}-${month}-${year}`;
+}
+
+// "14,350.00" / "0.00" - 2 decimals with thousands separator, for Excel
+// currency/amount columns.
+export function formatThaiCurrency(value: unknown): string {
+  const amount = typeof value === 'number' ? value : Number(value ?? 0);
+  const safeAmount = Number.isFinite(amount) ? amount : 0;
+  return safeAmount.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 // Inclusive day count between two YYYY-MM-DD (or parseable) date strings.
 export function inclusiveDayCount(
   startDate?: string | null,
