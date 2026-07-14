@@ -7,11 +7,15 @@ export enum NotificationType {
   REPORT_UPDATED = 'report_updated',
   REPORT_APPROVED = 'report_approved',
   REPORT_REJECTED = 'report_rejected',
+  CLOTHING_CANCELLATION_CREATED = 'clothing_cancellation_created',
+  CLOTHING_CANCELLATION_APPROVED = 'clothing_cancellation_approved',
+  CLOTHING_CANCELLATION_REJECTED = 'clothing_cancellation_rejected',
 }
 
 export enum EntityType {
   APPROVAL = 'approval',
   REPORT = 'report',
+  CLOTHING_CANCELLATION = 'clothing_cancellation',
 }
 
 export interface Notification {

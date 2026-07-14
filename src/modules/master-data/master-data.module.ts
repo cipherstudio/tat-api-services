@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { RedisCacheModule } from '../cache/redis-cache.module.js';
 import { RedisCacheService } from '../cache/redis-cache.service.js';
+import { NotificationModule } from '../notification/notification.module';
+import { UsersModule } from '../users/users.module';
 
 // Import services
 import { CountriesService } from './services/countries.service.js';
@@ -107,7 +109,7 @@ import { ReportSettingsService } from './services/report-settings.service';
 import { ReportSettingsRepository } from './repositories/report-settings.repository';
 
 @Module({
-  imports: [RedisCacheModule],
+  imports: [RedisCacheModule, NotificationModule, UsersModule],
   controllers: [
     CountriesController,
     PlacesController,
