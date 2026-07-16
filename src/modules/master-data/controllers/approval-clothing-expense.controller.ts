@@ -24,6 +24,7 @@ import { CreateApprovalClothingExpenseDto } from '../dto/create-approval-clothin
 import { UpdateApprovalClothingExpenseDto } from '../dto/update-approval-clothing-expense.dto';
 import { ApprovalClothingExpenseQueryDto } from '../dto/approval-clothing-expense-query.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 
 @ApiTags('Master Data')
 @Controller('master-data/approval-clothing-expense')
@@ -195,6 +196,7 @@ export class ApprovalClothingExpenseController {
     return this.approvalClothingExpenseService.findOne(id);
   }
 
+  @UseGuards(AdminGuard)
   @Post()
   @ApiOperation({ summary: 'Create approval clothing expense' })
   @ApiBody({
@@ -247,6 +249,7 @@ export class ApprovalClothingExpenseController {
     return this.approvalClothingExpenseService.create(dto);
   }
 
+  @UseGuards(AdminGuard)
   @Put(':id')
   @ApiOperation({ summary: 'Update approval clothing expense' })
   @ApiBody({
@@ -292,6 +295,7 @@ export class ApprovalClothingExpenseController {
     return this.approvalClothingExpenseService.update(id, dto);
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete approval clothing expense' })
   @ApiResponse({ status: 200, description: 'Deleted successfully' })

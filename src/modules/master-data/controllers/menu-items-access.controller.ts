@@ -25,6 +25,7 @@ import { QueryMenuItemsAccessDto } from '../dto/query-menu-items-access.dto';
 import { MenuItemsAccess } from '../entities/menu-items-access.entity';
 import { PaginatedResult } from '../../../common/interfaces/pagination.interface';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 
 @ApiTags('Menu Items Access')
 @Controller('menu-items-access')
@@ -35,6 +36,7 @@ export class MenuItemsAccessController {
     private readonly menuItemsAccessService: MenuItemsAccessService,
   ) {}
 
+  @UseGuards(AdminGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new menu item' })
   @ApiResponse({
@@ -149,6 +151,7 @@ export class MenuItemsAccessController {
     return await this.menuItemsAccessService.findByKeyName(keyName);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(':id')
   @ApiOperation({ summary: 'Update menu item' })
   @ApiResponse({
@@ -168,6 +171,7 @@ export class MenuItemsAccessController {
     return await this.menuItemsAccessService.update(+id, updateDto);
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete menu item' })

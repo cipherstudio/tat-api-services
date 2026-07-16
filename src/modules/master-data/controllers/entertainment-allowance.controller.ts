@@ -8,6 +8,7 @@ import {
   Body,
   Query,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -17,12 +18,16 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { EntertainmentAllowanceService } from '../services/entertainment-allowance.service';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import { CreateEntertainmentAllowanceDto } from '../dto/create-entertainment-allowance.dto';
 import { UpdateEntertainmentAllowanceDto } from '../dto/update-entertainment-allowance.dto';
 import { EntertainmentAllowanceQueryDto } from '../dto/entertainment-allowance-query.dto';
 
 @ApiTags('Master Data')
 @Controller('master-data/entertainment-allowance')
+
+@UseGuards(JwtAuthGuard)
 export class EntertainmentAllowanceController {
   constructor(
     private readonly entertainmentAllowanceService: EntertainmentAllowanceService,
@@ -108,6 +113,7 @@ export class EntertainmentAllowanceController {
     return this.entertainmentAllowanceService.findOne(Number(id));
   }
 
+  @UseGuards(AdminGuard)
   @Post()
   @ApiOperation({
     summary: 'Create entertainment allowance',
@@ -182,6 +188,7 @@ export class EntertainmentAllowanceController {
     return result;
   }
 
+  @UseGuards(AdminGuard)
   @Put(':id')
   @ApiOperation({
     summary: 'Update entertainment allowance',
@@ -270,6 +277,7 @@ export class EntertainmentAllowanceController {
     return result;
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @ApiOperation({
     summary: 'Delete entertainment allowance',

@@ -9,7 +9,8 @@ import {
   Query, 
   ParseIntPipe, 
   ValidationPipe,
-  ParseArrayPipe 
+  ParseArrayPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { 
   ApiTags, 
@@ -21,6 +22,8 @@ import {
   ApiNotFoundResponse 
 } from '@nestjs/swagger';
 import { AttireDestinationGroupsService } from '../services/attire-destination-groups.service';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import { CreateAttireDestinationGroupsDto } from '../dto/create-attire-destination-groups.dto';
 import { UpdateAttireDestinationGroupsDto } from '../dto/update-attire-destination-groups.dto';
 import { AttireDestinationGroupsQueryDto } from '../dto/attire-destination-groups-query.dto';
@@ -29,9 +32,12 @@ import { PaginatedResult } from '../../../common/interfaces/pagination.interface
 
 @ApiTags('Master Data')
 @Controller('master-data/attire-destination-groups')
+
+@UseGuards(JwtAuthGuard)
 export class AttireDestinationGroupsController {
   constructor(private readonly attireDestinationGroupsService: AttireDestinationGroupsService) {}
 
+  @UseGuards(AdminGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new attire destination group' })
   @ApiResponse({ 
@@ -121,6 +127,7 @@ export class AttireDestinationGroupsController {
     return this.attireDestinationGroupsService.findById(id);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(':id')
   @ApiOperation({ summary: 'Update attire destination group' })
   @ApiParam({ name: 'id', type: Number, description: 'Group ID' })
@@ -138,6 +145,7 @@ export class AttireDestinationGroupsController {
     return this.attireDestinationGroupsService.update(id, updateAttireDestinationGroupsDto);
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete attire destination group' })
   @ApiParam({ name: 'id', type: Number, description: 'Group ID' })
@@ -147,6 +155,7 @@ export class AttireDestinationGroupsController {
     return this.attireDestinationGroupsService.remove(id);
   }
 
+  @UseGuards(AdminGuard)
   @Post(':id/countries')
   @ApiOperation({ summary: 'Add countries to attire destination group' })
   @ApiParam({ name: 'id', type: Number, description: 'Group ID' })
@@ -164,6 +173,7 @@ export class AttireDestinationGroupsController {
     return this.attireDestinationGroupsService.addCountriesToGroup(id, countryIds);
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id/countries')
   @ApiOperation({ summary: 'Remove countries from attire destination group' })
   @ApiParam({ name: 'id', type: Number, description: 'Group ID' })

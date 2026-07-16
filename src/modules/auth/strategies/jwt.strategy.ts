@@ -114,9 +114,27 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         throw new UnauthorizedException(`Employee not found: ${employeeCode}`);
       }
 
-      this.logger.log(`[JWT Validate] Employee found successfully - code: ${employeeCode}`);
+      // Resolve admin status from the authoritative source (employee_admin
+      // table, active + not soft-deleted) - same rule auth.service uses at
+      // login, so req.user.role stays consistent with the frontend session.
+      // AdminGuard reads this off req.user, keeping the guard dependency-free.
+      const pmtCode = (user as any)?.pmtCode ?? employeeCode;
+      let isAdmin = false;
+      try {
+        isAdmin = await this.employeeRepository.checkIsAdmin(String(pmtCode));
+      } catch (e) {
+        this.logger.warn(
+          `[JWT Validate] checkIsAdmin failed for ${pmtCode}: ${e?.message}`,
+        );
+      }
+
+      this.logger.log(
+        `[JWT Validate] Employee found successfully - code: ${employeeCode}, isAdmin: ${isAdmin}`,
+      );
       return {
         employee: user,
+        isAdmin,
+        role: isAdmin ? 'admin' : 'user',
       };
     } catch (error) {
       if (error instanceof UnauthorizedException) {

@@ -11,8 +11,11 @@ import {
   HttpStatus,
   Query,
   ValidationPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import { DomesticMovingAllowancesService } from '../services/domestic-moving-allowances.service';
 import { CreateDomesticMovingAllowancesDto } from '../dto/create-domestic-moving-allowances.dto';
 import { UpdateDomesticMovingAllowancesDto } from '../dto/update-domestic-moving-allowances.dto';
@@ -21,11 +24,14 @@ import { DomesticMovingAllowances } from '../entities/domestic-moving-allowances
 
 @ApiTags('Master Data')
 @Controller('master-data/domestic-moving-allowances')
+
+@UseGuards(JwtAuthGuard)
 export class DomesticMovingAllowancesController {
   constructor(
     private readonly domesticMovingAllowancesService: DomesticMovingAllowancesService,
   ) {}
 
+  @UseGuards(AdminGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new domestic moving allowance' })
   @ApiResponse({
@@ -175,6 +181,7 @@ export class DomesticMovingAllowancesController {
     return this.domesticMovingAllowancesService.findByDistance(distance);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -183,6 +190,7 @@ export class DomesticMovingAllowancesController {
     return this.domesticMovingAllowancesService.update(id, updateDto);
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number): Promise<void> {

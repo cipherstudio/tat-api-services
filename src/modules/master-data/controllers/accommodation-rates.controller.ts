@@ -11,8 +11,11 @@ import {
   HttpStatus,
   Query,
   ValidationPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import { AccommodationRatesService } from '../services/accommodation-rates.service';
 import { CreateAccommodationRatesDto } from '../dto/create-accommodation-rates.dto';
 import { UpdateAccommodationRatesDto } from '../dto/update-accommodation-rates.dto';
@@ -22,11 +25,14 @@ import { AccommodationRates } from '../entities/accommodation-rates.entity';
 
 @ApiTags('Master Data')
 @Controller('master-data/accommodation-rates')
+
+@UseGuards(JwtAuthGuard)
 export class AccommodationRatesController {
   constructor(
     private readonly accommodationRatesService: AccommodationRatesService,
   ) {}
 
+  @UseGuards(AdminGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new accommodation rate' })
   @ApiResponse({
@@ -194,6 +200,7 @@ export class AccommodationRatesController {
     return this.accommodationRatesService.findById(id);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -205,6 +212,7 @@ export class AccommodationRatesController {
     );
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number): Promise<void> {

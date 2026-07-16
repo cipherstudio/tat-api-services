@@ -9,14 +9,14 @@ import {
   NotificationType,
   EntityType,
 } from '../../notification/entities/notification.entity';
-import { UserRepository } from '../../users/repositories/user.repository';
+import { EmployeeAdminService } from './employee-admin.service';
 
 @Injectable()
 export class ClothingExpenseCancellationRequestService {
   constructor(
     private readonly clothingExpenseCancellationRequestRepository: ClothingExpenseCancellationRequestRepository,
     private readonly notificationService: NotificationService,
-    private readonly userRepository: UserRepository,
+    private readonly employeeAdminService: EmployeeAdminService,
   ) {}
 
   // หาพนักงานที่ถูกยกเลิกค่าเครื่องแต่งตัว จาก approval_staff_members
@@ -105,28 +105,39 @@ export class ClothingExpenseCancellationRequestService {
       dto.selected_staff_ids,
     );
     const cancelledStaffName = cancelledStaff?.name || '';
-    const admins = await this.userRepository.findActiveAdmins();
+    // Notify the real admin set from employee_admin (the same source
+    // checkIsAdmin / AdminGuard use), NOT users.role — the users table role is
+    // never synced from employee_admin, so findActiveAdmins() misses admins who
+    // haven't been flagged there. findActiveEmployees() = is_active + not
+    // soft-deleted, matching checkIsAdmin exactly (includes suspended admins,
+    // who can still act on the request). De-dupe employee codes just in case.
+    const adminRecords = await this.employeeAdminService.findActiveEmployees();
+    const adminCodes = Array.from(
+      new Set(
+        adminRecords
+          .map((a) => (a.employee_code ?? '').toString().trim())
+          .filter((code) => code.length > 0),
+      ),
+    );
 
     const title = 'มีรายการขอยกเลิกค่าเครื่องแต่งตัว';
     const message = `ขอยกเลิกค่าเครื่องแต่งตัวของ ${cancelledStaffName} โดย ${dto.creator_name}`;
 
-    for (const admin of admins) {
-      if (admin.employeeCode) {
-        await this.notificationService.createNotification(
-          admin.employeeCode,
-          title,
-          message,
-          NotificationType.CLOTHING_CANCELLATION_CREATED,
-          EntityType.CLOTHING_CANCELLATION,
-          created.id,
-          {
-            approvalId: dto.approval_id,
-            creatorCode: dto.creator_code,
-            creatorName: dto.creator_name,
-            cancelledStaffName,
-          },
-        );
-      }
+    for (const employeeCode of adminCodes) {
+      await this.notificationService.createNotification(
+        employeeCode,
+        title,
+        message,
+        NotificationType.CLOTHING_CANCELLATION_CREATED,
+        EntityType.CLOTHING_CANCELLATION,
+        created.id,
+        {
+          approvalId: dto.approval_id,
+          creatorCode: dto.creator_code,
+          creatorName: dto.creator_name,
+          cancelledStaffName,
+        },
+      );
     }
 
     return created;

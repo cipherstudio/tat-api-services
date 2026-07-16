@@ -11,8 +11,11 @@ import {
   HttpStatus,
   Query,
   ValidationPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { OfficeInternationalService } from '../services/office-international.service';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import { CreateOfficeInternationalDto } from '../dto/create-office-international.dto';
 import { UpdateOfficeInternationalDto } from '../dto/update-office-international.dto';
 import { OfficeInternationalQueryDto } from '../dto/office-international-query.dto';
@@ -22,11 +25,14 @@ import { ApiQuery, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Master Data')
 @Controller('master-data/office-internationals')
+
+@UseGuards(JwtAuthGuard)
 export class OfficeInternationalController {
   constructor(
     private readonly officeInternationalService: OfficeInternationalService,
   ) {}
 
+  @UseGuards(AdminGuard)
   @Post()
   create(
     @Body() createOfficeInternationalDto: CreateOfficeInternationalDto,
@@ -151,6 +157,7 @@ export class OfficeInternationalController {
     return this.officeInternationalService.findById(id);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -162,6 +169,7 @@ export class OfficeInternationalController {
     );
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number): Promise<void> {

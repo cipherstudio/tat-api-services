@@ -7,6 +7,7 @@ import {
   Param,
   Body,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -19,10 +20,13 @@ import { MasterdataLabelsService } from '../services/masterdata-labels.service';
 import { CreateMasterdataLabelsDto } from '../dto/create-masterdata-labels.dto';
 import { MasterdataLabelsQueryDto } from '../dto/masterdata-labels-query.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import { UpdateMasterdataLabelsDto } from '../dto/update-masterdata-labels.dto';
 
 @ApiTags('Master Data')
 @Controller('master-data/labels')
+
+@UseGuards(JwtAuthGuard)
 export class MasterdataLabelsController {
   constructor(
     private readonly masterdataLabelsService: MasterdataLabelsService,
@@ -102,6 +106,7 @@ export class MasterdataLabelsController {
     return this.masterdataLabelsService.findOne(id);
   }
 
+  @UseGuards(AdminGuard)
   @Post()
   @ApiOperation({ summary: 'Create masterdata label' })
   @ApiBody({
@@ -142,6 +147,7 @@ export class MasterdataLabelsController {
     return this.masterdataLabelsService.create(dto);
   }
 
+  @UseGuards(AdminGuard)
   @Put(':id')
   @ApiOperation({ summary: 'Update masterdata label' })
   @ApiBody({
@@ -185,6 +191,7 @@ export class MasterdataLabelsController {
     return this.masterdataLabelsService.update(id, dto);
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete masterdata label' })
   @ApiResponse({ status: 200, description: 'Deleted successfully' })

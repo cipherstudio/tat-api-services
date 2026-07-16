@@ -11,17 +11,23 @@ import {
   HttpStatus,
   Query,
   ValidationPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiQuery, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import { PrivilegeService } from '../services/privilege.service.js';
 import { Privilege } from '../entities/privilege.entity.js';
 import { CreatePrivilegeDto, UpdatePrivilegeDto } from '../dto/privilege.dto.js';
 
 @ApiTags('Master Data')
 @Controller('master-data/privileges')
+
+@UseGuards(JwtAuthGuard)
 export class PrivilegeController {
   constructor(private readonly privilegeService: PrivilegeService) {}
 
+  @UseGuards(AdminGuard)
   @Post()
   create(@Body() createPrivilegeDto: CreatePrivilegeDto): Promise<Privilege> {
     return this.privilegeService.create(createPrivilegeDto);
@@ -135,6 +141,7 @@ export class PrivilegeController {
     return this.privilegeService.findById(id);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -143,6 +150,7 @@ export class PrivilegeController {
     return this.privilegeService.update(id, updatePrivilegeDto);
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number): Promise<void> {

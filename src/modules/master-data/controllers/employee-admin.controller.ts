@@ -25,10 +25,11 @@ import { QueryEmployeeAdminDto } from '../dto/query-employee-admin.dto';
 import { EmployeeAdmin } from '../entities/employee-admin.entity';
 import { PaginatedResult } from '../../../common/interfaces/pagination.interface';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 
 @ApiTags('Employee Admin')
 @Controller('employee-admin')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, AdminGuard)
 @ApiBearerAuth('JWT-auth')
 export class EmployeeAdminController {
   constructor(private readonly employeeAdminService: EmployeeAdminService) {}

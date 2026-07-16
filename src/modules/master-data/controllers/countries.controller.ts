@@ -11,8 +11,11 @@ import {
   HttpStatus,
   Query,
   ValidationPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { CountriesService } from '../services/countries.service';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import { CreateCountriesDto } from '../dto/create-countries.dto';
 import { UpdateCountriesDto } from '../dto/update-countries.dto';
 import { CountriesQueryDto } from '../dto/countries-query.dto';
@@ -22,9 +25,12 @@ import { ApiQuery, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Master Data')
 @Controller('master-data/countries')
+
+@UseGuards(JwtAuthGuard)
 export class CountriesController {
   constructor(private readonly countriesService: CountriesService) {}
 
+  @UseGuards(AdminGuard)
   @Post()
   create(@Body() createCountriesDto: CreateCountriesDto) {
     return this.countriesService.create(createCountriesDto);
@@ -141,6 +147,7 @@ export class CountriesController {
     return this.countriesService.findById(id);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -149,6 +156,7 @@ export class CountriesController {
     return this.countriesService.update(id, updateCountriesDto);
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number) {

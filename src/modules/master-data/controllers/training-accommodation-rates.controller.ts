@@ -11,8 +11,11 @@ import {
   HttpStatus,
   Query,
   ValidationPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import { TrainingAccommodationRatesService } from '../services/training-accommodation-rates.service';
 import { CreateTrainingAccommodationRatesDto } from '../dto/create-training-accommodation-rates.dto';
 import { UpdateTrainingAccommodationRatesDto } from '../dto/update-training-accommodation-rates.dto';
@@ -22,11 +25,13 @@ import { TrainingAccommodationRates } from '../entities/training-accommodation-r
 
 @ApiTags('Master Data')
 @Controller('master-data/training-accommodation-rates')
+@UseGuards(JwtAuthGuard)
 export class TrainingAccommodationRatesController {
   constructor(
     private readonly trainingAccommodationRatesService: TrainingAccommodationRatesService,
   ) {}
 
+  @UseGuards(AdminGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new training accommodation rate' })
   @ApiResponse({
@@ -154,6 +159,7 @@ export class TrainingAccommodationRatesController {
     return this.trainingAccommodationRatesService.findById(id);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -165,6 +171,7 @@ export class TrainingAccommodationRatesController {
     );
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number): Promise<void> {

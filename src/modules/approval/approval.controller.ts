@@ -13,6 +13,7 @@ import {
   ValidationPipe,
   UseGuards,
   Req,
+  ForbiddenException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -410,9 +411,20 @@ export class ApprovalController {
     description: 'Success',
     type: ApprovalDetailResponseDto,
   })
-  findById(
+  async findById(
     @Param('id', ParseIntPipe) id: number,
+    @Req() req: RequestWithUser,
   ): Promise<ApprovalDetailResponseDto> {
+    if (!req.user.employee) {
+      throw new Error('Employee data not found for user');
+    }
+    const canView = await this.approvalService.isViewableBy(
+      id,
+      req.user.employee.code,
+    );
+    if (!canView) {
+      throw new ForbiddenException('You do not have access to this approval');
+    }
     return this.approvalService.findById(id);
   }
 

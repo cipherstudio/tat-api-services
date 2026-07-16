@@ -130,6 +130,20 @@ export function formatThaiDateNumeric(value: unknown): string {
   return `${day}-${month}-${year}`;
 }
 
+// "06-07-2569 10:24:57" - formatThaiDateNumeric plus HH:mm:ss, for exports
+// where the time of day matters (e.g. login history) and a date-only column
+// would hide a same-day ordering/timing issue.
+export function formatThaiDateTimeNumeric(value: unknown): string {
+  if (!value) return '';
+  const date = value instanceof Date ? value : new Date(value as string);
+  if (isNaN(date.getTime())) return String(value);
+  const datePart = formatThaiDateNumeric(date);
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  return `${datePart} ${hours}:${minutes}:${seconds}`;
+}
+
 // "14,350.00" / "0.00" - 2 decimals with thousands separator, for Excel
 // currency/amount columns.
 export function formatThaiCurrency(value: unknown): string {

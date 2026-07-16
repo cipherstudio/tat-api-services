@@ -1067,6 +1067,51 @@ export class ApprovalService {
     );
   }
 
+  // #354: GET :id (view) must not be reachable by an arbitrary logged-in
+  // employee who just knows/guesses the numeric id or was sent a link.
+  // "Related" mirrors the isRelatedToMe scoping already used by findAll:
+  // creator, staff member/traveler, any approver in the chain (past or
+  // current-pending - approval_continuous rows are inserted PENDING at
+  // routing time, before the approver acts), or the delegate target.
+  async isViewableBy(id: number, employeeCode: string): Promise<boolean> {
+    const code = String(employeeCode ?? '').trim();
+    if (!code) return false;
+
+    const approval = await this.knexService
+      .knex('approval')
+      .where('id', id)
+      .whereNull('deleted_at')
+      .select('created_employee_code', 'employee_code', 'record_type')
+      .first();
+    if (!approval) return false;
+
+    if (String(approval.created_employee_code ?? '').trim() === code) {
+      return true;
+    }
+    if (
+      approval.record_type === 'delegate' &&
+      String(approval.employee_code ?? '').trim() === code
+    ) {
+      return true;
+    }
+
+    const staffMember = await this.knexService
+      .knex('approval_staff_members')
+      .where('approval_id', id)
+      .where('employee_code', code)
+      .first();
+    if (staffMember) return true;
+
+    const continuousRow = await this.knexService
+      .knex('approval_continuous')
+      .where('approval_id', id)
+      .where('employee_code', code)
+      .first();
+    if (continuousRow) return true;
+
+    return false;
+  }
+
   async findById(id: number): Promise<ApprovalDetailResponseDto> {
     // Try to get from cache first
     const cacheKey = this.cacheService.generateKey(this.CACHE_PREFIX, id);

@@ -1,13 +1,20 @@
-import { Controller, Post, Body, Get, Param } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param,
+  UseGuards,
+} from '@nestjs/common';
 import { ExpensesBangkokToPlaceService } from '../services/expenses-bangkok-to-place.service';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import { UpsertExpensesBangkokToPlaceDto } from '../dto/upsert-expenses-bangkok-to-place.dto.js';
 import { ApiTags, ApiBody } from '@nestjs/swagger';
 
 @ApiTags('Master Data')
 @Controller('master-data/expenses-bangkok-to-place')
+
+@UseGuards(JwtAuthGuard)
 export class ExpensesBangkokToPlaceController {
   constructor(private readonly expensesBangkokToPlaceService: ExpensesBangkokToPlaceService) {}
 
+  @UseGuards(AdminGuard)
   @Post('bulk')
   @ApiBody({
     type: UpsertExpensesBangkokToPlaceDto,

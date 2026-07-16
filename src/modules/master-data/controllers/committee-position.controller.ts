@@ -11,17 +11,23 @@ import {
   HttpStatus,
   Query,
   ValidationPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiQuery, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import { CommitteePositionService } from '../services/committee-position.service.js';
 import { CommitteePosition } from '../entities/committee-position.entity.js';
 import { CreateCommitteePositionDto, UpdateCommitteePositionDto } from '../dto/committee-position.dto.js';
 
 @ApiTags('Master Data')
 @Controller('master-data/committee-positions')
+
+@UseGuards(JwtAuthGuard)
 export class CommitteePositionController {
   constructor(private readonly committeePositionService: CommitteePositionService) {}
 
+  @UseGuards(AdminGuard)
   @Post()
   create(@Body() createCommitteePositionDto: CreateCommitteePositionDto): Promise<CommitteePosition> {
     return this.committeePositionService.create(createCommitteePositionDto);
@@ -119,6 +125,7 @@ export class CommitteePositionController {
     return this.committeePositionService.findById(id);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -127,6 +134,7 @@ export class CommitteePositionController {
     return this.committeePositionService.update(id, updateCommitteePositionDto);
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number): Promise<void> {

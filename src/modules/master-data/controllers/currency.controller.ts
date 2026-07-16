@@ -25,6 +25,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 
 @ApiTags('Master Data')
 @Controller('master-data/currencies')
@@ -33,6 +34,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 export class CurrencyController {
   constructor(private readonly currencyService: CurrencyService) {}
 
+  @UseGuards(AdminGuard)
   @Post()
   @ApiOperation({
     summary: 'สร้างข้อมูลสกุลเงิน',
@@ -140,6 +142,7 @@ export class CurrencyController {
     return this.currencyService.findById(id);
   }
 
+  @UseGuards(AdminGuard)
   @Put(':id')
   @ApiOperation({
     summary: 'แก้ไขข้อมูลสกุลเงิน',
@@ -154,6 +157,7 @@ export class CurrencyController {
     return this.currencyService.update(id, updateCurrencyDto);
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @ApiOperation({
     summary: 'ลบข้อมูลสกุลเงิน',

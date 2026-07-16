@@ -11,17 +11,23 @@ import {
   HttpStatus,
   Query,
   ValidationPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiQuery, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import { OutsiderEquivalentService } from '../services/outsider-equivalent.service.js';
 import { OutsiderEquivalent } from '../entities/outsider-equivalent.entity.js';
 import { CreateOutsiderEquivalentDto, UpdateOutsiderEquivalentDto } from '../dto/outsider-equivalent.dto.js';
 
 @ApiTags('Master Data')
 @Controller('master-data/outsider-equivalents')
+
+@UseGuards(JwtAuthGuard)
 export class OutsiderEquivalentController {
   constructor(private readonly outsiderEquivalentService: OutsiderEquivalentService) {}
 
+  @UseGuards(AdminGuard)
   @Post()
   create(@Body() createOutsiderEquivalentDto: CreateOutsiderEquivalentDto): Promise<OutsiderEquivalent> {
     return this.outsiderEquivalentService.create(createOutsiderEquivalentDto);
@@ -119,6 +125,7 @@ export class OutsiderEquivalentController {
     return this.outsiderEquivalentService.findById(id);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -127,6 +134,7 @@ export class OutsiderEquivalentController {
     return this.outsiderEquivalentService.update(id, updateOutsiderEquivalentDto);
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number): Promise<void> {

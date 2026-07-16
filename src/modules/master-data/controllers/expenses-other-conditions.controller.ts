@@ -11,8 +11,11 @@ import {
   HttpStatus,
   Query,
   ValidationPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { ExpensesOtherConditionsService } from '../services/expenses-other-conditions.service';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import { CreateExpensesOtherConditionsDto } from '../dto/create-expenses-other-conditions.dto';
 import { UpdateExpensesOtherConditionsDto } from '../dto/update-expenses-other-conditions.dto';
 import { ExpensesOtherConditionsQueryDto } from '../dto/expenses-other-conditions-query.dto';
@@ -21,11 +24,14 @@ import { ApiQuery, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('Master Data')
 @Controller('master-data/expenses-other-conditions')
+
+@UseGuards(JwtAuthGuard)
 export class ExpensesOtherConditionsController {
   constructor(
     private readonly expensesOtherConditionsService: ExpensesOtherConditionsService,
   ) {}
 
+  @UseGuards(AdminGuard)
   @Post()
   create(
     @Body() createExpensesOtherConditionsDto: CreateExpensesOtherConditionsDto,
@@ -175,6 +181,7 @@ export class ExpensesOtherConditionsController {
     return this.expensesOtherConditionsService.findById(id);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -186,6 +193,7 @@ export class ExpensesOtherConditionsController {
     );
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number): Promise<void> {

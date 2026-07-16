@@ -21,6 +21,7 @@ import { ReportSettingsQueryDto } from '../dto/report-settings-query.dto';
 import { PaginatedResult } from '../../../common/interfaces/pagination.interface';
 import { ReportSettings } from '../entities/report-settings.entity';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 
 @ApiTags('Master Data')
 @Controller('master-data/report-settings')
@@ -31,6 +32,7 @@ export class ReportSettingsController {
     private readonly reportSettingsService: ReportSettingsService,
   ) {}
 
+  @UseGuards(AdminGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new report setting' })
   @ApiResponse({
@@ -164,6 +166,7 @@ export class ReportSettingsController {
     return this.reportSettingsService.findById(id);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(':id')
   @ApiOperation({ summary: 'Update a report setting' })
   @ApiResponse({
@@ -181,6 +184,7 @@ export class ReportSettingsController {
     );
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a report setting' })

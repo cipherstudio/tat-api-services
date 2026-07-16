@@ -7,8 +7,11 @@ import {
   Query,
   ValidationPipe,
   ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags, ApiQuery } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import { ExpensesVehicle } from '../entities/expenses-vehicle.entity';
 import { UpdateExpensesVehicleDto } from '../dto/expenses-vehicle.dto';
 import { ExpensesVehicleQueryDto } from '../dto/expenses-vehicle-query.dto';
@@ -17,6 +20,8 @@ import { PaginatedResult } from '@common/interfaces/pagination.interface';
 
 @ApiTags('Master Data')
 @Controller('master-data/expenses-vehicle')
+
+@UseGuards(JwtAuthGuard)
 export class ExpensesVehicleController {
   constructor(private readonly service: ExpensesVehicleService) {}
 
@@ -128,6 +133,7 @@ export class ExpensesVehicleController {
     return this.service.findAll(queryOptions);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(':id')
   @ApiOperation({ summary: 'Update expenses vehicle by ID' })
   @ApiResponse({

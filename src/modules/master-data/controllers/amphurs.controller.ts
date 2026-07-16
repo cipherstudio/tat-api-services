@@ -11,8 +11,11 @@ import {
   HttpStatus,
   Query,
   ValidationPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { AmphursService } from '../services/amphurs.service';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import { CreateAmphursDto } from '../dto/create-amphurs.dto';
 import { UpdateAmphursDto } from '../dto/update-amphurs.dto';
 import { AmphursQueryDto } from '../dto/amphurs-query.dto';
@@ -22,9 +25,12 @@ import { ApiQuery, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Master Data')
 @Controller('master-data/amphurs')
+
+@UseGuards(JwtAuthGuard)
 export class AmphursController {
   constructor(private readonly amphursService: AmphursService) {}
 
+  @UseGuards(AdminGuard)
   @Post()
   create(@Body() createAmphursDto: CreateAmphursDto) {
     return this.amphursService.create(createAmphursDto);
@@ -140,6 +146,7 @@ export class AmphursController {
     return this.amphursService.findById(id);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -148,6 +155,7 @@ export class AmphursController {
     return this.amphursService.update(id, updateAmphursDto);
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number) {

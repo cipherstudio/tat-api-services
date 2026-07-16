@@ -11,8 +11,11 @@ import {
   HttpStatus,
   Query,
   ValidationPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import { PerDiemRatesService } from '../services/per-diem-rates.service';
 import { CreatePerDiemRatesDto } from '../dto/create-per-diem-rates.dto';
 import { UpdatePerDiemRatesDto } from '../dto/update-per-diem-rates.dto';
@@ -22,9 +25,12 @@ import { PerDiemRates } from '../entities/per-diem-rates.entity';
 
 @ApiTags('Master Data')
 @Controller('master-data/per-diem-rates')
+
+@UseGuards(JwtAuthGuard)
 export class PerDiemRatesController {
   constructor(private readonly perDiemRatesService: PerDiemRatesService) {}
 
+  @UseGuards(AdminGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new per diem rate' })
   @ApiResponse({
@@ -149,6 +155,7 @@ export class PerDiemRatesController {
     return this.perDiemRatesService.findById(id);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(':id')
   @ApiOperation({ summary: 'Update a per diem rate' })
   @ApiResponse({
@@ -164,6 +171,7 @@ export class PerDiemRatesController {
     return this.perDiemRatesService.update(id, updatePerDiemRatesDto);
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a per diem rate' })

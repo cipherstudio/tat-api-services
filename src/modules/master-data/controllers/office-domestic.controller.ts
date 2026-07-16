@@ -11,8 +11,11 @@ import {
   HttpStatus,
   Query,
   ValidationPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { OfficeDomesticService } from '../services/office-domestic.service';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import { CreateOfficeDomesticDto } from '../dto/create-office-domestic.dto';
 import { UpdateOfficeDomesticDto } from '../dto/update-office-domestic.dto';
 import { OfficeDomesticQueryDto } from '../dto/office-domestic-query.dto';
@@ -22,9 +25,12 @@ import { ApiQuery, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Master Data')
 @Controller('master-data/office-domestics')
+
+@UseGuards(JwtAuthGuard)
 export class OfficeDomesticController {
   constructor(private readonly officeDomesticService: OfficeDomesticService) {}
 
+  @UseGuards(AdminGuard)
   @Post()
   create(
     @Body() createOfficeDomesticDto: CreateOfficeDomesticDto,
@@ -148,6 +154,7 @@ export class OfficeDomesticController {
     return this.officeDomesticService.findById(id);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -156,6 +163,7 @@ export class OfficeDomesticController {
     return this.officeDomesticService.update(id, updateOfficeDomesticDto);
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number): Promise<void> {

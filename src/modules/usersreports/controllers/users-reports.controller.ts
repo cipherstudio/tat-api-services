@@ -20,6 +20,7 @@ import { ExpenditureQueryDto } from '../dto/expenditure-query.dto';
 import { ClothingQueryDto } from '../dto/clothing-query.dto';
 import { ActivityQueryDto } from '../dto/activity-query.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import {
   buildExcelBuffer,
   thaiDateFilenamePart,
@@ -27,6 +28,7 @@ import {
   resolveDestinationName,
   formatThaiDate,
   formatThaiDateNumeric,
+  formatThaiDateTimeNumeric,
   formatThaiCurrency,
 } from '../../../common/utils/excel-export.util';
 
@@ -42,7 +44,7 @@ const TRAVEL_TYPE_LABELS: Record<string, string> = {
 
 @ApiTags('Users Reports')
 @Controller('users-reports')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, AdminGuard)
 @ApiBearerAuth('JWT-auth')
 export class UsersReportsController {
   constructor(private readonly usersReportsService: UsersReportsService) {}
@@ -430,7 +432,7 @@ export class UsersReportsController {
       result.data.map((item: any, index: number) => ({
         no: index + 1,
         employeeName: item.employeeName,
-        createdAt: item.createdAt,
+        createdAt: formatThaiDateTimeNumeric(item.createdAt),
       })),
     );
 

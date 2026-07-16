@@ -104,6 +104,13 @@ export class ClothingExpenseCancellationRequestController {
       throw new Error('Employee data not found for user');
     }
 
+    // Group C hardening: never trust the client `isRelateToMe` flag for scoping.
+    // Only admins may list every request; a non-admin is always restricted to
+    // records related to themselves (creator or selected staff), regardless of
+    // what the client sends.
+    const isAdmin = req.user?.isAdmin === true || req.user?.role === 'admin';
+    const effectiveIsRelateToMe = isAdmin ? isRelateToMe : true;
+
     const queryOptions: ClothingExpenseCancellationRequestQueryDto = {
       page,
       limit,
@@ -116,7 +123,7 @@ export class ClothingExpenseCancellationRequestController {
       creator_name,
       status,
       selected_staff_ids: selected_staff_ids ? JSON.parse(selected_staff_ids) : undefined,
-      isRelateToMe,
+      isRelateToMe: effectiveIsRelateToMe,
     };
 
     return this.clothingExpenseCancellationRequestService.findAll(

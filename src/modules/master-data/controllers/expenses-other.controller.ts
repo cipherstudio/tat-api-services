@@ -11,8 +11,11 @@ import {
   HttpStatus,
   Query,
   ValidationPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { ExpensesOtherService } from '../services/expenses-other.service';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import { CreateExpensesOtherDto } from '../dto/create-expenses-other.dto';
 import { UpdateExpensesOtherDto } from '../dto/update-expenses-other.dto';
 import { ExpensesOtherQueryDto } from '../dto/expenses-other-query.dto';
@@ -22,9 +25,12 @@ import { ApiQuery, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Master Data')
 @Controller('master-data/expenses-other')
+
+@UseGuards(JwtAuthGuard)
 export class ExpensesOtherController {
   constructor(private readonly expensesOtherService: ExpensesOtherService) {}
 
+  @UseGuards(AdminGuard)
   @Post()
   create(
     @Body() createExpensesOtherDto: CreateExpensesOtherDto,
@@ -139,6 +145,7 @@ export class ExpensesOtherController {
     return this.expensesOtherService.findById(id);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -147,6 +154,7 @@ export class ExpensesOtherController {
     return this.expensesOtherService.update(id, updateExpensesOtherDto);
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number): Promise<void> {

@@ -11,8 +11,11 @@ import {
   HttpStatus,
   Query,
   ValidationPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import { InternationalMovingAllowancesService } from '../services/international-moving-allowances.service';
 import { CreateInternationalMovingAllowancesDto } from '../dto/create-international-moving-allowances.dto';
 import { UpdateInternationalMovingAllowancesDto } from '../dto/update-international-moving-allowances.dto';
@@ -22,11 +25,14 @@ import { InternationalMovingAllowances } from '../entities/international-moving-
 
 @ApiTags('Master Data')
 @Controller('master-data/international-moving-allowances')
+
+@UseGuards(JwtAuthGuard)
 export class InternationalMovingAllowancesController {
   constructor(
     private readonly internationalMovingAllowancesService: InternationalMovingAllowancesService,
   ) {}
 
+  @UseGuards(AdminGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new international moving allowance' })
   @ApiResponse({
@@ -194,6 +200,7 @@ export class InternationalMovingAllowancesController {
     return this.internationalMovingAllowancesService.findByOffice(office);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -202,6 +209,7 @@ export class InternationalMovingAllowancesController {
     return this.internationalMovingAllowancesService.update(id, updateDto);
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number): Promise<void> {

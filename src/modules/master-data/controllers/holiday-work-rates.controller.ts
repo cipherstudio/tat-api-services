@@ -7,6 +7,7 @@ import {
   Param,
   Body,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -20,6 +21,7 @@ import { CreateHolidayWorkRatesDto } from '../dto/create-holiday-work-rates.dto'
 import { UpdateHolidayWorkRatesDto } from '../dto/update-holiday-work-rates.dto';
 import { HolidayWorkRatesQueryDto } from '../dto/holiday-work-rates-query.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 
 @ApiTags('Master Data')
 @Controller('master-data/holiday-work-rates')
@@ -119,6 +121,7 @@ export class HolidayWorkRatesController {
     return this.holidayWorkRatesService.findOne(id);
   }
 
+  @UseGuards(AdminGuard)
   @Post()
   @ApiOperation({ summary: 'Create holiday work rate' })
   @ApiBody({
@@ -163,6 +166,7 @@ export class HolidayWorkRatesController {
     return this.holidayWorkRatesService.create(dto);
   }
 
+  @UseGuards(AdminGuard)
   @Put(':id')
   @ApiOperation({ summary: 'Update holiday work rate' })
   @ApiBody({
@@ -210,6 +214,7 @@ export class HolidayWorkRatesController {
     return this.holidayWorkRatesService.update(id, dto);
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete holiday work rate' })
   @ApiResponse({ status: 200, description: 'Deleted successfully' })

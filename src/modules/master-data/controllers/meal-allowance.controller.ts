@@ -8,6 +8,7 @@ import {
   Body,
   Query,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -17,12 +18,16 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { MealAllowanceService } from '../services/meal-allowance.service';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import { CreateMealAllowanceDto } from '../dto/create-meal-allowance.dto';
 import { UpdateMealAllowanceDto } from '../dto/update-meal-allowance.dto';
 import { MealAllowanceQueryDto } from '../dto/meal-allowance-query.dto';
 
 @ApiTags('Master Data')
 @Controller('master-data/meal-allowance')
+
+@UseGuards(JwtAuthGuard)
 export class MealAllowanceController {
   constructor(private readonly mealAllowanceService: MealAllowanceService) {}
 
@@ -119,6 +124,7 @@ export class MealAllowanceController {
     return this.mealAllowanceService.findWithLevel(level);
   }
 
+  @UseGuards(AdminGuard)
   @Post()
   @ApiOperation({
     summary: 'Create meal allowance',
@@ -167,6 +173,7 @@ export class MealAllowanceController {
     return result;
   }
 
+  @UseGuards(AdminGuard)
   @Put(':id')
   @ApiOperation({
     summary: 'Update meal allowance',
@@ -215,6 +222,7 @@ export class MealAllowanceController {
     return result;
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @ApiOperation({
     summary: 'Delete meal allowance',

@@ -11,8 +11,11 @@ import {
   HttpStatus,
   Query,
   ValidationPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { ProvincesService } from '../services/provinces.service';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import { CreateProvincesDto } from '../dto/create-provinces.dto';
 import { UpdateProvincesDto } from '../dto/update-provinces.dto';
 import { ProvincesQueryDto } from '../dto/provinces-query.dto';
@@ -22,9 +25,12 @@ import { ApiQuery, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Master Data')
 @Controller('master-data/provinces')
+
+@UseGuards(JwtAuthGuard)
 export class ProvincesController {
   constructor(private readonly provincesService: ProvincesService) {}
 
+  @UseGuards(AdminGuard)
   @Post()
   create(@Body() createProvincesDto: CreateProvincesDto) {
     return this.provincesService.create(createProvincesDto);
@@ -146,6 +152,7 @@ export class ProvincesController {
     return this.provincesService.findById(id);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -154,6 +161,7 @@ export class ProvincesController {
     return this.provincesService.update(id, updateProvincesDto);
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number) {

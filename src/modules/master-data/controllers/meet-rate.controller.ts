@@ -21,6 +21,7 @@ import { MeetRateQueryDto } from '../dto/meet-rate-query.dto';
 import { PaginatedResult } from '../../../common/interfaces/pagination.interface';
 import { MeetRate } from '../entities/meet-rate.entity';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 
 @ApiTags('Master Data')
 @Controller('master-data/meet-rate')
@@ -31,6 +32,7 @@ export class MeetRateController {
     private readonly meetRateService: MeetRateService,
   ) {}
 
+  @UseGuards(AdminGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new meet rate' })
   @ApiResponse({
@@ -156,6 +158,7 @@ export class MeetRateController {
     return this.meetRateService.findById(id);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(':id')
   @ApiOperation({ summary: 'Update a meet rate' })
   @ApiResponse({
@@ -173,6 +176,7 @@ export class MeetRateController {
     );
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a meet rate' })

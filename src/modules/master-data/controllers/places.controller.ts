@@ -11,8 +11,11 @@ import {
   HttpStatus,
   Query,
   ValidationPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import { PlacesService } from '../services/places.service.js';
 import { CreatePlacesDto } from '../dto/create-places.dto.js';
 import { UpdatePlacesDto } from '../dto/update-places.dto.js';
@@ -23,9 +26,12 @@ import { PlacesQueryOptions } from '../interfaces/places-options.interface';
 
 @ApiTags('Master Data')
 @Controller('master-data/places')
+
+@UseGuards(JwtAuthGuard)
 export class PlacesController {
   constructor(private readonly placesService: PlacesService) {}
 
+  @UseGuards(AdminGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new place' })
   @ApiResponse({ status: 201, description: 'The place has been successfully created.', type: Places })
@@ -132,6 +138,7 @@ export class PlacesController {
     return this.placesService.findById(id);
   }
 
+  @UseGuards(AdminGuard)
   @Patch(':id')
   @ApiOperation({ summary: 'Update a place' })
   @ApiResponse({ status: 200, description: 'The place has been successfully updated.', type: Places })
@@ -143,6 +150,7 @@ export class PlacesController {
     return this.placesService.update(id, updatePlacesDto);
   }
 
+  @UseGuards(AdminGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a place' })
