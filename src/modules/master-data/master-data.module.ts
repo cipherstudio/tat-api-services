@@ -6,6 +6,7 @@ import { UsersModule } from '../users/users.module';
 
 // Import services
 import { CountriesService } from './services/countries.service.js';
+import { TrainingCountriesService } from './services/training-countries.service';
 import { PlacesService } from './services/places.service.js';
 import { OfficeDomesticService } from './services/office-domestic.service.js';
 import { OfficeInternationalService } from './services/office-international.service.js';
@@ -34,6 +35,7 @@ import { MasterdataLabelsService } from './services/masterdata-labels.service';
 
 // Import controllers
 import { CountriesController } from './controllers/countries.controller.js';
+import { TrainingCountriesController } from './controllers/training-countries.controller';
 import { PlacesController } from './controllers/places.controller.js';
 import { OfficeDomesticController } from './controllers/office-domestic.controller.js';
 import { OfficeInternationalController } from './controllers/office-international.controller.js';
@@ -62,6 +64,7 @@ import { MasterdataLabelsController } from './controllers/masterdata-labels.cont
 
 // Import repositories
 import { CountriesRepository } from './repositories/countries.repository.js';
+import { TrainingCountriesRepository } from './repositories/training-countries.repository';
 import { PlacesRepository } from './repositories/places.repository.js';
 import { OfficeDomesticRepository } from './repositories/office-domestic.repository.js';
 import { OfficeInternationalRepository } from './repositories/office-international.repository.js';
@@ -112,6 +115,7 @@ import { ReportSettingsRepository } from './repositories/report-settings.reposit
   imports: [RedisCacheModule, NotificationModule, UsersModule],
   controllers: [
     CountriesController,
+    TrainingCountriesController,
     PlacesController,
     OfficeDomesticController,
     OfficeInternationalController,
@@ -146,6 +150,7 @@ import { ReportSettingsRepository } from './repositories/report-settings.reposit
   providers: [
     // Services
     CountriesService,
+    TrainingCountriesService,
     PlacesService,
     OfficeDomesticService,
     OfficeInternationalService,
@@ -180,6 +185,7 @@ import { ReportSettingsRepository } from './repositories/report-settings.reposit
     MeetRateService,
     // Repositories
     CountriesRepository,
+    TrainingCountriesRepository,
     PlacesRepository,
     OfficeDomesticRepository,
     OfficeInternationalRepository,
@@ -219,6 +225,7 @@ import { ReportSettingsRepository } from './repositories/report-settings.reposit
   ],
   exports: [
     CountriesService,
+    TrainingCountriesService,
     PlacesService,
     OfficeDomesticService,
     OfficeInternationalService,
