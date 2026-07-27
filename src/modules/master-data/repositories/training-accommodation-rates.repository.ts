@@ -76,7 +76,9 @@ export class TrainingAccommodationRatesRepository extends KnexBaseRepository<Tra
       query.where((builder) => {
         builder
           .whereRaw('LOWER("travel_type") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
-          .orWhereRaw('LOWER("training_type") LIKE ?', [`%${searchTerm.toLowerCase()}%`]);
+          .orWhereRaw('LOWER("training_type") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
+          .orWhereRaw('LOWER("position_name") LIKE ?', [`%${searchTerm.toLowerCase()}%`])
+          .orWhereRaw('LOWER("position_group_name") LIKE ?', [`%${searchTerm.toLowerCase()}%`]);
       });
     }
 

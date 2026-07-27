@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsEnum, IsOptional } from 'class-validator';
+import { IsString, IsNumber, IsEnum, IsOptional } from 'class-validator';
 
 export class UpdateTrainingAccommodationRatesDto {
   @ApiProperty({
@@ -17,6 +17,41 @@ export class UpdateTrainingAccommodationRatesDto {
   @IsEnum(['type-a', 'type-b', 'outsider'])
   @IsOptional()
   trainingType?: 'type-a' | 'type-b' | 'outsider';
+
+  @ApiProperty({ description: 'Position name', required: false })
+  @IsString()
+  @IsOptional()
+  positionName?: string;
+
+  @ApiProperty({ description: 'Level code start', required: false })
+  @IsString()
+  @IsOptional()
+  levelCodeStart?: string;
+
+  @ApiProperty({ description: 'Level code end', required: false })
+  @IsString()
+  @IsOptional()
+  levelCodeEnd?: string;
+
+  @ApiProperty({ description: 'Position group name', required: false })
+  @IsString()
+  @IsOptional()
+  positionGroupName?: string;
+
+  @ApiProperty({ description: 'Rate mode (CHOICE/ACTUAL_ONLY/UNLIMITED)', required: false })
+  @IsEnum(['CHOICE', 'ACTUAL_ONLY', 'UNLIMITED'])
+  @IsOptional()
+  rateMode?: 'CHOICE' | 'ACTUAL_ONLY' | 'UNLIMITED';
+
+  @ApiProperty({ description: 'Country type (A/B)', required: false })
+  @IsEnum(['A', 'B'])
+  @IsOptional()
+  countryType?: 'A' | 'B';
+
+  @ApiProperty({ description: 'Flat rate amount', required: false })
+  @IsNumber()
+  @IsOptional()
+  flatRateAmount?: number;
 
   @ApiProperty({ description: 'Single room amount (ไม่เกิน)', required: false })
   @IsNumber()

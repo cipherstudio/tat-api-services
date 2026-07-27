@@ -336,6 +336,15 @@ export class UpdateApprovalDto {
   travelType?: string;
 
   @ApiProperty({
+    description: 'Training type (for travelType training-domestic/training-international)',
+    required: false,
+    example: 'type-a',
+  })
+  @IsOptional()
+  @IsString()
+  trainingType?: string;
+
+  @ApiProperty({
     description: 'International sub option',
     required: false,
     example: 'travel_later',

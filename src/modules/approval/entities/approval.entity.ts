@@ -42,6 +42,11 @@ export interface Approval {
   travelType?: string;
 
   /**
+   * The training type (for travelType training-domestic/training-international)
+   */
+  trainingType?: string;
+
+  /**
    * The international sub option
    */
   internationalSubOption?: string;
@@ -350,6 +355,7 @@ export const approvalColumnMap = {
   name: 'name',
   employee_code: 'employeeCode',
   travel_type: 'travelType',
+  training_type: 'trainingType',
   international_sub_option: 'internationalSubOption',
   work_start_date: 'workStartDate',
   work_end_date: 'workEndDate',
@@ -413,6 +419,7 @@ export const approvalReverseColumnMap = {
   name: 'name',
   employeeCode: 'employee_code',
   travelType: 'travel_type',
+  trainingType: 'training_type',
   internationalSubOption: 'international_sub_option',
   workStartDate: 'work_start_date',
   workEndDate: 'work_end_date',

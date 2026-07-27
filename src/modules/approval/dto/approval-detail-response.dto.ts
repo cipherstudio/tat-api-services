@@ -329,6 +329,13 @@ export class ApprovalDetailResponseDto implements Approval {
   travelType?: string;
 
   @ApiProperty({
+    description: 'Training type (for travelType training-domestic/training-international)',
+    required: false,
+    example: 'type-a'
+  })
+  trainingType?: string;
+
+  @ApiProperty({
     description: 'International sub option',
     required: false,
     example: 'travel_later'
