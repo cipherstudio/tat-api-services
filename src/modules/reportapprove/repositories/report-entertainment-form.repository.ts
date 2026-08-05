@@ -140,32 +140,28 @@ export class ReportEntertainmentFormRepository extends KnexBaseRepository<Report
     }
 
     if (searchTerm) {
-      baseQuery = baseQuery.where(
-        'ref.employee_name',
-        'like',
-        `%${searchTerm}%`,
-      );
-      baseQuery = baseQuery.orWhere(
-        'ref.employee_id',
-        'like',
-        `%${searchTerm}%`,
-      );
-      baseQuery = baseQuery.orWhere(
-        'ref.department',
-        'like',
-        `%${searchTerm}%`,
-      );
-      baseQuery = baseQuery.orWhere('ref.job', 'like', `%${searchTerm}%`);
-      baseQuery = baseQuery.orWhere('ref.employee_type', 'like', `%${searchTerm}%`);
-      baseQuery = baseQuery.orWhere('ref.entertainment_type', 'like', `%${searchTerm}%`);
-      baseQuery = baseQuery.orWhere('ref.employee_position', 'like', `%${searchTerm}%`);
-      // Note: section column might not exist in Oracle database
-      // Uncomment the following line if the section column exists
-      baseQuery = baseQuery.orWhere('ref.section', 'like', `%${searchTerm}%`);
+      // ต้องครอบ OR ทั้งชุดไว้ในกลุ่มเดียว ไม่งั้นเงื่อนไขก่อนหน้า (โดยเฉพาะ
+      // ref.created_by = employeeCode ที่จำกัดให้เห็นเฉพาะฟอร์มของตัวเอง) จะถูก OR ข้าม
+      // กลายเป็น (created_by=me AND name like x) OR id like x OR ... → เห็นของคนอื่น
+      baseQuery = baseQuery.where(function () {
+        this.where('ref.employee_name', 'like', `%${searchTerm}%`)
+          .orWhere('ref.employee_id', 'like', `%${searchTerm}%`)
+          .orWhere('ref.department', 'like', `%${searchTerm}%`)
+          .orWhere('ref.job', 'like', `%${searchTerm}%`)
+          .orWhere('ref.employee_type', 'like', `%${searchTerm}%`)
+          .orWhere('ref.entertainment_type', 'like', `%${searchTerm}%`)
+          .orWhere('ref.employee_position', 'like', `%${searchTerm}%`)
+          .orWhere('ref.section', 'like', `%${searchTerm}%`);
+      });
     }
     // Get total count - แยก count query ออกจาก LEFT JOIN เพื่อป้องกันการนับซ้ำ
-    const countQuery = this.knex('report_entertainment_form as ref')
-      .where('ref.created_by', employeeCode);
+    const countQuery = this.knex('report_entertainment_form as ref');
+
+    // ให้ตรงกับ baseQuery — ถ้าไม่มี employeeCode (admin) ต้องไม่กรอง created_by
+    // ไม่งั้น count จะกรองด้วยค่า undefined ในขณะที่ data ไม่กรอง ตัวเลขกับตารางจะไม่ตรงกัน
+    if (employeeCode) {
+      countQuery.where('ref.created_by', employeeCode);
+    }
 
     // Apply same filters to count query
     if (employeeId) {
@@ -223,18 +219,46 @@ export class ReportEntertainmentFormRepository extends KnexBaseRepository<Report
           .orWhere('ref.job', 'like', `%${searchTerm}%`)
           .orWhere('ref.employee_type', 'like', `%${searchTerm}%`)
           .orWhere('ref.entertainment_type', 'like', `%${searchTerm}%`)
-          .orWhere('ref.employee_position', 'like', `%${searchTerm}%`);
-        // Note: section column might not exist in Oracle database
-        // Uncomment the following line if the section column exists
-        // this.orWhere('ref.section', 'like', `%${searchTerm}%`);
+          .orWhere('ref.employee_position', 'like', `%${searchTerm}%`)
+          // ต้องมี section เหมือน baseQuery ไม่งั้นค้นด้วยชื่อ section แล้ว total กับตารางไม่ตรงกัน
+          .orWhere('ref.section', 'like', `%${searchTerm}%`);
       });
     }
 
     const countResult = await countQuery.count('ref.id as count').first();
     const total = Number(countResult?.count || 0);
 
-    // Get paginated data
-    const data = await baseQuery
+    // baseQuery LEFT JOIN report_entertainment_items → 1 แถวต่อ 1 รายการย่อย
+    // ถ้า limit/offset ตรงนี้ จะเป็นการตัด "แถวรายการย่อย" ไม่ใช่ "ฟอร์ม" พอ group แล้ว
+    // ฟอร์มที่ได้จะน้อยกว่า limit (เช่น total 7 แต่แสดง 3) — ต้องหา id ของฟอร์มในหน้านี้ก่อน
+    // distinct คู่ (id, คอลัมน์ที่ใช้เรียง) เพื่อยุบแถวซ้ำจาก join และให้ ORDER BY ใช้ได้บน Oracle
+    const pageIdRows = await baseQuery
+      .clone()
+      .distinct('ref.id', `ref.${orderBy}`)
+      .orderBy(`ref.${orderBy}`, direction)
+      .limit(limit)
+      .offset(offset);
+
+    const pageIds = pageIdRows.map((row: any) => row.id);
+
+    if (pageIds.length === 0) {
+      return {
+        data: [],
+        meta: {
+          total,
+          page,
+          limit,
+          lastPage: Math.ceil(total / limit),
+        },
+      };
+    }
+
+    // ดึงรายการย่อยของเฉพาะฟอร์มในหน้านี้ — query ใหม่ที่มีแต่ whereIn เพื่อไม่ให้ชน
+    // ลำดับ AND/OR ของ filter เดิม (baseQuery ใช้ orWhere แบบไม่จัดกลุ่ม)
+    const data = await this.knex('report_entertainment_form as ref')
+      .leftJoin('entertainment_form_status as efs', 'ref.status_id', 'efs.id')
+      .leftJoin('report_entertainment_items as rei', 'ref.id', 'rei.report_id')
+      .whereIn('ref.id', pageIds)
       .select(
         'ref.id',
         'ref.employee_id',
@@ -270,9 +294,7 @@ export class ReportEntertainmentFormRepository extends KnexBaseRepository<Report
         'rei.amount_text',
         'rei.display_order',
       )
-      .orderBy(`ref.${orderBy}`, direction)
-      .limit(limit)
-      .offset(offset);
+      .orderBy(`ref.${orderBy}`, direction);
 
     // Group data by report ID and transform
     const groupedData = new Map();

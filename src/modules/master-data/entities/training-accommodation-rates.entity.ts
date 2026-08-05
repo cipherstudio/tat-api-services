@@ -25,8 +25,8 @@ export class TrainingAccommodationRates {
   @ApiProperty({ description: 'Rate mode (CHOICE/ACTUAL_ONLY/UNLIMITED)', required: false })
   rateMode?: 'CHOICE' | 'ACTUAL_ONLY' | 'UNLIMITED';
 
-  @ApiProperty({ description: 'Country type (A/B), null = ประเภท ค.', required: false })
-  countryType?: 'A' | 'B';
+  @ApiProperty({ description: 'Country type (A/B/C)', required: false })
+  countryType?: 'A' | 'B' | 'C';
 
   @ApiProperty({ description: 'Flat rate amount (อัตราเหมาจ่าย)', required: false })
   flatRateAmount?: number;

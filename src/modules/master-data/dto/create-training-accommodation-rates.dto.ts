@@ -35,10 +35,10 @@ export class CreateTrainingAccommodationRatesDto {
   @IsOptional()
   rateMode?: 'CHOICE' | 'ACTUAL_ONLY' | 'UNLIMITED';
 
-  @ApiProperty({ description: 'Country type (A/B)', required: false })
-  @IsEnum(['A', 'B'])
+  @ApiProperty({ description: 'Country type (A/B/C)', required: false })
+  @IsEnum(['A', 'B', 'C'])
   @IsOptional()
-  countryType?: 'A' | 'B';
+  countryType?: 'A' | 'B' | 'C';
 
   @ApiProperty({ description: 'Flat rate amount', required: false })
   @IsNumber()
