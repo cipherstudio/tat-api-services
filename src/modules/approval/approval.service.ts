@@ -3763,22 +3763,39 @@ export class ApprovalService {
     const todayStr = new Date().toISOString().split('T')[0];
 
     for (const employeeCode of result.map((r) => r.employeeCode)) {
-      const destination = _checkEligibilityDto.employees.find(
+      // #433 — เจ้าหน้าที่คนหนึ่งเดินทางได้หลายประเทศในใบเดียว (เช่น ลาว แล้วต่อจีน)
+      // frontend ส่งมาทุกปลายทางที่ติ๊กไว้ ถ้าเช็คแค่ปลายทางแรกจะปิดสิทธิ์ทั้งใบ
+      // ทั้งที่ยังมีประเทศที่เบิกได้ จึงต้องถือว่าเบิกไม่ได้ก็ต่อเมื่อ "ทุกปลายทาง" ถูกยกเว้นสิทธิ์
+      const destinations = _checkEligibilityDto.employees.filter(
         (emp) => emp.employeeCode === employeeCode,
       );
 
-      if (destination) {
-        const exemptedInfo = await this.getCountryExemptedInfo(
-          destination.destinationTable,
-          destination.destinationId,
+      if (destinations.length > 0) {
+        const exemptedInfos = await Promise.all(
+          destinations.map((destination) =>
+            this.getCountryExemptedInfo(
+              destination.destinationTable,
+              destination.destinationId,
+            ),
+          ),
         );
 
-        if (exemptedInfo.isExempted) {
+        const allExempted = exemptedInfos.every((info) => info.isExempted);
+
+        if (allExempted) {
+          const exemptedNames = Array.from(
+            new Set(
+              exemptedInfos
+                .map((info) => info.countryName)
+                .filter((name): name is string => Boolean(name)),
+            ),
+          );
+
           this.updateEligibility(
             result,
             employeeCode,
             false,
-            `เป็นประเทศที่ไม่สามารถเบิกได้ (${exemptedInfo.countryName})`,
+            `เป็นประเทศที่ไม่สามารถเบิกได้ (${exemptedNames.join(', ')})`,
           );
           continue;
         }
