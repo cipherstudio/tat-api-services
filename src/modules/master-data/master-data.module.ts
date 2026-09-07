@@ -18,6 +18,7 @@ import { ExpensesVehicleService } from './services/expenses-vehicle.service.js';
 import { CommitteePositionService } from './services/committee-position.service.js';
 import { OutsiderEquivalentService } from './services/outsider-equivalent.service.js';
 import { PerDiemRatesService } from './services/per-diem-rates.service';
+import { TrainingMeetingPerDiemRatesService } from './services/training-meeting-per-diem-rates.service';
 import { AccommodationRatesService } from './services/accommodation-rates.service';
 import { TrainingAccommodationRatesService } from './services/training-accommodation-rates.service';
 import { ExpensesOtherConditionsService } from './services/expenses-other-conditions.service';
@@ -47,6 +48,7 @@ import { ExpensesVehicleController } from './controllers/expenses-vehicle.contro
 import { CommitteePositionController } from './controllers/committee-position.controller.js';
 import { OutsiderEquivalentController } from './controllers/outsider-equivalent.controller.js';
 import { PerDiemRatesController } from './controllers/per-diem-rates.controller';
+import { TrainingMeetingPerDiemRatesController } from './controllers/training-meeting-per-diem-rates.controller';
 import { AccommodationRatesController } from './controllers/accommodation-rates.controller';
 import { TrainingAccommodationRatesController } from './controllers/training-accommodation-rates.controller';
 import { ExpensesOtherConditionsController } from './controllers/expenses-other-conditions.controller';
@@ -76,6 +78,7 @@ import { ExpensesVehicleRepository } from './repositories/expenses-vehicle.repos
 import { CommitteePositionRepository } from './repositories/committee-position.repository.js';
 import { OutsiderEquivalentRepository } from './repositories/outsider-equivalent.repository.js';
 import { PerDiemRatesRepository } from './repositories/per-diem-rates.repository';
+import { TrainingMeetingPerDiemRatesRepository } from './repositories/training-meeting-per-diem-rates.repository';
 import { AccommodationRatesRepository } from './repositories/accommodation-rates.repository';
 import { TrainingAccommodationRatesRepository } from './repositories/training-accommodation-rates.repository';
 import { ExpensesOtherConditionsRepository } from './repositories/expenses-other-conditions.repository';
@@ -127,6 +130,7 @@ import { ReportSettingsRepository } from './repositories/report-settings.reposit
     CommitteePositionController,
     OutsiderEquivalentController,
     PerDiemRatesController,
+    TrainingMeetingPerDiemRatesController,
     AccommodationRatesController,
     TrainingAccommodationRatesController,
     ExpensesOtherConditionsController,
@@ -162,6 +166,7 @@ import { ReportSettingsRepository } from './repositories/report-settings.reposit
     CommitteePositionService,
     OutsiderEquivalentService,
     PerDiemRatesService,
+    TrainingMeetingPerDiemRatesService,
     AccommodationRatesService,
     TrainingAccommodationRatesService,
     ExpensesOtherConditionsService,
@@ -197,6 +202,7 @@ import { ReportSettingsRepository } from './repositories/report-settings.reposit
     CommitteePositionRepository,
     OutsiderEquivalentRepository,
     PerDiemRatesRepository,
+    TrainingMeetingPerDiemRatesRepository,
     AccommodationRatesRepository,
     TrainingAccommodationRatesRepository,
     ExpensesOtherConditionsRepository,
@@ -237,6 +243,7 @@ import { ReportSettingsRepository } from './repositories/report-settings.reposit
     CommitteePositionService,
     OutsiderEquivalentService,
     PerDiemRatesService,
+    TrainingMeetingPerDiemRatesService,
     AccommodationRatesService,
     TrainingAccommodationRatesService,
     ExpensesOtherConditionsService,
