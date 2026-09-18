@@ -57,6 +57,12 @@ export class ReportTravellerForm {
   @ApiProperty({ example: '18:00' })
   return_time: string;
 
+  @ApiProperty({ example: '06:30', required: false })
+  home_departure_time?: string;
+
+  @ApiProperty({ example: '19:00', required: false })
+  home_return_time?: string;
+
   @ApiProperty({ example: '5 days 10 hours' })
   total_time: string;
 

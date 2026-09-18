@@ -96,6 +96,17 @@ export class CreateReportTravellerFormDto {
   @IsString()
   returnTime?: string;
 
+  // #445 เวลาออกจากบ้านพัก/กลับถึงบ้านพัก จากใบรับรองแทนใบเสร็จรับเงินค่าพาหนะ (รายคน)
+  @ApiProperty({ example: '06:30', required: false })
+  @IsOptional()
+  @IsString()
+  homeDepartureTime?: string;
+
+  @ApiProperty({ example: '19:00', required: false })
+  @IsOptional()
+  @IsString()
+  homeReturnTime?: string;
+
   @ApiProperty({ example: '5 days 10 hours' })
   @IsOptional()
   @IsString()
