@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsDate,
+  IsIn,
 } from 'class-validator';
 
 export class CreateReportApproveDto {
@@ -36,6 +37,15 @@ export class CreateReportApproveDto {
   @IsOptional()
   @IsString()
   selectedTravelerCodeStep2?: string;
+
+  @ApiProperty({
+    example: '1',
+    required: false,
+    description: 'ข้อมูลผู้เดินทาง: 1 = ทำเป็นรายบุคคล, 2 = ทำเป็นหมู่คณะ',
+  })
+  @IsOptional()
+  @IsIn(['1', '2'])
+  formMode?: '1' | '2';
 
   @ApiProperty({
     example: 1,

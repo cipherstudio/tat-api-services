@@ -22,6 +22,9 @@ export class ReportApprove {
   @ApiProperty({ example: 'TRAV002', required: false })
   selectedTravelerCodeStep2?: string;
 
+  @ApiProperty({ example: '1', required: false })
+  formMode?: '1' | '2';
+
   @ApiProperty({ example: 1 })
   status: number;
 

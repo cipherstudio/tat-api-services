@@ -159,6 +159,7 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_approve.status',
         'report_approve.selected_traveler_code_step1',
         'report_approve.selected_traveler_code_step2',
+        'report_approve.form_mode',
         'report_approve.created_at',
         'report_approve.updated_at',
         // Status columns
@@ -332,6 +333,7 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
           status: row.status,
           selectedTravelerCodeStep1: row.selectedTravelerCodeStep1,
           selectedTravelerCodeStep2: row.selectedTravelerCodeStep2,
+          formMode: row.formMode,
           createdAt: row.createdAt,
           updatedAt: row.updatedAt,
           statusName: row.statusName,
@@ -594,6 +596,7 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_approve.status',
         'report_approve.selected_traveler_code_step1',
         'report_approve.selected_traveler_code_step2',
+        'report_approve.form_mode',
         'report_approve.created_at',
         'report_approve.updated_at',
         // Status columns
@@ -740,6 +743,7 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
       status: row.status,
       selectedTravelerCodeStep1: row.selectedTravelerCodeStep1,
       selectedTravelerCodeStep2: row.selectedTravelerCodeStep2,
+      formMode: row.formMode,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       statusName: row.statusName,
