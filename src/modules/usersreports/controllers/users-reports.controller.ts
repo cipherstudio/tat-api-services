@@ -351,8 +351,8 @@ export class UsersReportsController {
   }
 
   @Get('clothing')
-  @ApiOperation({ summary: 'รายงานประวัติการเบิกค่าเครื่องแต่งตัว' })
-  @ApiOkResponse({ description: 'รายงานประวัติการเบิกค่าเครื่องแต่งตัวสำเร็จ' })
+  @ApiOperation({ summary: 'รายงานประวัติการเบิกค่าเครื่องแต่งกาย' })
+  @ApiOkResponse({ description: 'รายงานประวัติการเบิกค่าเครื่องแต่งกายสำเร็จ' })
   @ApiQuery({ name: 'page', type: Number, required: false, description: 'Page number' })
   @ApiQuery({ name: 'limit', type: Number, required: false, description: 'Number of items per page' })
   @ApiQuery({ name: 'orderBy', type: String, required: false, description: 'Field to order by' })

@@ -101,7 +101,7 @@ export class UsersReportsService {
   }
 
   /**
-   * รายงานประวัติการเบิกค่าเครื่องแต่งตัว
+   * รายงานประวัติการเบิกค่าเครื่องแต่งกาย
    */
   async getClothingReport(query: UsersReportsQueryDto) {
     const cacheKey = `${this.CACHE_PREFIX}:clothing:${JSON.stringify(query)}`;

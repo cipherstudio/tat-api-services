@@ -3390,7 +3390,7 @@ export class ApprovalService {
     ) {
       // return all employee codes with isEligible false
       result.forEach((r) => {
-        r.reason = 'ประเภทการเดินทางไม่มีสิทธิ์เบิกค่าเครื่องแต่งตัว';
+        r.reason = 'ประเภทการเดินทางไม่มีสิทธิ์เบิกค่าเครื่องแต่งกาย';
       });
       return result;
     }

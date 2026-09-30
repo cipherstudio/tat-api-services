@@ -268,7 +268,7 @@ export class StaffMemberDto {
   entertainmentExpenses?: ApprovalEntertainmentExpenseDto[];
 
   @ApiProperty({
-    description: 'ค่าเครื่องแต่งตัว',
+    description: 'ค่าเครื่องแต่งกาย',
     type: [ApprovalClothingExpenseDto],
     required: false,
   })
