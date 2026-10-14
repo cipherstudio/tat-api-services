@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { Approval } from './entities/approval.entity';
 import { ApprovalStatusLabel } from './entities/approval-status-label.entity';
 import { CreateApprovalDto } from './dto/create-approval.dto';
@@ -192,8 +196,7 @@ export class ApprovalService {
       approvalId,
     );
     const orphanLegacy = legacyAttachments.filter(
-      (att) =>
-        att?.fileId != null && !assignedFileIds.has(Number(att.fileId)),
+      (att) => att?.fileId != null && !assignedFileIds.has(Number(att.fileId)),
     );
     return [...perRowAttachments, ...orphanLegacy];
   }
@@ -304,11 +307,7 @@ export class ApprovalService {
     const rows = await trx('AB_DEPUTY')
       .where('GDP_DEPUTY_STATUS', 0)
       .whereRaw('RTRIM("PMT_CODE") = ?', [code])
-      .select(
-        'GPD_DEPUTY_POG_CODE',
-        'GDP_DEPUTY_POSITION_EX',
-        'POG_CODE',
-      );
+      .select('GPD_DEPUTY_POG_CODE', 'GDP_DEPUTY_POSITION_EX', 'POG_CODE');
     if (!rows.length) {
       return false;
     }
@@ -873,15 +872,17 @@ export class ApprovalService {
           'approval_continuous_signature',
           approvalId,
         );
-        const accommodationTransportAtts = await this.attachmentService.getAttachments(
-          'approval_accommodation_transport_expense',
-          approvalId,
-        );
+        const accommodationTransportAtts =
+          await this.attachmentService.getAttachments(
+            'approval_accommodation_transport_expense',
+            approvalId,
+          );
         // #ไฟล์แนบ รวม snapshot ตอนตีกลับ (bucket แยก) เพื่อให้ table list หมวด "รายการขออนุมัติที่ถูกปฏิเสธ" แสดงได้
-        const rejectionSnapshotAtts = await this.attachmentService.getAttachments(
-          'approval_rejection_snapshot',
-          approvalId,
-        );
+        const rejectionSnapshotAtts =
+          await this.attachmentService.getAttachments(
+            'approval_rejection_snapshot',
+            approvalId,
+          );
         // legacy ที่ยังปนใน approval_document → กรองออกจากไฟล์ user (documentAtts) แต่คงไว้ในผลรวม
         const documentAttsUser = documentAtts.filter(
           (a) => !this.isRejectionSnapshotFileName(a.fileName),
@@ -925,9 +926,12 @@ export class ApprovalService {
         );
       for (const row of refRows) {
         const hasExpense =
-          (row.form3TotalOutbound != null && Number(row.form3TotalOutbound) !== 0) ||
-          (row.form3TotalInbound != null && Number(row.form3TotalInbound) !== 0) ||
-          (row.form4TotalAmount != null && Number(row.form4TotalAmount) !== 0) ||
+          (row.form3TotalOutbound != null &&
+            Number(row.form3TotalOutbound) !== 0) ||
+          (row.form3TotalInbound != null &&
+            Number(row.form3TotalInbound) !== 0) ||
+          (row.form4TotalAmount != null &&
+            Number(row.form4TotalAmount) !== 0) ||
           (row.form5TotalAmount != null && Number(row.form5TotalAmount) !== 0);
         approvalRefHasExpenseMap.set(row.id, hasExpense);
       }
@@ -1440,7 +1444,10 @@ export class ApprovalService {
           const accommodationTransportExpenses = await this.knexService
             .knex('approval_accommodation_transport_expense as ate')
             .leftJoin('files as f', 'ate.attachment_id', 'f.id')
-            .where('ate.approval_accommodation_expense_id', accommodationExpense.id)
+            .where(
+              'ate.approval_accommodation_expense_id',
+              accommodationExpense.id,
+            )
             .where('ate.approval_id', id)
             .select(
               'ate.id',
@@ -1543,7 +1550,8 @@ export class ApprovalService {
           leaveOrderEffectiveDate:
             spouseCompanionRow.leaveOrderEffectiveDate ?? undefined,
           leaveOrderFileId: spouseCompanionRow.leaveOrderFileId ?? undefined,
-          leaveOrderFileName: spouseCompanionRow.leaveOrderFileName ?? undefined,
+          leaveOrderFileName:
+            spouseCompanionRow.leaveOrderFileName ?? undefined,
           followTravelDate: spouseCompanionRow.followTravelDate ?? undefined,
           reason: spouseCompanionRow.reason ?? undefined,
         };
@@ -1593,7 +1601,15 @@ export class ApprovalService {
     const otherExpenses = await this.knexService
       .knex('approval_other_expense')
       .where('approval_id', id)
-      .select('id', 'type', 'amount', 'position', 'reason', 'acknowledged');
+      .select(
+        'id',
+        'type',
+        'amount',
+        'position',
+        'reason',
+        'acknowledged',
+        'coordinator_name as coordinatorName', // #458
+      );
 
     // Get conditions
     const conditions = await this.knexService
@@ -1706,18 +1722,12 @@ export class ApprovalService {
       approval.recordType === 'delegate' &&
       !!approval.createdEmployeeCode &&
       approval.employeeCode !== approval.createdEmployeeCode;
-    const delegateCreatorCode = isDelegate
-      ? String(approval.createdEmployeeCode).trim()
-      : '';
-
     const continuousApproval = rawContinuousRows.map(
       (row: Record<string, unknown>) => {
         const approverPositionSnapshot =
           row.approverPositionSnapshot ?? row.APPROVERPOSITIONSNAPSHOT;
-        const positionFromHr =
-          row.positionFromHr ?? row.POSITIONFROMHR;
-        const positionFromCode =
-          row.positionFromCode ?? row.POSITIONFROMCODE;
+        const positionFromHr = row.positionFromHr ?? row.POSITIONFROMHR;
+        const positionFromCode = row.positionFromCode ?? row.POSITIONFROMCODE;
         const createdByPositionSnapshot =
           row.createdByPositionSnapshot ?? row.CREATEDBYPOSITIONSNAPSHOT;
         const createdPositionFromHr =
@@ -1756,18 +1766,18 @@ export class ApprovalService {
         // → ทุกแถวในใบ delegate ใช้ตำแหน่ง HR ของผู้สร้างจริง (vp4ot2 join จาก ac.created_by) เสมอ
         const createdPosition = (
           isDelegate
-            ? createdPositionFromHr ?? createdByPositionSnapshot
-            : createdByPositionSnapshot ?? createdPositionFromHr
+            ? (createdPositionFromHr ?? createdByPositionSnapshot)
+            : (createdByPositionSnapshot ?? createdPositionFromHr)
         ) as string | null;
 
         return {
           ...out,
           // #385.2: ถ้ามี position_code stamp → ใช้ชื่อตำแหน่งจาก code นั้นก่อน
           // (ตรงกับตำแหน่งที่ใช้จริงในขั้นนั้น ไม่ปน รักษาการ กรณี REVIEW ปกติ)
-          position:
-            (positionFromCode ?? approverPositionSnapshot ?? positionFromHr ?? null) as
-              | string
-              | null,
+          position: (positionFromCode ??
+            approverPositionSnapshot ??
+            positionFromHr ??
+            null) as string | null,
           createdPosition: createdPosition ?? null,
           stepRole: (stepRoleRaw ?? null) as string | null,
           positionCode: (positionCodeRaw ?? null) as string | null,
@@ -1946,10 +1956,14 @@ export class ApprovalService {
     }
 
     // โหลดข้อมูลไฟล์ checklist ถ้ามี
-    let checklistDocumentAttachment: { fileId: number; fileName?: string; path?: string } | undefined;
+    let checklistDocumentAttachment:
+      | { fileId: number; fileName?: string; path?: string }
+      | undefined;
     if (approval.checklistDocumentAttachmentId) {
       try {
-        const file = await this.filesService.findById(approval.checklistDocumentAttachmentId);
+        const file = await this.filesService.findById(
+          approval.checklistDocumentAttachmentId,
+        );
         checklistDocumentAttachment = {
           fileId: file.id,
           fileName: file.originalName,
@@ -1967,7 +1981,11 @@ export class ApprovalService {
     // (id ของ approval_status_history เป็น auto-increment จึงใช้แทนลำดับเวลาได้)
     const rejectedRows = await this.knexService
       .knex('approval_status_history as ash')
-      .join('approval_status_labels as asl', 'ash.approval_status_label_id', 'asl.id')
+      .join(
+        'approval_status_labels as asl',
+        'ash.approval_status_label_id',
+        'asl.id',
+      )
       .where('ash.approval_id', id)
       .where('asl.status_code', 'REJECTED')
       .orderBy('ash.id', 'asc')
@@ -1982,7 +2000,11 @@ export class ApprovalService {
       // มี DRAFT ใน history หลัง REJECTED นี้ = user ได้กด save หลังตีกลับแล้ว
       const draftAfter = await this.knexService
         .knex('approval_status_history as ash')
-        .join('approval_status_labels as asl', 'ash.approval_status_label_id', 'asl.id')
+        .join(
+          'approval_status_labels as asl',
+          'ash.approval_status_label_id',
+          'asl.id',
+        )
         .where('ash.approval_id', id)
         .where('asl.status_code', 'DRAFT')
         .where('ash.id', '>', rejId)
@@ -2246,7 +2268,9 @@ export class ApprovalService {
         // #408 ไม่ลบ approval_continuous ตอน save form อีกต่อไป — มันคือ audit trail เส้นทางอนุมัติ
         // (append ทุก action) ที่ /history + PDF ใช้. การลบทำลายประวัติ (รวม step ตีกลับ) ตอน save ร่าง.
         // continuous จะถูกสร้างเฉพาะตอน "ส่งขออนุมัติ" (ดู block submitForApproval ด้านล่าง) เท่านั้น.
-        await trx('approval_clothing_expense').where('approval_id', id).delete();
+        await trx('approval_clothing_expense')
+          .where('approval_id', id)
+          .delete();
 
         for (const staffMember of updateDto.staffMembers) {
           const [insertedStaffMember] = await trx('approval_staff_members')
@@ -2438,7 +2462,11 @@ export class ApprovalService {
                     for (const transportExpense of workLocation.accommodationTransportExpenses) {
                       // Extract attachment_id from files array if present
                       let attachmentId = transportExpense.attachmentId ?? null;
-                      if (transportExpense.files && Array.isArray(transportExpense.files) && transportExpense.files.length > 0) {
+                      if (
+                        transportExpense.files &&
+                        Array.isArray(transportExpense.files) &&
+                        transportExpense.files.length > 0
+                      ) {
                         attachmentId = transportExpense.files[0].fileId;
                       }
 
@@ -2535,23 +2563,26 @@ export class ApprovalService {
 
                   if (updateDto.travelType === 'international') {
                     const { start: tripStart } =
-                      this.getFirstTravelDateRangeFromDto(updateDto.travelDateRanges);
+                      this.getFirstTravelDateRangeFromDto(
+                        updateDto.travelDateRanges,
+                      );
                     workStartDate = tripStart;
                   } else if (isTemporaryTravel) {
-                    const { start, end } =
-                      this.getCheckedWorkLocationDateRange(staffMember.workLocations);
+                    const { start, end } = this.getCheckedWorkLocationDateRange(
+                      staffMember.workLocations,
+                    );
                     workStartDate = start ?? updateDto.workStartDate ?? null;
                     workEndDate = end ?? updateDto.workEndDate ?? null;
                   }
 
-                  let reportingDateForDb: string | null = null;
+                  const reportingDateForDb: string | null = null;
                   if (isTemporaryTravel) {
                     if (workStartDate) {
-                      nextClaimDate = this.calculateNextClaimDate(workStartDate);
+                      nextClaimDate =
+                        this.calculateNextClaimDate(workStartDate);
                     }
                   }
 
-                  let clothingExpenseId;
                   if (existingExpense) {
                     await trx('approval_clothing_expense')
                       .where({
@@ -2571,11 +2602,8 @@ export class ApprovalService {
                         attachment_id: expense.attachmentId ?? null,
                         updated_at: new Date(),
                       });
-                    clothingExpenseId = existingExpense.id;
                   } else {
-                    const [insertedClothingExpense] = await trx(
-                      'approval_clothing_expense',
-                    )
+                    await trx('approval_clothing_expense')
                       .insert({
                         approval_id: id,
                         staff_member_id: newStaffMemberId,
@@ -2594,7 +2622,6 @@ export class ApprovalService {
                         updated_at: new Date(),
                       })
                       .returning('id');
-                    clothingExpenseId = insertedClothingExpense.id;
                   }
                 }
               }
@@ -2650,6 +2677,7 @@ export class ApprovalService {
               position: expense.position,
               reason: expense.reason,
               acknowledged: expense.acknowledged,
+              coordinator_name: expense.coordinatorName ?? null, // #458
               created_at: new Date(),
               updated_at: new Date(),
             });
@@ -2836,12 +2864,11 @@ export class ApprovalService {
             String(updateDto.finalStaffEmployeeCode).trim() &&
           !updateDto.staffIsDeputy &&
           !updateDto.finalStaffIsDeputy;
-        const submitStepRole = submitIsCase1SelfFinalNoDeputy ? 'FINAL' : 'REVIEW';
+        const submitStepRole = submitIsCase1SelfFinalNoDeputy
+          ? 'FINAL'
+          : 'REVIEW';
 
-        if (
-          latestContinuous &&
-          latestContinuous.created_by === employeeCode
-        ) {
+        if (latestContinuous && latestContinuous.created_by === employeeCode) {
           await trx('approval_continuous')
             .where('id', latestContinuous.id)
             .update({
@@ -2862,9 +2889,7 @@ export class ApprovalService {
               updated_at: now,
             });
         } else {
-          const [insertedContinuousApproval] = await trx(
-            'approval_continuous',
-          )
+          await trx('approval_continuous')
             .insert({
               approval_id: id,
               employee_code: updateDto.staffEmployeeCode,
@@ -3005,9 +3030,15 @@ export class ApprovalService {
         const allTransportAttachments: { fileId: number; fileName?: string }[] =
           [];
         for (const staffMember of updateDto.staffMembers) {
-          if (staffMember.workLocations && Array.isArray(staffMember.workLocations)) {
+          if (
+            staffMember.workLocations &&
+            Array.isArray(staffMember.workLocations)
+          ) {
             for (const workLocation of staffMember.workLocations) {
-              if (workLocation.accommodationTransportExpenses && Array.isArray(workLocation.accommodationTransportExpenses)) {
+              if (
+                workLocation.accommodationTransportExpenses &&
+                Array.isArray(workLocation.accommodationTransportExpenses)
+              ) {
                 for (const transportExpense of workLocation.accommodationTransportExpenses) {
                   const hasNewFile =
                     transportExpense.files &&
@@ -3134,9 +3165,11 @@ export class ApprovalService {
 
       // Delete orphaned files after commit (fire-and-forget to avoid holding connections)
       if (pendingFileDeletes.length > 0) {
-        this.attachmentService.deleteFilesInBackground(pendingFileDeletes).catch((err) => {
-          console.warn('Background file cleanup error:', err.message);
-        });
+        this.attachmentService
+          .deleteFilesInBackground(pendingFileDeletes)
+          .catch((err) => {
+            console.warn('Background file cleanup error:', err.message);
+          });
       }
 
       // Invalidate the cache
@@ -3150,7 +3183,11 @@ export class ApprovalService {
       // #407: คำนวณ printRevision หลัง commit แล้วแนบไปกับ response ให้ frontend อัปเดต print number ได้ทันที
       const rejRows = await this.knexService
         .knex('approval_status_history as ash')
-        .join('approval_status_labels as asl', 'ash.approval_status_label_id', 'asl.id')
+        .join(
+          'approval_status_labels as asl',
+          'ash.approval_status_label_id',
+          'asl.id',
+        )
         .where('ash.approval_id', id)
         .where('asl.status_code', 'REJECTED')
         .orderBy('ash.id', 'asc')
@@ -3158,18 +3195,26 @@ export class ApprovalService {
       let printRevision = 1;
       for (const rej of rejRows) {
         const rejId = Number(
-          (rej as Record<string, unknown>)?.id ?? (rej as Record<string, unknown>)?.ID ?? 0,
+          (rej as Record<string, unknown>)?.id ??
+            (rej as Record<string, unknown>)?.ID ??
+            0,
         );
         const draftAfter = await this.knexService
           .knex('approval_status_history as ash')
-          .join('approval_status_labels as asl', 'ash.approval_status_label_id', 'asl.id')
+          .join(
+            'approval_status_labels as asl',
+            'ash.approval_status_label_id',
+            'asl.id',
+          )
           .where('ash.approval_id', id)
           .where('asl.status_code', 'DRAFT')
           .where('ash.id', '>', rejId)
           .first();
         if (draftAfter) printRevision++;
       }
-      (updatedApprovalRecord as unknown as Record<string, unknown>).printRevision = printRevision;
+      (
+        updatedApprovalRecord as unknown as Record<string, unknown>
+      ).printRevision = printRevision;
 
       return updatedApprovalRecord;
     } catch (error) {
@@ -3329,7 +3374,9 @@ export class ApprovalService {
     try {
       let nextClaimDate = updateDatesDto.nextClaimDate;
       if (updateDatesDto.reportingDate && !updateDatesDto.nextClaimDate) {
-        nextClaimDate = this.calculateNextClaimDate(updateDatesDto.reportingDate);
+        nextClaimDate = this.calculateNextClaimDate(
+          updateDatesDto.reportingDate,
+        );
       }
 
       await trx('approval_clothing_expense').where('approval_id', id).update({
@@ -3364,17 +3411,19 @@ export class ApprovalService {
     );
 
     // set default result isEligible false
-    const result: ClothingExpenseEligibilityResponseDto[] = employeeCodes.map((employeeCode) => ({
-      employeeCode,
-      isEligible: false,
-    }));
+    const result: ClothingExpenseEligibilityResponseDto[] = employeeCodes.map(
+      (employeeCode) => ({
+        employeeCode,
+        isEligible: false,
+      }),
+    );
 
     // if (checkEligibilityDto.approval_id) {
     //   const existingApproval = await this.knexService
     //     .knex('approval_clothing_expense')
     //     .where('approval_id', checkEligibilityDto.approval_id)
     //     .first();
-      
+
     //   if (existingApproval) {
     //     result.forEach((r) => {
     //       r.isEligible = true;
@@ -3384,9 +3433,12 @@ export class ApprovalService {
     // }
 
     if (
-      !['international', 'temporary-international', 'training-international', 'temporary-both'].includes(
-        checkEligibilityDto.travelType,
-      )
+      ![
+        'international',
+        'temporary-international',
+        'training-international',
+        'temporary-both',
+      ].includes(checkEligibilityDto.travelType)
     ) {
       // return all employee codes with isEligible false
       result.forEach((r) => {
@@ -3477,7 +3529,9 @@ export class ApprovalService {
     }
   }
 
-  private formatDateThaiBuddhist(isoDay: string | null | undefined): string | null {
+  private formatDateThaiBuddhist(
+    isoDay: string | null | undefined,
+  ): string | null {
     const d = this.toDateOnlyString(isoDay);
     if (!d) return null;
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d);
@@ -3522,8 +3576,7 @@ export class ApprovalService {
       return true;
     }
     const aid = row.approval_id;
-    const hasApproval =
-      aid != null && aid !== '' && String(aid).trim() !== '';
+    const hasApproval = aid != null && aid !== '' && String(aid).trim() !== '';
     if (hasApproval) {
       return false;
     }
@@ -3577,11 +3630,7 @@ export class ApprovalService {
       return msgPermanentIncomplete;
     }
 
-    if (
-      effectiveNextPerm &&
-      todayStr < effectiveNextPerm &&
-      blockingPerm
-    ) {
+    if (effectiveNextPerm && todayStr < effectiveNextPerm && blockingPerm) {
       const reportingD = this.toDateOnlyString(
         blockingPerm.reporting_date as string | Date | null | undefined,
       );
@@ -3621,8 +3670,9 @@ export class ApprovalService {
     employeeCodeInput: string,
   ): Promise<PwJobInternationalOrganizeCheckResponseDto> {
     const employeeCodeInputNorm = String(employeeCodeInput ?? '').trim();
-    const emplidUsedForQuery =
-      this.cleanEmplidForPwJobQuery(employeeCodeInputNorm);
+    const emplidUsedForQuery = this.cleanEmplidForPwJobQuery(
+      employeeCodeInputNorm,
+    );
 
     const base: PwJobInternationalOrganizeCheckResponseDto = {
       employeeCodeInput: employeeCodeInputNorm,
@@ -3684,8 +3734,9 @@ export class ApprovalService {
     employeeCodeInput: string,
   ): Promise<PwJobSpouseAccompanyLeaveCheckResponseDto> {
     const employeeCodeInputNorm = String(employeeCodeInput ?? '').trim();
-    const emplidUsedForQuery =
-      this.cleanEmplidForPwJobQuery(employeeCodeInputNorm);
+    const emplidUsedForQuery = this.cleanEmplidForPwJobQuery(
+      employeeCodeInputNorm,
+    );
 
     const base: PwJobSpouseAccompanyLeaveCheckResponseDto = {
       found: false,
@@ -3702,13 +3753,7 @@ export class ApprovalService {
       .whereRaw('RTRIM("EMPLID") = ?', [emplidUsedForQuery])
       .whereRaw('RTRIM("ACTION") = ?', ['LOA'])
       .whereRaw('RTRIM("ACTION_REASON") IN (?, ?)', ['001', '003'])
-      .select([
-        'EFFDT',
-        'EFFSEQ',
-        'ACTION',
-        'ACTION_REASON',
-        'X_ORDER_NO',
-      ])
+      .select(['EFFDT', 'EFFSEQ', 'ACTION', 'ACTION_REASON', 'X_ORDER_NO'])
       .orderBy('EFFDT', 'desc')
       .orderBy('EFFSEQ', 'desc')
       .first();
@@ -3736,13 +3781,12 @@ export class ApprovalService {
         (row as { EFFSEQ?: unknown }).EFFSEQ != null
           ? Number((row as { EFFSEQ: unknown }).EFFSEQ)
           : undefined,
-      action: String((row as { ACTION?: unknown }).ACTION ?? '')
-        .trim()
-        || undefined,
-      action_reason: String(
-        (row as { ACTION_REASON?: unknown }).ACTION_REASON ?? '',
-      ).trim()
-        || undefined,
+      action:
+        String((row as { ACTION?: unknown }).ACTION ?? '').trim() || undefined,
+      action_reason:
+        String(
+          (row as { ACTION_REASON?: unknown }).ACTION_REASON ?? '',
+        ).trim() || undefined,
       xOrderNo: xOrderNoRaw || undefined,
     };
   }
@@ -3819,18 +3863,16 @@ export class ApprovalService {
           return this.toDateOnlyString(raw) == null;
         });
         if (rowsMissingNextClaim.length > 0) {
-          const shouldBlockForMissingNext = rowsMissingNextClaim.some(
-            (row) => {
-              const ws = this.toDateOnlyString(
-                (row as { work_start_date?: string | Date | null })
-                  .work_start_date,
-              );
-              if (ws == null) {
-                return true;
-              }
-              return todayStr >= ws;
-            },
-          );
+          const shouldBlockForMissingNext = rowsMissingNextClaim.some((row) => {
+            const ws = this.toDateOnlyString(
+              (row as { work_start_date?: string | Date | null })
+                .work_start_date,
+            );
+            if (ws == null) {
+              return true;
+            }
+            return todayStr >= ws;
+          });
           if (shouldBlockForMissingNext) {
             this.updateEligibility(
               result,
@@ -3892,7 +3934,10 @@ export class ApprovalService {
     destinationTable: string,
     destinationId: number,
   ): Promise<boolean> {
-    const info = await this.getCountryExemptedInfo(destinationTable, destinationId);
+    const info = await this.getCountryExemptedInfo(
+      destinationTable,
+      destinationId,
+    );
     return info.isExempted;
   }
 
@@ -3946,14 +3991,16 @@ export class ApprovalService {
       return { isExempted: false, countryName: resolved.countryName };
     }
 
-    const groupCode =
-      mode === 'temporary' ? 'TEMP_EXEMPTED' : 'PERM_EXEMPTED';
-    const assignmentType =
-      mode === 'temporary' ? 'TEMPORARY' : 'PERMANENT';
+    const groupCode = mode === 'temporary' ? 'TEMP_EXEMPTED' : 'PERM_EXEMPTED';
+    const assignmentType = mode === 'temporary' ? 'TEMPORARY' : 'PERMANENT';
 
     const exemptedGroup = await this.knexService
       .knex('attire_destination_group_countries as adgc')
-      .join('attire_destination_groups as adg', 'adgc.destination_group_id', 'adg.id')
+      .join(
+        'attire_destination_groups as adg',
+        'adgc.destination_group_id',
+        'adg.id',
+      )
       .where('adgc.country_id', resolved.countryId)
       .where('adg.group_code', groupCode)
       .where('adg.assignment_type', assignmentType)
@@ -3978,7 +4025,7 @@ export class ApprovalService {
 
   // private async getPwJob(employeeCode: string | number) {
   //   this.logger.log(`[GetPwJob] Querying PS_PW_JOB for employee: ${employeeCode}`);
-  //   
+  //
   //   // จัดการ employee code ที่มี '-'
   //   let cleanEmployeeCode = employeeCode;
   //   if (typeof employeeCode === 'string' && employeeCode.includes('-')) {
@@ -3997,15 +4044,15 @@ export class ApprovalService {
   //     .andWhere('ACTION', 'XFR')
   //     .andWhere('ACTION_REASON', '008')
   //     .orderBy('EFFDT', 'desc');
-  //   
+  //
   //   const result = await query.first();
-  //   
+  //
   //   if (result) {
   //     this.logger.log(`[GetPwJob] Found PS_PW_JOB record: EFFDT=${result.EFFDT}, DEPTID=${result.DEPTID}`);
   //   } else {
   //     this.logger.log(`[GetPwJob] No PS_PW_JOB record found for employee ${cleanEmployeeCode}`);
   //   }
-  //   
+  //
   //   return result;
   // }
 
@@ -4058,7 +4105,7 @@ export class ApprovalService {
   //     const destination = checkEligibilityDto.employees.find(
   //       (emp) => emp.employeeCode === employeeCode,
   //     );
-  //     
+  //
   //     let currentDestinationGroup;
   //     if (destination.destinationTable === 'countries') {
   //       const currentCountry = await this.knexService
@@ -4143,13 +4190,13 @@ export class ApprovalService {
   // ): Promise<void> {
   //   this.logger.log(`[ProcessPwJob] Processing for employee ${employeeCode}`);
   //   this.logger.log(`[ProcessPwJob] EFFDT: ${pwJob.EFFDT}, workStartDate: ${checkEligibilityDto.workStartDate}`);
-  //   
+  //
   //   // เช็ค 2 ปีจาก EFFDT
   //   const isOverTwoYears = this.isOverTwoYears(
   //     pwJob.EFFDT,
   //     checkEligibilityDto.workStartDate,
   //   );
-  //   
+  //
   //   this.logger.log(`[ProcessPwJob] Is over 2 years: ${isOverTwoYears}, setting isEligible = ${isOverTwoYears}`);
   //   this.updateEligibility(result, employeeCode, isOverTwoYears);
   // }
@@ -4257,11 +4304,7 @@ export class ApprovalService {
         return nextClaimDate.toISOString().split('T')[0];
       }
       baseUtc = new Date(
-        Date.UTC(
-          d.getUTCFullYear(),
-          d.getUTCMonth(),
-          d.getUTCDate(),
-        ),
+        Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()),
       );
     }
     const next = new Date(baseUtc.getTime());
@@ -4400,7 +4443,8 @@ export class ApprovalService {
         .first();
 
       // Get pending approvals using the same conditions as /api/v1/approvals
-      const pendingApprovalsToApprove = await this.knexService.knex('approval')
+      const pendingApprovalsToApprove = await this.knexService
+        .knex('approval')
         .where('approval.continuous_employee_code', employeeCode)
         .where('approval.approval_status_label_id', pendingStatusLabel?.id)
         .whereNull('approval.deleted_at')
@@ -4533,11 +4577,9 @@ export class ApprovalService {
       // Count pending approvals to approve
       summary.toApprove = pendingApprovalsToApprove.length;
 
-      // Process toApprove breakdown by travel type
-      const toApproveBreakdownMap = new Map<string, number>();
-      
       // Get detailed data for toApprove breakdown using the same conditions as /api/v1/approvals
-      const toApproveDetails = await this.knexService.knex('approval')
+      const toApproveDetails = await this.knexService
+        .knex('approval')
         .where('approval.continuous_employee_code', employeeCode)
         .where('approval.approval_status_label_id', pendingStatusLabel?.id)
         .whereNull('approval.deleted_at')
@@ -4545,7 +4587,7 @@ export class ApprovalService {
 
       toApproveDetails.forEach((item) => {
         const travelType = item.travel_type || 'unknown';
-        
+
         // Map travel types using the same switch case as other statistics
         let travelTypeKey: keyof TravelTypeBreakdownDto;
         switch (travelType) {
@@ -4561,7 +4603,7 @@ export class ApprovalService {
           default:
             travelTypeKey = 'unknown';
         }
-        
+
         breakdown.toApprove.byTravelType[travelTypeKey] += 1;
       });
 
@@ -4666,15 +4708,20 @@ export class ApprovalService {
     // ผู้อนุมัติลำดับถัดไปกดส่งต่อ/อนุมัติไม่ได้ — โยน error เพื่อให้ frontend โชว์ข้อความเป็น toast
     const parentApprovalStatus = await this.knexService
       .knex('approval as a')
-      .leftJoin('approval_status_labels as asl', 'a.approval_status_label_id', 'asl.id')
+      .leftJoin(
+        'approval_status_labels as asl',
+        'a.approval_status_label_id',
+        'asl.id',
+      )
       .where('a.id', existingContinuous.approval_id)
       .select('asl.status_code as statusCode')
       .first();
-    const parentStatusCode = (
-      (parentApprovalStatus as Record<string, unknown> | undefined)?.statusCode ??
-      (parentApprovalStatus as Record<string, unknown> | undefined)?.STATUSCODE ??
-      null
-    ) as string | null;
+    const parentStatusCode = ((
+      parentApprovalStatus as Record<string, unknown> | undefined
+    )?.statusCode ??
+      (parentApprovalStatus as Record<string, unknown> | undefined)
+        ?.STATUSCODE ??
+      null) as string | null;
     if (parentStatusCode === 'DRAFT') {
       throw new BadRequestException(
         'บันทึกข้อมูลไม่สำเร็จ เอกสารอยู่ระหว่างการดึงกลับเพื่อแก้ไขโดยเจ้าของเรื่อง',
@@ -4690,7 +4737,8 @@ export class ApprovalService {
         await trx('approval')
           .where('id', existingContinuous.approval_id)
           .update({
-            checklist_document_attachment_id: updateDto.checklistDocumentAttachmentId,
+            checklist_document_attachment_id:
+              updateDto.checklistDocumentAttachmentId,
             updated_at: new Date(),
           });
         await trx('approval_attachments')
@@ -4946,7 +4994,8 @@ export class ApprovalService {
           // ตำแหน่งปกติหรือรักษาการ จึง match แค่ "คน" (ข้าม deputy check) ไม่งั้น final ที่เป็น
           // รักษาการจะกลายเป็น REVIEW. เอกสารใหม่ที่บันทึก position_code แล้วยังใช้ position-bound
           // เต็ม (กัน #318/#385)
-          const finalPositionRecorded = approval.final_staff_position_code != null;
+          const finalPositionRecorded =
+            approval.final_staff_position_code != null;
           const nextDeputyMatchesFinal =
             !finalPositionRecorded ||
             approval.final_staff_is_deputy == null ||
@@ -4978,8 +5027,11 @@ export class ApprovalService {
           // #318: คนเดียวเป็นทั้ง REVIEW/FINAL — ถ้า current row เป็น REVIEW (step_role='REVIEW')
           // ให้ next row เป็น FINAL เสมอ (ไม่ต้อง query APPROVED เพราะ DB update ยังไม่ commit)
           const currentRowIsReview =
-            String(existingContinuous.step_role ?? existingContinuous.STEP_ROLE ?? '')
-              .toUpperCase() === 'REVIEW';
+            String(
+              existingContinuous.step_role ??
+                existingContinuous.STEP_ROLE ??
+                '',
+            ).toUpperCase() === 'REVIEW';
           const nextIsFinal =
             !!approval.final_staff_employee_code &&
             updateDto.employeeCode === approval.final_staff_employee_code &&
@@ -5615,6 +5667,7 @@ export class ApprovalService {
             position: expense.position,
             reason: expense.reason,
             acknowledged: expense.acknowledged,
+            coordinator_name: expense.coordinatorName ?? null, // #458
             created_at: new Date(),
             updated_at: new Date(),
           });
@@ -5719,7 +5772,9 @@ export class ApprovalService {
         document_number: originalApproval.documentNumber,
         document_tel: originalApproval.documentTel,
         document_to: originalApproval.documentTo,
-        document_title: originalApproval.documentTitle ? `${originalApproval.documentTitle} (ยกเลิก)` : '(ยกเลิก)',
+        document_title: originalApproval.documentTitle
+          ? `${originalApproval.documentTitle} (ยกเลิก)`
+          : '(ยกเลิก)',
         attachment_id: null,
         is_first_time_travel: originalApproval.isFirstTimeTravel ?? null,
         form3_total_outbound: 0,
@@ -6435,7 +6490,10 @@ export class ApprovalService {
     );
   }
 
-  async getApprovalFiles(id: number, type?: string): Promise<AttachmentResponseDto[]> {
+  async getApprovalFiles(
+    id: number,
+    type?: string,
+  ): Promise<AttachmentResponseDto[]> {
     const approval = await this.findById(id);
     if (!approval) {
       throw new NotFoundException(`Approval with ID ${id} not found`);
@@ -6455,7 +6513,9 @@ export class ApprovalService {
       ];
 
       if (!validTypes.includes(type)) {
-        throw new BadRequestException(`Invalid attachment type. Valid types are: ${validTypes.join(', ')}`);
+        throw new BadRequestException(
+          `Invalid attachment type. Valid types are: ${validTypes.join(', ')}`,
+        );
       }
 
       return await this.attachmentService.getAttachments(type, id);
@@ -6474,22 +6534,26 @@ export class ApprovalService {
       'approval_budgets',
       id,
     );
-    const clothingExpenseAttachments = await this.attachmentService.getAttachments(
-      'approval_clothing_expense',
-      id,
-    );
-    const continuousSignatureAttachments = await this.attachmentService.getAttachments(
-      'approval_continuous_signature',
-      id,
-    );
-    const accommodationTransportExpenseAttachments = await this.attachmentService.getAttachments(
-      'approval_accommodation_transport_expense',
-      id,
-    );
-    const checklistDocumentAttachments = await this.attachmentService.getAttachments(
-      'approval_checklist_document',
-      id,
-    );
+    const clothingExpenseAttachments =
+      await this.attachmentService.getAttachments(
+        'approval_clothing_expense',
+        id,
+      );
+    const continuousSignatureAttachments =
+      await this.attachmentService.getAttachments(
+        'approval_continuous_signature',
+        id,
+      );
+    const accommodationTransportExpenseAttachments =
+      await this.attachmentService.getAttachments(
+        'approval_accommodation_transport_expense',
+        id,
+      );
+    const checklistDocumentAttachments =
+      await this.attachmentService.getAttachments(
+        'approval_checklist_document',
+        id,
+      );
 
     const allAttachments = [
       ...approvalDocuments,
@@ -6507,7 +6571,7 @@ export class ApprovalService {
   async updateStaffMembersCancelledStatus(
     id: number,
     updateDto: any,
-    employeeCode: string,
+    _employeeCode: string,
   ): Promise<any> {
     // ตรวจสอบว่า approval มีอยู่จริงหรือไม่
     const approval = await this.findById(id);

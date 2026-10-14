@@ -20,8 +20,20 @@ export class OtherExpenseDto {
   @IsString()
   reason?: string;
 
-  @ApiProperty({ description: 'Whether the expense is acknowledged', required: false })
+  @ApiProperty({
+    description: 'Whether the expense is acknowledged',
+    required: false,
+  })
   @IsOptional()
   @IsBoolean()
   acknowledged?: boolean;
-} 
+
+  @ApiProperty({
+    description:
+      'ผู้ประสานงานที่ได้รับมอบหมาย (#458 — ค่าเลี้ยงรับรองแบบพนักงานประสานงาน)',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  coordinatorName?: string;
+}
