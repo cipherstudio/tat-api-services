@@ -21,7 +21,7 @@ export class UpdateReportAllowanceDto {
   @IsOptional()
   subCategory?: string;
 
-  @IsInt()
+  @IsNumber()
   @IsOptional()
   days?: number;
 
