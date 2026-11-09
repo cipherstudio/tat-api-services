@@ -1,0 +1,88 @@
+// Master data snapshot from UAT (TRASUAT), 2026-11-05.
+// Table "privilege", 12 rows.
+module.exports = [
+  {
+    "id": 1,
+    "name": "ประธานกรรมการ",
+    "is_committee_position": 1,
+    "is_outsider_equivalent": 1,
+    "confidential_level": "NORMAL",
+  },
+  {
+    "id": 2,
+    "name": "กรรมการ",
+    "is_committee_position": 1,
+    "is_outsider_equivalent": 1,
+    "confidential_level": "NORMAL",
+  },
+  {
+    "id": 3,
+    "name": "ผู้ว่าการ ททท.",
+    "is_committee_position": 1,
+    "is_outsider_equivalent": 1,
+    "confidential_level": "NORMAL",
+  },
+  {
+    "id": 4,
+    "name": "C10",
+    "is_committee_position": 0,
+    "is_outsider_equivalent": 1,
+    "confidential_level": "NORMAL",
+  },
+  {
+    "id": 5,
+    "name": "C9",
+    "is_committee_position": 0,
+    "is_outsider_equivalent": 1,
+    "confidential_level": "NORMAL",
+  },
+  {
+    "id": 6,
+    "name": "C8",
+    "is_committee_position": 0,
+    "is_outsider_equivalent": 1,
+    "confidential_level": "NORMAL",
+  },
+  {
+    "id": 7,
+    "name": "C7",
+    "is_committee_position": 0,
+    "is_outsider_equivalent": 1,
+    "confidential_level": "NORMAL",
+  },
+  {
+    "id": 8,
+    "name": "C6",
+    "is_committee_position": 0,
+    "is_outsider_equivalent": 1,
+    "confidential_level": "NORMAL",
+  },
+  {
+    "id": 9,
+    "name": "C5",
+    "is_committee_position": 0,
+    "is_outsider_equivalent": 1,
+    "confidential_level": "NORMAL",
+  },
+  {
+    "id": 10,
+    "name": "C4",
+    "is_committee_position": 0,
+    "is_outsider_equivalent": 1,
+    "confidential_level": "NORMAL",
+  },
+  {
+    "id": 11,
+    "name": "C3",
+    "is_committee_position": 0,
+    "is_outsider_equivalent": 1,
+    "confidential_level": "NORMAL",
+  },
+  {
+    "id": 12,
+    "name": "ลูกจ้าง ททท.",
+    "is_committee_position": 0,
+    "is_outsider_equivalent": 0,
+    "confidential_level": "NORMAL",
+  },
+];

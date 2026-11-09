@@ -1,0 +1,136 @@
+// Master data snapshot from UAT (TRASUAT), 2026-11-05.
+// Table "entertainment_allowance_levels", 22 rows.
+module.exports = [
+  {
+    "id": 21,
+    "allowance_id": 1,
+    "privilege_id": 1,
+    "privilege_name": "ประธานกรรมการ",
+  },
+  {
+    "id": 22,
+    "allowance_id": 1,
+    "privilege_id": 2,
+    "privilege_name": "กรรมการ",
+  },
+  {
+    "id": 23,
+    "allowance_id": 1,
+    "privilege_id": 3,
+    "privilege_name": "ผู้ว่าการ ททท.",
+  },
+  {
+    "id": 24,
+    "allowance_id": 1,
+    "privilege_id": 4,
+    "privilege_name": "C10",
+  },
+  {
+    "id": 25,
+    "allowance_id": 1,
+    "privilege_id": 5,
+    "privilege_name": "C9",
+  },
+  {
+    "id": 26,
+    "allowance_id": 2,
+    "privilege_id": 1,
+    "privilege_name": "ประธานกรรมการ",
+  },
+  {
+    "id": 27,
+    "allowance_id": 2,
+    "privilege_id": 2,
+    "privilege_name": "กรรมการ",
+  },
+  {
+    "id": 28,
+    "allowance_id": 2,
+    "privilege_id": 3,
+    "privilege_name": "ผู้ว่าการ ททท.",
+  },
+  {
+    "id": 29,
+    "allowance_id": 2,
+    "privilege_id": 4,
+    "privilege_name": "C10",
+  },
+  {
+    "id": 30,
+    "allowance_id": 2,
+    "privilege_id": 5,
+    "privilege_name": "C9",
+  },
+  {
+    "id": 31,
+    "allowance_id": 3,
+    "privilege_id": 6,
+    "privilege_name": "C8",
+  },
+  {
+    "id": 32,
+    "allowance_id": 3,
+    "privilege_id": 7,
+    "privilege_name": "C7",
+  },
+  {
+    "id": 33,
+    "allowance_id": 3,
+    "privilege_id": 8,
+    "privilege_name": "C6",
+  },
+  {
+    "id": 34,
+    "allowance_id": 3,
+    "privilege_id": 9,
+    "privilege_name": "C5",
+  },
+  {
+    "id": 35,
+    "allowance_id": 3,
+    "privilege_id": 10,
+    "privilege_name": "C4",
+  },
+  {
+    "id": 36,
+    "allowance_id": 3,
+    "privilege_id": 11,
+    "privilege_name": "C3",
+  },
+  {
+    "id": 37,
+    "allowance_id": 4,
+    "privilege_id": 6,
+    "privilege_name": "C8",
+  },
+  {
+    "id": 38,
+    "allowance_id": 4,
+    "privilege_id": 7,
+    "privilege_name": "C7",
+  },
+  {
+    "id": 39,
+    "allowance_id": 4,
+    "privilege_id": 8,
+    "privilege_name": "C6",
+  },
+  {
+    "id": 40,
+    "allowance_id": 4,
+    "privilege_id": 9,
+    "privilege_name": "C5",
+  },
+  {
+    "id": 41,
+    "allowance_id": 4,
+    "privilege_id": 10,
+    "privilege_name": "C4",
+  },
+  {
+    "id": 42,
+    "allowance_id": 4,
+    "privilege_id": 11,
+    "privilege_name": "C3",
+  },
+];
