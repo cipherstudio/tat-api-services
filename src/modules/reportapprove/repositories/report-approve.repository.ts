@@ -529,8 +529,20 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
     };
   }
 
+  /**
+   * Loads one travel report with all its forms and their detail rows.
+   *
+   * The report header and each child table are read with separate queries. This used to be one
+   * query that LEFT JOINed every child table onto report_traveller_form, which multiplies rows
+   * (daily details x holiday wages x accommodation x other expenses x transportation x allowances
+   * per form, e.g. 221 rows for report 921 that has 8 forms). Each of those rows carried the CLOB
+   * columns of report_daily_travel_detail, and the driver fetches every CLOB value with its own
+   * round trip, so the endpoint took 30-60 s over the network and hit the 30 s request timeout.
+   * Reading the tables separately returns each row once (about 1-4 s for the same reports).
+   * The response shape is unchanged; detail rows are now ordered by their id.
+   */
   async findWithId(id: number) {
-    const rows = await this.knex('report_approve')
+    const header = await this.knex('report_approve')
       .whereNull('report_approve.deleted_at')
       .leftJoin(
         'report_approve_status',
@@ -538,46 +550,6 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_approve_status.id',
       )
       .leftJoin('approval', 'report_approve.approve_id', 'approval.id')
-      .leftJoin(
-        'report_traveller_form',
-        'report_approve.id',
-        'report_traveller_form.report_id',
-      )
-      .leftJoin(
-        'report_traveller',
-        'report_traveller_form.traveler_id',
-        'report_traveller.traveler_id',
-      )
-      .leftJoin(
-        'report_daily_travel_detail',
-        'report_traveller_form.form_id',
-        'report_daily_travel_detail.form_id',
-      )
-      .leftJoin(
-        'report_holiday_wage_detail',
-        'report_traveller_form.form_id',
-        'report_holiday_wage_detail.form_id',
-      )
-      .leftJoin(
-        'report_accommodation',
-        'report_traveller_form.form_id',
-        'report_accommodation.form_id',
-      )
-      .leftJoin(
-        'report_other_expense',
-        'report_traveller_form.form_id',
-        'report_other_expense.form_id',
-      )
-      .leftJoin(
-        'report_transportation',
-        'report_traveller_form.form_id',
-        'report_transportation.form_id',
-      )
-      .leftJoin(
-        'report_allowance',
-        'report_traveller_form.form_id',
-        'report_allowance.form_id',
-      )
       .leftJoin('OP_MASTER_T', (builder) => {
         builder.on(
           'report_approve.creator_code',
@@ -586,7 +558,6 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         );
       })
       .select(
-        // Report Approve columns
         'report_approve.id',
         'report_approve.title',
         'report_approve.creator_name',
@@ -599,45 +570,28 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_approve.form_mode',
         'report_approve.created_at',
         'report_approve.updated_at',
-        // Status columns
         'report_approve_status.status as status_name',
-        // Approval columns with aliases
         'approval.id as approval_id',
         'approval.name as approval_name',
-        // OP_MASTER_T columns with aliases
         'OP_MASTER_T.PMT_CODE as creator_pmt_code',
         'OP_MASTER_T.PMT_NAME_T as creator_name_th',
         'OP_MASTER_T.PMT_NAME_E as creator_name_en',
         'OP_MASTER_T.PMT_POS_NO as creator_position',
-        // report_traveller_form columns
-        'report_traveller_form.form_id',
+      )
+      .where('report_approve.id', id)
+      .first();
+
+    if (!header) throw new NotFoundException('Record not found');
+
+    const forms = await this.knex('report_traveller_form')
+      .leftJoin(
+        'report_traveller',
         'report_traveller_form.traveler_id',
-        'report_traveller_form.report_id as form_report_id',
-        'report_traveller_form.job',
-        'report_traveller_form.department',
-        'report_traveller_form.date',
-        'report_traveller_form.travel_order',
-        'report_traveller_form.travel_order_date',
-        'report_traveller_form.companions',
-        'report_traveller_form.destination',
-        'report_traveller_form.location',
-        'report_traveller_form.departure_place',
-        'report_traveller_form.departure_date',
-        'report_traveller_form.departure_time',
-        'report_traveller_form.return_place',
-        'report_traveller_form.return_date',
-        'report_traveller_form.return_time',
-        'report_traveller_form.total_time',
-        'report_traveller_form.travel_details',
-        'report_traveller_form.gran_total',
-        'report_traveller_form.request_approve_amount',
-        'report_traveller_form.remain_amount',
-        'report_traveller_form.report_submit_to',
-        'report_traveller_form.home_departure_time',
-        'report_traveller_form.home_return_time',
-        'report_traveller_form.created_at as form_created_at',
-        'report_traveller_form.updated_at as form_updated_at',
-        // report_traveller columns (join)
+        'report_traveller.traveler_id',
+      )
+      .where('report_traveller_form.report_id', id)
+      .select(
+        'report_traveller_form.*',
         'report_traveller.name as traveller_name',
         'report_traveller.position as traveller_position',
         'report_traveller.level as traveller_level',
@@ -647,292 +601,195 @@ export class ReportApproveRepository extends KnexBaseRepository<ReportApprove> {
         'report_traveller.updated_at as traveller_updated_at',
         'report_traveller.traveller_code as traveller_code',
         'report_traveller.traveler_id as traveller_traveler_id',
-        // report_daily_travel_detail columns
-        'report_daily_travel_detail.detail_id as daily_travel_detail_id',
-        'report_daily_travel_detail.form_id as daily_travel_detail_form_id',
-        'report_daily_travel_detail.departure_place as daily_travel_detail_departure_place',
-        'report_daily_travel_detail.departure_date as daily_travel_detail_departure_date',
-        'report_daily_travel_detail.departure_time as daily_travel_detail_departure_time',
-        'report_daily_travel_detail.return_place as daily_travel_detail_return_place',
-        'report_daily_travel_detail.return_date as daily_travel_detail_return_date',
-        'report_daily_travel_detail.return_time as daily_travel_detail_return_time',
-        'report_daily_travel_detail.travel_details as daily_travel_detail_travel_details',
-        // report_holiday_wage_detail columns
-        'report_holiday_wage_detail.holiday_id as holiday_wage_detail_id',
-        'report_holiday_wage_detail.form_id as holiday_wage_detail_form_id',
-        'report_holiday_wage_detail.date as holiday_wage_detail_date',
-        'report_holiday_wage_detail.hours as holiday_wage_detail_hours',
-        'report_holiday_wage_detail.year as holiday_wage_detail_year',
-        'report_holiday_wage_detail.wage as holiday_wage_detail_wage',
-        'report_holiday_wage_detail.tax as holiday_wage_detail_tax',
-        'report_holiday_wage_detail.total as holiday_wage_detail_total',
-        // report_accommodation columns
-        'report_accommodation.accommodation_id as accommodation_id',
-        'report_accommodation.form_id as accommodation_form_id',
-        'report_accommodation.type as accommodation_type',
-        'report_accommodation.price_per_day as accommodation_price_per_day',
-        'report_accommodation.days as accommodation_days',
-        'report_accommodation.total as accommodation_total',
-        // report_other_expense columns
-        'report_other_expense.expense_id as other_expense_id',
-        'report_other_expense.form_id as other_expense_form_id',
-        'report_other_expense.name as other_expense_name',
-        'report_other_expense.amount as other_expense_amount',
-        'report_other_expense.certificate_file_path as other_expense_certificate_file_path',
-        // report_transportation columns
-        'report_transportation.transport_id as transportation_id',
-        'report_transportation.form_id as transportation_form_id',
-        'report_transportation.type as transportation_type',
-        'report_transportation.from_place as transportation_from_place',
-        'report_transportation.to_place as transportation_to_place',
-        'report_transportation.date as transportation_date',
-        'report_transportation.amount as transportation_amount',
-        'report_transportation.receipt_file_path as transportation_receipt_file_path',
-        // report_allowance columns
-        'report_allowance.allowance_id as allowance_id',
-        'report_allowance.form_id as allowance_form_id',
-        'report_allowance.type as allowance_type',
-        'report_allowance.category as allowance_category',
-        'report_allowance.sub_category as allowance_sub_category',
-        'report_allowance.days as allowance_days',
-        'report_allowance.total as allowance_total',
       )
-      .where('report_approve.id', id);
+      .orderBy('report_traveller_form.form_id', 'asc');
 
-    if (!rows || rows.length === 0)
-      throw new NotFoundException('Record not found');
+    const formIds = forms.map((f) => f.form_id);
+    const childRows = (table: string, idColumn: string) =>
+      formIds.length
+        ? this.knex(table)
+            .whereIn('form_id', formIds)
+            .select('*')
+            .orderBy(idColumn, 'asc')
+        : Promise.resolve([]);
 
-    const data = await Promise.all(rows.map((row) => toCamelCase<any>(row)));
-    
-    const otherExpenseList = await this.knex('report_other_expense_list')
-      .where({ report_id: id })
-      .select('*')
-      .orderBy('list_id', 'asc');
+    const [
+      dailyTravelDetails,
+      holidayWageDetails,
+      accommodations,
+      otherExpenses,
+      transportations,
+      allowances,
+      otherExpenseList,
+    ] = await Promise.all([
+      childRows('report_daily_travel_detail', 'detail_id'),
+      childRows('report_holiday_wage_detail', 'holiday_id'),
+      childRows('report_accommodation', 'accommodation_id'),
+      childRows('report_other_expense', 'expense_id'),
+      childRows('report_transportation', 'transport_id'),
+      childRows('report_allowance', 'allowance_id'),
+      this.knex('report_other_expense_list')
+        .where({ report_id: id })
+        .select('*')
+        .orderBy('list_id', 'asc'),
+    ]);
 
-    const otherExpenseListWithReceipts = await Promise.all(
-      otherExpenseList.map(async (expense) => {
-        const receipts = await this.knex('report_other_expense_list_receipts')
-          .where({ list_id: expense.list_id })
+    const listIds = otherExpenseList.map((expense) => expense.list_id);
+    const receipts = listIds.length
+      ? await this.knex('report_other_expense_list_receipts')
+          .whereIn('list_id', listIds)
           .select('*')
-          .orderBy('receipt_id', 'asc');
-        
-        return {
-          listId: expense.list_id,
-          expenseId: expense.expense_id,
-          name: expense.name,
-          requestAmount: expense.request_amount,
-          actualAmount: expense.actual_amount,
-          receipts: receipts.map(receipt => ({
-            receiptId: receipt.receipt_id,
-            receiptDetailId: receipt.receipt_detail_id,
-            detail: receipt.detail,
-            amount: receipt.amount
-          }))
-        };
-      })
-    );
+          .orderBy('receipt_id', 'asc')
+      : [];
 
-    const row = data[0];
-    const result = {
-      id: row.id,
-      title: row.title,
-      creatorName: row.creatorName,
-      creatorCode: row.creatorCode,
-      documentNumber: row.documentNumber,
-      approveId: row.approveId,
-      status: row.status,
-      selectedTravelerCodeStep1: row.selectedTravelerCodeStep1,
-      selectedTravelerCodeStep2: row.selectedTravelerCodeStep2,
-      formMode: row.formMode,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-      statusName: row.statusName,
-      approvalId: row.approvalId,
-      approvalName: row.approvalName,
-      creatorPmtCode: row.creatorPmtCode,
-      creatorNameTh: row.creatorNameTh,
-      creatorNameEn: row.creatorNameEn,
-      creatorPosition: row.creatorPosition,
-      reportTravellerForm: [],
+    const otherExpenseListWithReceipts = otherExpenseList.map((expense) => ({
+      listId: expense.list_id,
+      expenseId: expense.expense_id,
+      name: expense.name,
+      requestAmount: expense.request_amount,
+      actualAmount: expense.actual_amount,
+      receipts: receipts
+        .filter((receipt) => receipt.list_id === expense.list_id)
+        .map((receipt) => ({
+          receiptId: receipt.receipt_id,
+          receiptDetailId: receipt.receipt_detail_id,
+          detail: receipt.detail,
+          amount: receipt.amount,
+        })),
+    }));
+
+    const byForm = <T extends { form_id: number }>(rows: T[], formId: number) =>
+      rows.filter((row) => row.form_id === formId);
+
+    const reportTravellerForm = forms.map((f) => ({
+      formId: f.form_id,
+      travelerId: f.traveler_id,
+      reportId: f.report_id,
+      job: f.job,
+      department: f.department,
+      date: f.date ? this.toOracleDateString(f.date) : null,
+      travelOrder: f.travel_order,
+      travelOrderDate: f.travel_order_date
+        ? this.toOracleDateString(f.travel_order_date)
+        : null,
+      companions: f.companions,
+      destination: f.destination,
+      location: f.location,
+      departurePlace: f.departure_place,
+      departureDate: f.departure_date
+        ? this.toOracleDateString(f.departure_date)
+        : null,
+      departureTime: f.departure_time,
+      returnPlace: f.return_place,
+      returnDate: f.return_date ? this.toOracleDateString(f.return_date) : null,
+      returnTime: f.return_time,
+      totalTime: f.total_time,
+      travelDetails: f.travel_details,
+      granTotal: f.gran_total,
+      requestApproveAmount: f.request_approve_amount,
+      remainAmount: f.remain_amount,
+      reportSubmitTo: f.report_submit_to,
+      homeDepartureTime: f.home_departure_time,
+      homeReturnTime: f.home_return_time,
+      createdAt: f.created_at,
+      updatedAt: f.updated_at,
+      traveller: {
+        name: f.traveller_name,
+        position: f.traveller_position,
+        level: f.traveller_level,
+        type: f.traveller_type,
+        reportId: f.traveller_report_id,
+        createdAt: f.traveller_created_at,
+        updatedAt: f.traveller_updated_at,
+        code: f.traveller_code,
+        travelerId: f.traveller_traveler_id,
+      },
+      dailyTravelDetails: byForm(dailyTravelDetails, f.form_id).map((d) => ({
+        detailId: d.detail_id,
+        formId: d.form_id,
+        departurePlace: d.departure_place,
+        departureDate: d.departure_date,
+        departureTime: d.departure_time,
+        returnPlace: d.return_place,
+        returnDate: d.return_date,
+        returnTime: d.return_time,
+        travelDetails: d.travel_details,
+      })),
+      holidayWageDetailDaily: byForm(holidayWageDetails, f.form_id).map(
+        (d) => ({
+          holidayId: d.holiday_id,
+          formId: d.form_id,
+          date: d.date,
+          hours: d.hours,
+          year: d.year,
+          wage: d.wage,
+          tax: d.tax,
+          total: d.total,
+        }),
+      ),
+      accommodationDetails: byForm(accommodations, f.form_id).map((d) => ({
+        id: d.accommodation_id,
+        accommodationId: d.accommodation_id,
+        formId: d.form_id,
+        type: d.type,
+        pricePerDay: d.price_per_day,
+        days: d.days,
+        total: d.total,
+      })),
+      otherExpenseDetails: byForm(otherExpenses, f.form_id).map((d) => ({
+        id: d.expense_id,
+        expenseId: d.expense_id,
+        formId: d.form_id,
+        name: d.name,
+        amount: d.amount,
+        certificateFilePath: d.certificate_file_path,
+      })),
+      transportationDetails: byForm(transportations, f.form_id).map((d) => ({
+        id: d.transport_id,
+        transportId: d.transport_id,
+        formId: d.form_id,
+        type: d.type,
+        fromPlace: d.from_place,
+        toPlace: d.to_place,
+        date: d.date,
+        amount: d.amount,
+        receiptFilePath: d.receipt_file_path,
+      })),
+      allowanceCalculations: byForm(allowances, f.form_id).map((d) => ({
+        id: d.allowance_id,
+        allowanceId: d.allowance_id,
+        formId: d.form_id,
+        type: d.type,
+        category: d.category,
+        subCategory: d.sub_category,
+        days: d.days,
+        total: d.total,
+      })),
+    }));
+
+    return {
+      id: header.id,
+      title: header.title,
+      creatorName: header.creator_name,
+      creatorCode: header.creator_code,
+      documentNumber: header.document_number,
+      approveId: header.approve_id,
+      status: header.status,
+      selectedTravelerCodeStep1: header.selected_traveler_code_step1,
+      selectedTravelerCodeStep2: header.selected_traveler_code_step2,
+      formMode: header.form_mode,
+      createdAt: header.created_at,
+      updatedAt: header.updated_at,
+      statusName: header.status_name,
+      approvalId: header.approval_id,
+      approvalName: header.approval_name,
+      creatorPmtCode: header.creator_pmt_code,
+      creatorNameTh: header.creator_name_th,
+      creatorNameEn: header.creator_name_en,
+      creatorPosition: header.creator_position,
+      reportTravellerForm,
       otherExpenseList: otherExpenseListWithReceipts,
     };
-    // Group formId -> form object
-    const formMap = new Map();
-    for (const r of data) {
-      if (r.formId) {
-        let form = formMap.get(r.formId);
-        if (!form) {
-          form = {
-            formId: r.formId,
-            travelerId: r.travelerId,
-            reportId: r.formReportId,
-            job: r.job,
-            department: r.department,
-            date: r.date ? this.toOracleDateString(r.date) : null,
-            travelOrder: r.travelOrder,
-            travelOrderDate: r.travelOrderDate
-              ? this.toOracleDateString(r.travelOrderDate)
-              : null,
-            companions: r.companions,
-            destination: r.destination,
-            location: r.location,
-            departurePlace: r.departurePlace,
-            departureDate: r.departureDate
-              ? this.toOracleDateString(r.departureDate)
-              : null,
-            departureTime: r.departureTime,
-            returnPlace: r.returnPlace,
-            returnDate: r.returnDate
-              ? this.toOracleDateString(r.returnDate)
-              : null,
-            returnTime: r.returnTime,
-            totalTime: r.totalTime,
-            travelDetails: r.travelDetails,
-            granTotal: r.granTotal,
-            requestApproveAmount: r.requestApproveAmount,
-            remainAmount: r.remainAmount,
-            reportSubmitTo: r.reportSubmitTo,
-            homeDepartureTime: r.homeDepartureTime,
-            homeReturnTime: r.homeReturnTime,
-            createdAt: r.formCreatedAt,
-            updatedAt: r.formUpdatedAt,
-            traveller: {
-              name: r.travellerName,
-              position: r.travellerPosition,
-              level: r.travellerLevel,
-              type: r.travellerType,
-              reportId: r.travellerReportId,
-              createdAt: r.travellerCreatedAt,
-              updatedAt: r.travellerUpdatedAt,
-              code: r.travellerCode,
-              travelerId: r.travellerTravelerId,
-            },
-            dailyTravelDetails: [],
-            holidayWageDetailDaily: [],
-            accommodationDetails: [],
-            otherExpenseDetails: [],
-            transportationDetails: [],
-            allowanceCalculations: [],
-          };
-          formMap.set(r.formId, form);
-        }
-        // push dailyTravelDetail ถ้ามี
-        if (r.dailyTravelDetailId) {
-          if (
-            !form.dailyTravelDetails.some(
-              (d) => d.detailId === r.dailyTravelDetailId,
-            )
-          ) {
-            form.dailyTravelDetails.push({
-              detailId: r.dailyTravelDetailId,
-              formId: r.dailyTravelDetailFormId,
-              departurePlace: r.dailyTravelDetailDeparturePlace,
-              departureDate: r.dailyTravelDetailDepartureDate,
-              departureTime: r.dailyTravelDetailDepartureTime,
-              returnPlace: r.dailyTravelDetailReturnPlace,
-              returnDate: r.dailyTravelDetailReturnDate,
-              returnTime: r.dailyTravelDetailReturnTime,
-              travelDetails: r.dailyTravelDetailTravelDetails,
-            });
-          }
-        }
-        // push holidayWageDetailDaily ถ้ามี
-        if (r.holidayWageDetailId) {
-          if (
-            !form.holidayWageDetailDaily.some(
-              (d) => d.holidayId === r.holidayWageDetailId,
-            )
-          ) {
-            form.holidayWageDetailDaily.push({
-              holidayId: r.holidayWageDetailId,
-              formId: r.holidayWageDetailFormId,
-              date: r.holidayWageDetailDate,
-              hours: r.holidayWageDetailHours,
-              year: r.holidayWageDetailYear,
-              wage: r.holidayWageDetailWage,
-              tax: r.holidayWageDetailTax,
-              total: r.holidayWageDetailTotal,
-            });
-          }
-        }
-        // push accommodationDetails ถ้ามี
-        if (r.accommodationId) {
-          if (
-            !form.accommodationDetails.some(
-              (d) => d.accommodationId === r.accommodationId,
-            )
-          ) {
-            form.accommodationDetails.push({
-              id: r.accommodationId,
-              accommodationId: r.accommodationId,
-              formId: r.accommodationFormId,
-              type: r.accommodationType,
-              pricePerDay: r.accommodationPricePerDay,
-              days: r.accommodationDays,
-              total: r.accommodationTotal,
-            });
-          }
-        }
-        // push otherExpenseDetails ถ้ามี
-        if (r.otherExpenseId) {
-          if (
-            !form.otherExpenseDetails.some(
-              (d) => d.expenseId === r.otherExpenseId,
-            )
-          ) {
-            form.otherExpenseDetails.push({
-              id: r.otherExpenseId,
-              expenseId: r.otherExpenseId,
-              formId: r.otherExpenseFormId,
-              name: r.otherExpenseName,
-              amount: r.otherExpenseAmount,
-              certificateFilePath: r.otherExpenseCertificateFilePath,
-            });
-          }
-        }
-        // push transportationDetails ถ้ามี
-        if (r.transportationId) {
-          if (
-            !form.transportationDetails.some(
-              (d) => d.transportId === r.transportationId,
-            )
-          ) {
-            form.transportationDetails.push({
-              id: r.transportationId,
-              transportId: r.transportationId,
-              formId: r.transportationFormId,
-              type: r.transportationType,
-              fromPlace: r.transportationFromPlace,
-              toPlace: r.transportationToPlace,
-              date: r.transportationDate,
-              amount: r.transportationAmount,
-              receiptFilePath: r.transportationReceiptFilePath,
-            });
-          }
-        }
-        // push allowanceCalculations ถ้ามี
-        if (r.allowanceId) {
-          if (
-            !form.allowanceCalculations.some(
-              (d) => d.allowanceId === r.allowanceId,
-            )
-          ) {
-            form.allowanceCalculations.push({
-              id: r.allowanceId,
-              allowanceId: r.allowanceId,
-              formId: r.allowanceFormId,
-              type: r.allowanceType,
-              category: r.allowanceCategory,
-              subCategory: r.allowanceSubCategory,
-              days: r.allowanceDays,
-              total: r.allowanceTotal,
-            });
-          }
-        }
-      }
-    }
-    result.reportTravellerForm = Array.from(formMap.values());
-    return result;
   }
 
   async create(dto: CreateReportApproveDto) {
