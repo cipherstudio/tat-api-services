@@ -816,6 +816,21 @@ export class ApprovalDetailResponseDto implements Approval {
   isCancelApproval?: boolean;
 
   @ApiProperty({
+    description: 'เป็นคำขอเพิ่มเติม/เปลี่ยนแปลง/ยกเลิกหรือไม่',
+    required: false,
+    example: false,
+  })
+  isChangeRequest?: boolean;
+
+  @ApiProperty({
+    description:
+      'ลำดับครั้งของคำขอเพิ่มเติม/เปลี่ยนแปลง/ยกเลิก ภายใต้ใบอนุมัติต้นทาง',
+    required: false,
+    example: 1,
+  })
+  changeRequestSeq?: number;
+
+  @ApiProperty({
     description: 'หมายเลขใบบันทึกข้อความ',
     required: false,
     example: '0001 : 25680708 : 1720'

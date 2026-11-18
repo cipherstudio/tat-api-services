@@ -262,6 +262,16 @@ export interface Approval {
   useSystemSignature?: boolean;
 
   /**
+   * Whether this approval is a change request (เพิ่มเติม/เปลี่ยนแปลง/ยกเลิก)
+   */
+  isChangeRequest?: boolean;
+
+  /**
+   * Sequence of change request under the original approval
+   */
+  changeRequestSeq?: number;
+
+  /**
    * Approval print number
    */
   approvalPrintNumber?: string;
@@ -399,6 +409,8 @@ export const approvalColumnMap = {
   use_file_signature: 'useFileSignature',
   signature_attachment_id: 'signatureAttachmentId',
   use_system_signature: 'useSystemSignature',
+  is_change_request: 'isChangeRequest',
+  change_request_seq: 'changeRequestSeq',
   approval_print_number: 'approvalPrintNumber',
   expense_print_number: 'expensePrintNumber',
   approval_status_label_id: 'approvalStatusLabelId',
@@ -463,6 +475,8 @@ export const approvalReverseColumnMap = {
   useFileSignature: 'use_file_signature',
   signatureAttachmentId: 'signature_attachment_id',
   useSystemSignature: 'use_system_signature',
+  isChangeRequest: 'is_change_request',
+  changeRequestSeq: 'change_request_seq',
   approvalPrintNumber: 'approval_print_number',
   expensePrintNumber: 'expense_print_number',
   approvalStatusLabelId: 'approval_status_label_id',

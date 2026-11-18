@@ -534,7 +534,10 @@ export class ApprovalService {
 
     // Add JOIN for isRelatedToMe filter
     if (isRelatedToMe) {
-      // ถ้าเราเป็นคนในคณะเดินทาง หรือมีส่วนในการอนุมัติส่งเรื่อง หรือถูกทำแทน (ไม่ได้เป็นคนสร้างเรื่อง)
+      // "รายการที่เกี่ยวข้องกับฉัน" = ใบที่เราเป็นผู้เดินทาง แต่ไม่ได้สร้างเอง:
+      // อยู่ในคณะเดินทาง หรือถูกทำแทน (#479)
+      // ไม่รวมใบที่เราเป็นแค่ผู้พิจารณา/ผู้อนุมัติ — อนุมัติเสร็จแล้วไม่ต้องเห็นในหน้านี้
+      // (ผู้อนุมัติยังเปิดดูรายละเอียดได้ตาม isViewableBy)
       // ใช้ subquery เพื่อป้องกันข้อมูลซ้ำ
       const relatedApprovalIds = this.knexService.knex
         .select('approval.id')
@@ -544,19 +547,10 @@ export class ApprovalService {
           'approval.id',
           'approval_staff_members.approval_id',
         )
-        .leftJoin('approval_continuous as ac', function () {
-          this.on('approval.id', '=', 'ac.approval_id').andOnVal(
-            'ac.employee_code',
-            '=',
-            employeeCode,
-          );
-        })
         .where(function () {
-          // ✅ เงื่อนไขที่ 1: เป็นคณะเดินทาง
+          // เงื่อนไขที่ 1: เป็นคณะเดินทาง
           this.where('approval_staff_members.employee_code', employeeCode)
-            // ✅ เงื่อนไขที่ 2: เป็นผู้อนุมัติ
-            .orWhereNotNull('ac.id')
-            // ✅ เงื่อนไขที่ 3: ถูกทำแทน
+            // เงื่อนไขที่ 2: ถูกทำแทน
             .orWhere(function () {
               this.where('approval.record_type', 'delegate').andWhere(
                 'approval.employee_code',
@@ -722,6 +716,7 @@ export class ApprovalService {
           'approval.signature_attachment_id as signatureAttachmentId',
           'approval.use_system_signature as useSystemSignature',
           'approval.is_cancel_approval as isCancelApproval',
+          'approval.is_change_request as isChangeRequest',
           'approval.approval_print_number as approvalPrintNumber',
           'approval.expense_print_number as expensePrintNumber',
           'approval.created_employee_code as createdEmployeeCode',
@@ -1180,6 +1175,8 @@ export class ApprovalService {
         'approval.signature_attachment_id as signatureAttachmentId',
         'approval.use_system_signature as useSystemSignature',
         'approval.is_cancel_approval as isCancelApproval',
+        'approval.is_change_request as isChangeRequest',
+        'approval.change_request_seq as changeRequestSeq',
         'approval.created_at as createdAt',
         'approval.updated_at as updatedAt',
         'approval.deleted_at as deletedAt',
@@ -1205,6 +1202,9 @@ export class ApprovalService {
     // Map the approval data to the response DTO
     const approvalDto: ApprovalDetailResponseDto = {
       ...approval,
+      // Oracle คืน 0/1 → แปลงเป็น boolean
+      isChangeRequest: !!approval.isChangeRequest,
+      changeRequestSeq: approval.changeRequestSeq ?? undefined,
       departments: approval.departments
         ? JSON.parse(approval.departments)
         : undefined,
@@ -2011,6 +2011,12 @@ export class ApprovalService {
         .first();
       if (draftAfter) printRevision++;
     }
+
+    printRevision = this.resolveChangeRequestRevision(
+      approvalDto.isChangeRequest,
+      approvalDto.changeRequestSeq,
+      printRevision,
+    );
 
     // Combine all the data
     const response: ApprovalDetailResponseDto = {
@@ -3212,6 +3218,19 @@ export class ApprovalService {
           .first();
         if (draftAfter) printRevision++;
       }
+      const crRow = await this.knexService
+        .knex('approval')
+        .where('id', id)
+        .select(
+          'is_change_request as isChangeRequest',
+          'change_request_seq as changeRequestSeq',
+        )
+        .first();
+      printRevision = this.resolveChangeRequestRevision(
+        !!crRow?.isChangeRequest,
+        crRow?.changeRequestSeq,
+        printRevision,
+      );
       (
         updatedApprovalRecord as unknown as Record<string, unknown>
       ).printRevision = printRevision;
@@ -5177,11 +5196,26 @@ export class ApprovalService {
     }
   }
 
+  /**
+   * คำขอเพิ่มเติม/เปลี่ยนแปลง/ยกเลิก ใช้ลำดับครั้งของคำขอเป็น printRevision
+   * (แทนการนับรอบตีกลับ); ใบปกติคืนค่าที่นับได้ตามเดิม
+   */
+  private resolveChangeRequestRevision(
+    isChangeRequest: boolean | undefined,
+    changeRequestSeq: number | null | undefined,
+    fallback: number,
+  ): number {
+    if (!isChangeRequest) return fallback;
+    return Number(changeRequestSeq) || 1;
+  }
+
   async duplicate(
     id: number,
     employeeCode: string,
     employeeName: string,
+    opts?: { changeRequest?: boolean },
   ): Promise<Approval> {
+    const isChangeRequest = !!opts?.changeRequest;
     // Get the original approval
     const originalApproval = await this.findById(id);
     if (!originalApproval) {
@@ -5204,6 +5238,19 @@ export class ApprovalService {
         .select('id')
         .first();
 
+      // ลำดับครั้งของคำขอเพิ่มเติม/เปลี่ยนแปลง/ยกเลิก ภายใต้ใบต้นทาง (นับใน trx เดียวกัน)
+      let changeRequestSeq: number | null = null;
+      if (isChangeRequest) {
+        const cnt = await trx('approval')
+          .where('approval_ref', originalApproval.id)
+          .where('is_change_request', 1)
+          .whereNull('deleted_at')
+          .count({ total: '*' })
+          .first();
+        changeRequestSeq =
+          1 + Number((cnt as Record<string, unknown>)?.total ?? 0);
+      }
+
       // Create new approval record with copied data
       const newApprovalData = {
         increment_id: incrementId,
@@ -5220,12 +5267,16 @@ export class ApprovalService {
         end_country: originalApproval.endCountry,
         remarks: originalApproval.remarks,
         num_travelers: originalApproval.numTravelers,
-        document_no: originalApproval.documentNo,
+        document_no: isChangeRequest ? null : originalApproval.documentNo,
         document_number: originalApproval.documentNumber,
-        document_tel: originalApproval.documentTel,
-        document_to: originalApproval.documentTo,
-        document_title: originalApproval.documentTitle,
-        attachment_id: originalApproval.attachmentId,
+        document_tel: isChangeRequest ? null : originalApproval.documentTel,
+        document_to: isChangeRequest ? null : originalApproval.documentTo,
+        document_title: isChangeRequest
+          ? `ขออนุมัติเพิ่มเติม/เปลี่ยนแปลง/ยกเลิกการเดินทาง (${originalApproval.documentTitle ?? ''})`
+          : originalApproval.documentTitle,
+        attachment_id: isChangeRequest ? null : originalApproval.attachmentId,
+        is_change_request: isChangeRequest,
+        change_request_seq: changeRequestSeq,
         is_first_time_travel: originalApproval.isFirstTimeTravel ?? null,
         form3_total_outbound: originalApproval.form3TotalOutbound,
         form3_total_inbound: originalApproval.form3TotalInbound,
@@ -5236,7 +5287,10 @@ export class ApprovalService {
           originalApproval.exceedLodgingRightsReason,
         form4_total_amount: originalApproval.form4TotalAmount,
         form5_total_amount: originalApproval.form5TotalAmount,
-        approval_date: originalApproval.approvalDate,
+        // คำขอเพิ่มเติม/เปลี่ยนแปลง/ยกเลิก เป็นบันทึกฉบับใหม่ → ลงวันที่วันที่กดสร้าง (เวลาไทย) แทนวันที่ของใบเดิม
+        approval_date: isChangeRequest
+          ? new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10)
+          : originalApproval.approvalDate,
         staff: originalApproval.staff,
         staff_employee_code: originalApproval.staffEmployeeCode,
         final_staff_employee_code: originalApproval.finalStaffEmployeeCode,
@@ -5248,7 +5302,9 @@ export class ApprovalService {
         final_staff: originalApproval.finalStaff,
         signer_date: originalApproval.signerDate,
         document_ending: originalApproval.documentEnding,
-        document_ending_wording: originalApproval.documentEndingWording,
+        document_ending_wording: isChangeRequest
+          ? 'จึงเรียนมาเพื่อโปรดพิจารณาอนุมัติ'
+          : originalApproval.documentEndingWording,
         signer_name: originalApproval.signerName,
         use_file_signature: originalApproval.useFileSignature,
         signature_attachment_id: originalApproval.signatureAttachmentId,
@@ -5294,6 +5350,7 @@ export class ApprovalService {
 
       // Copy approval contents
       if (
+        !isChangeRequest &&
         originalApproval.approvalContents &&
         originalApproval.approvalContents.length > 0
       ) {

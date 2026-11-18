@@ -669,6 +669,32 @@ export class ApprovalController {
     );
   }
 
+  @Post('duplicate-change-request/:id')
+  @ApiOperation({
+    summary: 'Duplicate approval as a change request',
+    description:
+      'สร้างคำขออนุมัติเพิ่มเติม/เปลี่ยนแปลง/ยกเลิก จากใบอนุมัติเดิม (ไม่กระทบใบต้นทาง)',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Change request created successfully',
+  })
+  @ApiResponse({ status: 404, description: 'Approval not found' })
+  duplicateChangeRequest(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: RequestWithUser,
+  ) {
+    if (!req.user.employee) {
+      throw new Error('Employee data not found for user');
+    }
+    return this.approvalService.duplicate(
+      id,
+      req.user.employee.code,
+      req.user.employee.name,
+      { changeRequest: true },
+    );
+  }
+
   @Patch(':id/staff-members-cancelled-status')
   @ApiOperation({
     summary: 'Update staff members cancelled status',
