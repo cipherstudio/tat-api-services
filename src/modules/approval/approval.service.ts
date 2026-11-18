@@ -5764,11 +5764,10 @@ export class ApprovalService {
       // Commit the transaction
       await trx.commit();
 
-      // Cache the new approval
-      await this.cacheService.set(
+      // Do not cache the raw inserted row under the detail key: findById reads that key and
+      // would return it instead of the full detail response (edit page then misreads the record).
+      await this.cacheService.del(
         this.cacheService.generateKey(this.CACHE_PREFIX, newApproval.id),
-        newApproval,
-        this.CACHE_TTL,
       );
 
       // Invalidate the list cache
@@ -6042,10 +6041,10 @@ export class ApprovalService {
         ...responseData
       } = newApproval;
 
-      await this.cacheService.set(
+      // Do not cache the raw inserted row under the detail key: findById reads that key and
+      // would return it instead of the full detail response (edit page then misreads the record).
+      await this.cacheService.del(
         this.cacheService.generateKey(this.CACHE_PREFIX, newApproval.id),
-        newApproval,
-        this.CACHE_TTL,
       );
 
       await this.cacheService.del(
