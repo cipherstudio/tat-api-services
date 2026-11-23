@@ -18,6 +18,11 @@ export class ApprovalClothingExpense {
   is_cancelled: boolean;
   cancelled_at?: string | null;
   cancellation_request_id?: number | null;
+  manual_document_title?: string | null;
+  manual_travel_type?: string | null;
+  manual_requestor_code?: string | null;
+  manual_requestor_name?: string | null;
+  manual_requestor_position?: string | null;
 
   // Additional fields from joins
   employee_pmt_code?: string;

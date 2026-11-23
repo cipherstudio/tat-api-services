@@ -80,11 +80,11 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
       'omt.PMT_POS_WK as employee_position',
       'omt.PMT_CUR_FAC as employee_faculty',
       'omt.PMT_EMAIL_ADDR as employee_email',
-      'a.travel_type as approval_travel_type',
-      'a.created_employee_code as requestor_code',
-      'a.created_employee_name as requestor_name',
+      this.knex.raw('COALESCE("a"."travel_type", "ace"."manual_travel_type") as "approval_travel_type"'),
+      this.knex.raw('COALESCE("a"."created_employee_code", "ace"."manual_requestor_code") as "requestor_code"'),
+      this.knex.raw('COALESCE("a"."created_employee_name", "ace"."manual_requestor_name") as "requestor_name"'),
       'a.approval_date as approval_request_date',
-      'a.document_title as document_title',
+      this.knex.raw('COALESCE("a"."document_title", "ace"."manual_document_title") as "document_title"'),
       'approved_hist.approval_approved_date',
     ];
 
@@ -291,7 +291,7 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
       }
     });
 
-    const result = await this.knex('approval_clothing_expense as ace')
+    const result: any = await this.knex('approval_clothing_expense as ace')
       .leftJoin(
         this.knex
           .distinct([
@@ -328,11 +328,11 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
         'omt.PMT_POS_WK as employee_position',
         'omt.PMT_CUR_FAC as employee_faculty',
         'omt.PMT_EMAIL_ADDR as employee_email',
-        'a.travel_type as approval_travel_type',
-        'a.created_employee_code as requestor_code',
-        'a.created_employee_name as requestor_name',
+        this.knex.raw('COALESCE("a"."travel_type", "ace"."manual_travel_type") as "approval_travel_type"'),
+        this.knex.raw('COALESCE("a"."created_employee_code", "ace"."manual_requestor_code") as "requestor_code"'),
+        this.knex.raw('COALESCE("a"."created_employee_name", "ace"."manual_requestor_name") as "requestor_name"'),
         'a.approval_date as approval_request_date',
-        'a.document_title as document_title',
+        this.knex.raw('COALESCE("a"."document_title", "ace"."manual_document_title") as "document_title"'),
         'approved_hist.approval_approved_date',
       ])
       .where(transformedConditions)
@@ -357,5 +357,29 @@ export class ApprovalClothingExpenseRepository extends KnexBaseRepository<Approv
     }
 
     return result || null;
+  }
+
+  /** #490: หา approval จากเลขที่เอกสาร (increment_id) สำหรับ modal เพิ่มประวัติการเบิก */
+  async findApprovalByIncrementId(incrementId: string) {
+    const row = await this.knex('approval')
+      .select(
+        'id',
+        'document_title',
+        'travel_type',
+        'created_employee_code',
+        'created_employee_name',
+      )
+      .where('increment_id', incrementId)
+      .whereNull('deleted_at')
+      .orderBy('id', 'desc')
+      .first();
+    if (!row) return null;
+    return {
+      approvalId: row.id,
+      documentTitle: row.document_title ?? null,
+      travelType: row.travel_type ?? null,
+      createdEmployeeCode: row.created_employee_code ?? null,
+      createdEmployeeName: row.created_employee_name ?? null,
+    };
   }
 }

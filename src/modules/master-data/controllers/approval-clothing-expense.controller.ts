@@ -159,6 +159,19 @@ export class ApprovalClothingExpenseController {
     return this.approvalClothingExpenseService.findAll(queryOptions);
   }
 
+  @Get('lookup-approval')
+  @ApiOperation({
+    summary: 'Look up an approval by document number (increment_id)',
+  })
+  @ApiQuery({ name: 'increment_id', required: true, type: String })
+  async lookupApproval(@Query('increment_id') incrementId?: string) {
+    return (
+      (await this.approvalClothingExpenseService.findApprovalByIncrementId(
+        incrementId ?? '',
+      )) ?? null
+    );
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get approval clothing expense by id' })
   @ApiOkResponse({

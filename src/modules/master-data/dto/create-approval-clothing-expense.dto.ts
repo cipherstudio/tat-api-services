@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsNumber,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
 export class CreateApprovalClothingExpenseDto {
   @ApiProperty({ description: 'Clothing file checked status', required: false })
@@ -69,4 +75,43 @@ export class CreateApprovalClothingExpenseDto {
   @IsOptional()
   @IsString()
   destination_country?: string;
+
+  @ApiProperty({
+    description: 'Manual document title (rows without approval_id)',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  manual_document_title?: string;
+
+  @ApiProperty({
+    description: 'Manual travel type (rows without approval_id)',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  manual_travel_type?: string;
+
+  @ApiProperty({
+    description: 'Manual requestor employee code',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  manual_requestor_code?: string;
+
+  @ApiProperty({ description: 'Manual requestor name', required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  manual_requestor_name?: string;
+
+  @ApiProperty({ description: 'Manual requestor position', required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  manual_requestor_position?: string;
 }

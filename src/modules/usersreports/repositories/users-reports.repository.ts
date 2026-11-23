@@ -904,11 +904,20 @@ export class UsersReportsRepository extends KnexBaseRepository<CommuteReports> {
         'approval_clothing_expense.increment_id',
         'approval_clothing_expense.destination_country',
         'approval.increment_id as approval_increment_id',
-        'approval.document_title',
         'approval.approval_date',
-        'approval.travel_type as approval_travel_type',
-        'approval.created_employee_code',
-        'approval.created_employee_name',
+        // #490 รายการที่แอดมินเพิ่มเอง (ไม่ผูกใบอนุมัติ) ใช้ค่าที่กรอกไว้ใน approval_clothing_expense
+        this.knexService.knex.raw(
+          'COALESCE("approval"."document_title", "approval_clothing_expense"."manual_document_title") as "document_title"',
+        ),
+        this.knexService.knex.raw(
+          'COALESCE("approval"."travel_type", "approval_clothing_expense"."manual_travel_type") as "approval_travel_type"',
+        ),
+        this.knexService.knex.raw(
+          'COALESCE("approval"."created_employee_code", "approval_clothing_expense"."manual_requestor_code") as "created_employee_code"',
+        ),
+        this.knexService.knex.raw(
+          'COALESCE("approval"."created_employee_name", "approval_clothing_expense"."manual_requestor_name") as "created_employee_name"',
+        ),
         'approval_status_labels.label as status_label',
         'approval_status_labels.status_code as status_code',
         this.knexService.knex.raw(

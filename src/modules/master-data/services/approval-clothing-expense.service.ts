@@ -24,6 +24,12 @@ export class ApprovalClothingExpenseService {
     );
   }
 
+  async findApprovalByIncrementId(incrementId: string) {
+    const id = (incrementId || '').trim();
+    if (!id) return null;
+    return this.approvalClothingExpenseRepository.findApprovalByIncrementId(id);
+  }
+
   async findOne(id: number): Promise<ApprovalClothingExpense | null> {
     return this.approvalClothingExpenseRepository.findOne({ id });
   }
@@ -45,6 +51,11 @@ export class ApprovalClothingExpenseService {
       employee_code: dto.employee_code,
       increment_id: dto.increment_id,
       destination_country: dto.destination_country,
+      manual_document_title: dto.manual_document_title,
+      manual_travel_type: dto.manual_travel_type,
+      manual_requestor_code: dto.manual_requestor_code,
+      manual_requestor_name: dto.manual_requestor_name,
+      manual_requestor_position: dto.manual_requestor_position,
     };
     return this.approvalClothingExpenseRepository.create(data);
   }
@@ -67,6 +78,11 @@ export class ApprovalClothingExpenseService {
       employee_code: dto.employee_code,
       increment_id: dto.increment_id,
       destination_country: dto.destination_country,
+      manual_document_title: dto.manual_document_title,
+      manual_travel_type: dto.manual_travel_type,
+      manual_requestor_code: dto.manual_requestor_code,
+      manual_requestor_name: dto.manual_requestor_name,
+      manual_requestor_position: dto.manual_requestor_position,
     };
     return this.approvalClothingExpenseRepository.update(id, data);
   }
